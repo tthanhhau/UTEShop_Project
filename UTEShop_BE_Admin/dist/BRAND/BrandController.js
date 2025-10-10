@@ -11,13 +11,18 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BrandController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const BrandService_1 = require("./BrandService");
 const CreateBrandDto_1 = require("./DTO/CreateBrandDto");
 const UpdateBrandDto_1 = require("./DTO/UpdateBrandDto");
 const JwtAuthGuard_1 = require("../AUTH/GUARDS/JwtAuthGuard");
+const cloudinary_config_1 = __importDefault(require("../config/cloudinary.config"));
 let BrandController = class BrandController {
     brandService;
     constructor(brandService) {
@@ -44,6 +49,34 @@ let BrandController = class BrandController {
     }
     async deleteMultipleBrands(ids) {
         return this.brandService.deleteMultiple(ids);
+    }
+    async uploadImage(file) {
+        try {
+            const result = await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary_config_1.default.uploader.upload_stream({
+                    folder: 'brands',
+                    resource_type: 'image',
+                }, (error, result) => {
+                    if (error)
+                        reject(error);
+                    else
+                        resolve(result);
+                });
+                uploadStream.end(file.buffer);
+            });
+            return {
+                success: true,
+                url: result.secure_url,
+            };
+        }
+        catch (error) {
+            console.error('Upload error:', error);
+            return {
+                success: false,
+                message: 'Lỗi upload ảnh',
+                error: error.message,
+            };
+        }
     }
 };
 exports.BrandController = BrandController;
@@ -84,6 +117,15 @@ __decorate([
     __metadata("design:paramtypes", [Array]),
     __metadata("design:returntype", Promise)
 ], BrandController.prototype, "deleteMultipleBrands", null);
+__decorate([
+    (0, common_1.Post)('upload'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, common_1.UseGuards)(JwtAuthGuard_1.JwtAuthGuard),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], BrandController.prototype, "uploadImage", null);
 exports.BrandController = BrandController = __decorate([
     (0, common_1.Controller)('admin/brands'),
     (0, common_1.UseGuards)(JwtAuthGuard_1.JwtAuthGuard),

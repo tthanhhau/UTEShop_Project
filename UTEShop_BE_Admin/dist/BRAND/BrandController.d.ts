@@ -34,4 +34,15 @@ export declare class BrandController {
         __v: number;
     }) | null>;
     deleteMultipleBrands(ids: string[]): Promise<import("mongodb").DeleteResult>;
+    uploadImage(file: Express.Multer.File): Promise<{
+        success: boolean;
+        url: any;
+        message?: undefined;
+        error?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        error: any;
+        url?: undefined;
+    }>;
 }

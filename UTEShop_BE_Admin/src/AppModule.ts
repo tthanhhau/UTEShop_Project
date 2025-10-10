@@ -27,7 +27,7 @@ import { PointsModule } from './POINTS/PointsModule';
       useFactory: async (configService: ConfigService) => ({
         uri:
           configService.get<string>('MONGODB_URI') ||
-          'mongodb://127.0.0.1:27017/fashion_store',
+          'mongodb://127.0.0.1:27017/shop',
         directConnection: true,
         family: 4, // Force IPv4
       }),
@@ -48,4 +48,4 @@ import { PointsModule } from './POINTS/PointsModule';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
