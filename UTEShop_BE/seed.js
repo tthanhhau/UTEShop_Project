@@ -4,8 +4,9 @@ import Product from "./src/models/product.js";
 import Category from "./src/models/category.js";
 import Brand from "./src/models/brand.js";
 
+// test
 dotenv.config();
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/fashion_store";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shop";
 
 async function seed() {
   try {

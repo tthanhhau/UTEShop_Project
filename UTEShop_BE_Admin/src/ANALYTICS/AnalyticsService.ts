@@ -11,7 +11,7 @@ export class AnalyticsService {
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-  ) {}
+  ) { }
 
   async getGeneralStats(year: number = new Date().getFullYear()) {
     const startDate = new Date(`${year}-01-01`);
@@ -304,16 +304,18 @@ export class AnalyticsService {
 
         const revenue = revenueResult[0]?.totalRevenue || 0;
         const deliveredQuantity = revenueResult[0]?.deliveredQuantity || 0;
-        const discountedPrice =
-          product.price -
-          (product.price * product.discountPercentage) / 100;
+
+        // Đảm bảo price và discountPercentage có giá trị hợp lệ
+        const originalPrice = product.price || 0;
+        const discountPercent = product.discountPercentage || 0;
+        const discountedPrice = originalPrice - (originalPrice * discountPercent / 100);
 
         return {
           _id: product._id,
           name: product.name,
-          originalPrice: product.price,
-          discountedPrice: discountedPrice,
-          price: discountedPrice,
+          originalPrice: originalPrice,
+          discountedPrice: Math.round(discountedPrice),
+          price: Math.round(discountedPrice),
           soldCount: product.soldCount,
           sold: product.soldCount,
           deliveredQuantity,
@@ -321,7 +323,7 @@ export class AnalyticsService {
           category: product.category?.name || 'Không có danh mục',
           brand: product.brand?.name || 'Không có thương hiệu',
           images: product.images,
-          discountPercentage: product.discountPercentage,
+          discountPercentage: discountPercent,
           stock: product.stock,
           color: this.getRandomGradient(),
         };

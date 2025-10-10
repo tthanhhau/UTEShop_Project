@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from '../../../lib/axios';
+import MultiImageUpload from '../../../components/MultiImageUpload';
 
 export default function ProductsManagement() {
   const [products, setProducts] = useState([]);
@@ -39,7 +40,7 @@ export default function ProductsManagement() {
       const response = await axios.get('/admin/Products', {
         params: { page, limit: 10, category, brand }
       });
-      
+
       if (response.data.success) {
         setProducts(response.data.data);
         setPagination(response.data.pagination);
@@ -119,7 +120,7 @@ export default function ProductsManagement() {
   // Handle bulk delete
   const handleBulkDelete = async () => {
     if (selectedProducts.length === 0) return;
-    
+
     if (confirm(`Bạn có chắc muốn xóa ${selectedProducts.length} sản phẩm?`)) {
       try {
         await axios.delete('/admin/Products/multiple/delete', {
@@ -319,11 +320,10 @@ export default function ProductsManagement() {
             <button
               key={page}
               onClick={() => fetchProducts(page, filters.category, filters.brand)}
-              className={`px-3 py-1 rounded ${
-                page === pagination.currentPage
+              className={`px-3 py-1 rounded ${page === pagination.currentPage
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-200 hover:bg-gray-300'
-              }`}
+                }`}
             >
               {page}
             </button>
@@ -333,9 +333,12 @@ export default function ProductsManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+        >
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
               {editingProduct ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
             </h2>
             <form onSubmit={handleSubmit}>
@@ -426,6 +429,13 @@ export default function ProductsManagement() {
                   className="w-full border rounded px-3 py-2"
                   min="0"
                   max="100"
+                />
+              </div>
+
+              <div className="mb-4">
+                <MultiImageUpload
+                  onImagesChange={(urls) => setFormData({ ...formData, images: urls })}
+                  initialImages={formData.images}
                 />
               </div>
 

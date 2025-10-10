@@ -35,7 +35,7 @@ exports.AppModule = AppModule = __decorate([
                 imports: [config_1.ConfigModule],
                 useFactory: async (configService) => ({
                     uri: configService.get('MONGODB_URI') ||
-                        'mongodb://127.0.0.1:27017/fashion_store',
+                        'mongodb://127.0.0.1:27017/shop',
                     directConnection: true,
                     family: 4,
                 }),
