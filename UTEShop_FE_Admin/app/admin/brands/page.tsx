@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from '../../../lib/axios';
 import { FaPlus, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
+import SingleImageUpload from '../../../components/SingleImageUpload';
 
 interface Brand {
   _id: string;
@@ -40,7 +41,7 @@ export default function BrandsManagement() {
       const response = await axios.get('/admin/brands', {
         params: { limit: 100, search: searchTerm }
       });
-      
+
       if (response.data.success) {
         setBrands(response.data.data || []);
       }
@@ -54,7 +55,7 @@ export default function BrandsManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       if (editingBrand) {
         // Update
@@ -69,7 +70,7 @@ export default function BrandsManagement() {
           alert('Tạo thương hiệu thành công!');
         }
       }
-      
+
       setShowModal(false);
       setEditingBrand(null);
       setFormData({ name: '', description: '', logo: '', website: '', country: '' });
@@ -94,7 +95,7 @@ export default function BrandsManagement() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa thương hiệu này?')) return;
-    
+
     try {
       await axios.delete(`/admin/brands/${id}`);
       alert('Xóa thương hiệu thành công!');
@@ -110,9 +111,9 @@ export default function BrandsManagement() {
       alert('Vui lòng chọn ít nhất một thương hiệu!');
       return;
     }
-    
+
     if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedBrands.length} thương hiệu?`)) return;
-    
+
     try {
       await axios.delete('/admin/brands/multiple/delete', {
         data: { ids: selectedBrands }
@@ -217,12 +218,6 @@ export default function BrandsManagement() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Mô tả
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Quốc gia
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ngày tạo
-              </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Thao tác
               </th>
@@ -231,7 +226,7 @@ export default function BrandsManagement() {
           <tbody className="bg-white divide-y divide-gray-200">
             {brands.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                   Không có thương hiệu nào
                 </td>
               </tr>
@@ -257,20 +252,9 @@ export default function BrandsManagement() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{brand.name}</div>
-                    {brand.website && (
-                      <a href={brand.website} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-                        {brand.website}
-                      </a>
-                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-500">{brand.description || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {brand.country || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(brand.createdAt).toLocaleDateString('vi-VN')}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     <button
@@ -295,12 +279,15 @@ export default function BrandsManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+        >
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               {editingBrand ? 'Cập nhật thương hiệu' : 'Thêm thương hiệu mới'}
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -328,42 +315,22 @@ export default function BrandsManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL Logo
-                </label>
-                <input
-                  type="url"
-                  value={formData.logo}
-                  onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="https://example.com/logo.png"
+                <SingleImageUpload
+                  onImageChange={(url) => setFormData({ ...formData, logo: url })}
+                  initialImage={formData.logo}
                 />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Website
-                </label>
-                <input
-                  type="url"
-                  value={formData.website}
-                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="https://example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quốc gia
-                </label>
-                <input
-                  type="text"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Việt Nam"
-                />
+                {/* URL Input as fallback */}
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Hoặc nhập URL ảnh trực tiếp:</label>
+                  <input
+                    type="url"
+                    value={formData.logo}
+                    onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">

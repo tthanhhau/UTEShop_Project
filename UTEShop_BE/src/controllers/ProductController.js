@@ -78,8 +78,17 @@ export const getProducts = async (req, res) => {
 
         // Build filter
         const filter = {};
-        if (category) filter.category = category;
-        if (brand) filter.brand = brand;
+        // Convert string to ObjectId for category and brand
+        if (category) {
+            filter.category = mongoose.Types.ObjectId.isValid(category)
+                ? new mongoose.Types.ObjectId(category)
+                : category;
+        }
+        if (brand) {
+            filter.brand = mongoose.Types.ObjectId.isValid(brand)
+                ? new mongoose.Types.ObjectId(brand)
+                : brand;
+        }
         if (search) {
             filter.$or = [
                 { name: { $regex: search, $options: 'i' } },
