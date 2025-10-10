@@ -1,0 +1,107 @@
+import axios from './axios';
+
+// Auth API
+export const authApi = {
+  login: (credentials: { email: string; password: string }) =>
+    axios.post('/auth/admin/login', credentials),
+  getProfile: () => axios.get('/auth/admin/me'),
+};
+
+// Analytics API
+export const analyticsApi = {
+  getGeneralStats: (params?: { year?: number }) =>
+    axios.get('/admin/analytics/general-stats', { params }),
+  getRevenue: (params?: { year?: number; type?: string }) =>
+    axios.get('/admin/analytics/revenue', { params }),
+  getTopProducts: (params?: { limit?: number }) =>
+    axios.get('/admin/analytics/top-products', { params }),
+  getCompletedOrders: (params?: { page?: number; limit?: number }) =>
+    axios.get('/admin/analytics/completed-orders', { params }),
+};
+
+// Brand API
+export const brandApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+    axios.get('/admin/brands', { params }),
+  getById: (id: string) => axios.get(`/admin/brands/${id}`),
+  create: (data: any) => axios.post('/admin/brands', data),
+  update: (id: string, data: any) => axios.put(`/admin/brands/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/brands/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/brands/multiple/delete', { data: { ids } }),
+};
+
+// Category API
+export const categoryApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+    axios.get('/admin/Categorys', { params }),
+  getById: (id: string) => axios.get(`/admin/Categorys/${id}`),
+  create: (data: any) => axios.post('/admin/Categorys', data),
+  update: (id: string, data: any) => axios.put(`/admin/Categorys/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/Categorys/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/Categorys/multiple/delete', { data: { ids } }),
+};
+
+// Product API
+export const productApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+    axios.get('/admin/Products', { params }),
+  getById: (id: string) => axios.get(`/admin/Products/${id}`),
+  create: (data: any) => axios.post('/admin/Products', data),
+  update: (id: string, data: any) => axios.put(`/admin/Products/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/Products/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/Products/multiple/delete', { data: { ids } }),
+};
+
+// Order API
+export const orderApi = {
+  getAll: (params?: { page?: number; limit?: number; status?: string; paymentStatus?: string }) =>
+    axios.get('/admin/orders', { params }),
+  getById: (id: string) => axios.get(`/admin/orders/${id}`),
+  getStats: () => axios.get('/admin/orders/stats'),
+  updateStatus: (id: string, status: string) =>
+    axios.put(`/admin/orders/${id}/status`, { status }),
+  updatePaymentStatus: (id: string, paymentStatus: string) =>
+    axios.put(`/admin/orders/${id}/payment-status`, { paymentStatus }),
+};
+
+// Customer API
+export const customerApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+    axios.get('/admin/customers', { params }),
+  getById: (id: string) => axios.get(`/admin/customers/${id}`),
+  getStats: () => axios.get('/admin/customers/stats'),
+  updateStatus: (id: string, isActive: boolean) =>
+    axios.put(`/admin/customers/${id}/status`, { isActive }),
+  getCustomerOrderHistory: (id: string) => axios.get(`/admin/customers/${id}/orders`),
+};
+
+// Voucher API
+export const voucherApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+    axios.get('/admin/vouchers', { params }),
+  getById: (id: string) => axios.get(`/admin/vouchers/${id}`),
+  getStats: () => axios.get('/admin/vouchers/stats'),
+  create: (data: any) => axios.post('/admin/vouchers', data),
+  update: (id: string, data: any) => axios.put(`/admin/vouchers/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/vouchers/${id}`),
+};
+
+// Points API
+export const pointsApi = {
+  getAll: (params?: { page?: number; limit?: number; type?: string }) =>
+    axios.get('/admin/points', { params }),
+  getStats: () => axios.get('/admin/points/stats'),
+  getUserPoints: (userId: string) => axios.get(`/admin/points/user/${userId}`),
+};
+
+export default {
+  auth: authApi,
+  analytics: analyticsApi,
+  brand: brandApi,
+  category: categoryApi,
+  product: productApi,
+  order: orderApi,
+  customer: customerApi,
+  voucher: voucherApi,
+  points: pointsApi,
+};
