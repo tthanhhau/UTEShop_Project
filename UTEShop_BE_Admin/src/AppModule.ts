@@ -7,7 +7,7 @@ import { BrandModule } from './BRAND/BrandModule';
 import { CategoryModule } from './CATEGORY/CategoryModule';
 import { ProductModule } from './PRODUCT/ProductModule';
 import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
-import { AuthModule } from './AUTH/AuthModule';
+import { AuthModule } from './auth/AuthModule';
 import { OrderModule } from './ORDER/OrderModule';
 import { CustomerModule } from './CUSTOMER/CustomerModule';
 import { VoucherModule } from './VOUCHER/VoucherModule';

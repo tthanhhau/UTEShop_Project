@@ -5,7 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
 // Modules
-import { AuthModule } from './AUTH/AuthModule';
+import { AuthModule } from './auth/AuthModule';
 import { BrandModule } from './BRAND/BrandModule';
 import { CategoryModule } from './CATEGORY/CategoryModule';
 import { ProductModule } from './PRODUCT/ProductModule';
