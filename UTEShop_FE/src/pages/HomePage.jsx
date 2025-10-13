@@ -189,7 +189,7 @@ const HomePage = () => {
                     title="Khuyến mãi cao nhất"
                     products={blocks.topDiscount}
                     maxCols={2}
-                    viewAllLink="/products?sort=top-discount"
+                    viewAllLink="/on-sale"
                     sectionStyle="discount"
                     totalCount={totals?.topDiscount}
                     showViewAll={true}

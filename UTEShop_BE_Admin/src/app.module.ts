@@ -5,15 +5,15 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
 // Modules
-import { AuthModule } from './AUTH/AuthModule';
-import { BrandModule } from './BRAND/BrandModule';
-import { CategoryModule } from './CATEGORY/CategoryModule';
-import { ProductModule } from './PRODUCT/ProductModule';
-import { OrderModule } from './ORDER/OrderModule';
-import { CustomerModule } from './CUSTOMER/CustomerModule';
-import { VoucherModule } from './VOUCHER/VoucherModule';
-import { PointsModule } from './POINTS/PointsModule';
-import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
+import { AuthModule } from './auth/AuthModule';
+import { BrandModule } from './brand/BrandModule';
+import { CategoryModule } from './category/CategoryModule';
+import { ProductModule } from './product/ProductModule';
+import { OrderModule } from './order/OrderModule';
+import { CustomerModule } from './customer/CustomerModule';
+import { VoucherModule } from './voucher/VoucherModule';
+import { PointsModule } from './points/PointsModule';
+import { AnalyticsModule } from './analytics/AnalyticsModule';
 
 @Module({
   imports: [
@@ -26,9 +26,9 @@ import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const uri = configService.get<string>('MONGODB_URI') || 
-                    configService.get<string>('MONGO_URI') ||
-                    'mongodb://127.0.0.1:27017/fashion_store';
+        const uri = configService.get<string>('MONGODB_URI') ||
+          configService.get<string>('MONGO_URI') ||
+          'mongodb://127.0.0.1:27017/fashion_store';
         console.log('🔗 Connecting to MongoDB:', uri);
         return {
           uri,
@@ -62,5 +62,5 @@ import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
     AnalyticsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
 

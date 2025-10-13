@@ -90,10 +90,8 @@ export const getProducts = async (req, res) => {
                 : brand;
         }
         if (search) {
-            filter.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } }
-            ];
+            // Chỉ tìm trong tên sản phẩm để kết quả chính xác hơn
+            filter.name = { $regex: search, $options: 'i' };
         }
 
         const pageNum = parseInt(page);
