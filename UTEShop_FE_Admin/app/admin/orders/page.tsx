@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '../../../lib/axios';
 
@@ -8,6 +8,7 @@ export default function OrderManagement() {
   const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [filters, setFilters] = useState({
     status: 'all',
     paymentStatus: 'all',
@@ -27,23 +28,20 @@ export default function OrderManagement() {
     confirmedRevenue: 0
   });
 
-  useEffect(() => {
-    fetchOrders();
-    fetchStats();
-  }, [filters]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async (search = '', status = 'all', paymentStatus = 'all') => {
     try {
-      setLoading(true);
+      if (isFirstLoad) {
+        setLoading(true);
+      }
       const params: any = {
-        status: filters.status !== 'all' ? filters.status : undefined,
-        paymentStatus: filters.paymentStatus !== 'all' ? filters.paymentStatus : undefined,
-        search: filters.search || undefined,
+        status: status !== 'all' ? status : undefined,
+        paymentStatus: paymentStatus !== 'all' ? paymentStatus : undefined,
+        search: search || undefined,
         limit: 50
       };
 
       const response = await axios.get('/admin/orders', { params });
-      
+
       if (response.data.success) {
         setOrders(response.data.data || []);
       } else {
@@ -53,14 +51,30 @@ export default function OrderManagement() {
       console.error('Error fetching orders:', error);
       setOrders([]);
     } finally {
-      setLoading(false);
+      if (isFirstLoad) {
+        setLoading(false);
+        setIsFirstLoad(false);
+      }
     }
-  };
+  }, [isFirstLoad]);
+
+  // Debounce cho search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders(filters.search, filters.status, filters.paymentStatus);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search, filters.status, filters.paymentStatus, fetchOrders]);
+
+  // Fetch stats khi filters thay đổi
+  useEffect(() => {
+    fetchStats();
+  }, [filters.status, filters.paymentStatus]);
 
   const fetchStats = async () => {
     try {
       const response = await axios.get('/admin/orders/stats');
-      
+
       if (response.data.success) {
         const data = response.data.data;
         setStats({
@@ -82,9 +96,9 @@ export default function OrderManagement() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       await axios.put(`/admin/orders/${orderId}/status`, { status: newStatus });
-      
-      setOrders(prev => prev.map((order: any) => 
-        order._id === orderId 
+
+      setOrders(prev => prev.map((order: any) =>
+        order._id === orderId
           ? { ...order, status: newStatus, ...(newStatus === 'delivered' ? { deliveredAt: new Date().toISOString() } : {}) }
           : order
       ));
@@ -98,9 +112,9 @@ export default function OrderManagement() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { 
-      style: 'currency', 
-      currency: 'VND' 
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
     }).format(amount);
   };
 
@@ -117,7 +131,7 @@ export default function OrderManagement() {
   const getStatusColor = (status: string) => {
     const colors: any = {
       pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800', 
+      processing: 'bg-blue-100 text-blue-800',
       prepared: 'bg-purple-100 text-purple-800',
       shipped: 'bg-indigo-100 text-indigo-800',
       delivered: 'bg-green-100 text-green-800',
@@ -240,10 +254,10 @@ export default function OrderManagement() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái đơn hàng</label>
-            <select 
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.status}
-              onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
             >
               <option value="all">Tất cả</option>
               <option value="pending">Chờ xử lý</option>
@@ -257,10 +271,10 @@ export default function OrderManagement() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái thanh toán</label>
-            <select 
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.paymentStatus}
-              onChange={(e) => setFilters(prev => ({...prev, paymentStatus: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
             >
               <option value="all">Tất cả</option>
               <option value="paid">Đã thanh toán</option>
@@ -271,17 +285,17 @@ export default function OrderManagement() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
-            <input 
+            <input
               type="text"
               placeholder="Tên khách hàng hoặc mã đơn..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.search}
-              onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             />
           </div>
 
           <div className="flex items-end">
-            <button 
+            <button
               onClick={() => setFilters({ status: 'all', paymentStatus: 'all', search: '', dateFrom: '', dateTo: '' })}
               className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
             >
@@ -320,8 +334,8 @@ export default function OrderManagement() {
             </thead>
             <tbody>
               {orders.map((order: any) => (
-                <tr 
-                  key={order._id} 
+                <tr
+                  key={order._id}
                   className="border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
                   onClick={() => router.push(`/admin/orders/${order._id}`)}
                   title="Click để xem chi tiết đơn hàng"
@@ -344,26 +358,24 @@ export default function OrderManagement() {
                   </td>
                   <td className="py-4 px-6">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
-                      <i className={`fas ${
-                        order.status === 'pending' ? 'fa-clock' :
-                        order.status === 'processing' ? 'fa-box' :
-                        order.status === 'shipped' ? 'fa-truck' :
-                        order.status === 'delivered' ? 'fa-check-circle' :
-                        'fa-times-circle'
-                      } mr-2`}></i>
+                      <i className={`fas ${order.status === 'pending' ? 'fa-clock' :
+                          order.status === 'processing' ? 'fa-box' :
+                            order.status === 'shipped' ? 'fa-truck' :
+                              order.status === 'delivered' ? 'fa-check-circle' :
+                                'fa-times-circle'
+                        } mr-2`}></i>
                       <span>{getStatusText(order.status)}</span>
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.paymentStatus === 'paid' 
-                        ? 'bg-green-100 text-green-800' 
+                    <span className={`px-2 py-1 rounded-full text-xs ${order.paymentStatus === 'paid'
+                        ? 'bg-green-100 text-green-800'
                         : order.paymentStatus === 'unpaid'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 
-                       order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                      {order.paymentStatus === 'paid' ? 'Đã thanh toán' :
+                        order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
                     </span>
                     <div className="text-xs text-gray-500 mt-1">{order.paymentMethod}</div>
                   </td>

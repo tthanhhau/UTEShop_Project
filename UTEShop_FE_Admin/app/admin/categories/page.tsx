@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import { FaPlus, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 
@@ -20,36 +20,45 @@ export default function CategoriesManagement() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     description: ''
   });
 
-  useEffect(() => {
-    fetchCategories();
-  }, [searchTerm]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async (search = '') => {
     try {
-      setLoading(true);
+      // Chỉ set loading cho lần đầu, không set khi search
+      if (isFirstLoad) {
+        setLoading(true);
+      }
       const response = await axios.get('/admin/Categorys', {
-        params: { limit: 100, search: searchTerm }
+        params: { limit: 100, search }
       });
-      
+
       if (response.data.success) {
         setCategories(response.data.data || []);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-      alert('Không thể tải danh mục!');
     } finally {
-      setLoading(false);
+      if (isFirstLoad) {
+        setLoading(false);
+        setIsFirstLoad(false);
+      }
     }
-  };
+  }, [isFirstLoad]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCategories(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, fetchCategories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       if (editingCategory) {
         // Update
@@ -64,11 +73,11 @@ export default function CategoriesManagement() {
           alert('Tạo danh mục thành công!');
         }
       }
-      
+
       setShowModal(false);
       setEditingCategory(null);
       setFormData({ name: '', description: '' });
-      fetchCategories();
+      fetchCategories(searchTerm);
     } catch (error: any) {
       console.error('Error saving category:', error);
       alert(error.response?.data?.message || 'Có lỗi xảy ra!');
@@ -86,11 +95,11 @@ export default function CategoriesManagement() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
-    
+
     try {
       await axios.delete(`/admin/Categorys/${id}`);
       alert('Xóa danh mục thành công!');
-      fetchCategories();
+      fetchCategories(searchTerm);
     } catch (error: any) {
       console.error('Error deleting category:', error);
       alert(error.response?.data?.message || 'Không thể xóa danh mục!');
@@ -102,16 +111,16 @@ export default function CategoriesManagement() {
       alert('Vui lòng chọn ít nhất một danh mục!');
       return;
     }
-    
+
     if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedCategories.length} danh mục?`)) return;
-    
+
     try {
       await axios.delete('/admin/Categorys/multiple/delete', {
         data: { ids: selectedCategories }
       });
       alert('Xóa danh mục thành công!');
       setSelectedCategories([]);
-      fetchCategories();
+      fetchCategories(searchTerm);
     } catch (error: any) {
       console.error('Error deleting categories:', error);
       alert(error.response?.data?.message || 'Không thể xóa danh mục!');
@@ -264,12 +273,15 @@ export default function CategoriesManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+        >
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
               {editingCategory ? 'Cập nhật danh mục' : 'Thêm danh mục mới'}
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
