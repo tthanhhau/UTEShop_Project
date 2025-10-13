@@ -17,17 +17,19 @@ import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 @Controller('admin/Categorys')
 @UseGuards(JwtAuthGuard)
 export class CategoryController {
-  constructor(private readonly CategoryService: CategoryService) {}
+  constructor(private readonly CategoryService: CategoryService) { }
 
   @Get()
   async getCategorys(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
+    console.log('🔴🔴🔴 CATEGORY Controller - search param:', search);
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    const result = await this.CategoryService.findAll(pageNum, limitNum);
-    
+    const result = await this.CategoryService.findAll(pageNum, limitNum, search || '');
+
     return {
       success: true,
       data: result.data,

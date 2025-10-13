@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from '../schemas/ProductSchema';
 import { CreateProductDto } from './dto/CreateProductDto';
 import { UpdateProductDto } from './dto/UpdateProductDto';
@@ -9,7 +9,7 @@ import { UpdateProductDto } from './dto/UpdateProductDto';
 export class ProductService {
   constructor(
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-  ) {}
+  ) { }
 
   async findAll(
     page = 1,
@@ -22,13 +22,21 @@ export class ProductService {
     const query: any = {};
 
     if (search) {
-      query.name = { $regex: search, $options: 'i' };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
+    // Convert string to ObjectId for category and brand
     if (category) {
-      query.category = category;
+      query.category = Types.ObjectId.isValid(category)
+        ? new Types.ObjectId(category)
+        : category;
     }
     if (brand) {
-      query.brand = brand;
+      query.brand = Types.ObjectId.isValid(brand)
+        ? new Types.ObjectId(brand)
+        : brand;
     }
 
     const [products, total] = await Promise.all([

@@ -10,7 +10,7 @@ export class CategoryService {
   constructor(
     @InjectModel(Category.name)
     private categoryModel: Model<CategoryDocument>,
-  ) {}
+  ) { }
 
   async findAll(page = 1, limit = 10, search = '') {
     const skip = (page - 1) * limit;

@@ -1,11 +1,11 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { AnalyticsService } from './AnalyticsService';
+import { AnalyticsService } from '../analytics/AnalyticsService';
 import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 
 @Controller('admin/analytics')
 @UseGuards(JwtAuthGuard)
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(private readonly analyticsService: AnalyticsService) { }
 
   @Get('general-stats')
   async getGeneralStats(@Query('year') year?: string) {

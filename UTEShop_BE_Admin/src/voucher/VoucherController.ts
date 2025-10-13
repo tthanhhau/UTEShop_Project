@@ -9,13 +9,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { VoucherService } from './VoucherService';
+import { VoucherService } from '../voucher/VoucherService';
 import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 
 @Controller('admin/vouchers')
 @UseGuards(JwtAuthGuard)
 export class VoucherController {
-  constructor(private readonly voucherService: VoucherService) {}
+  constructor(private readonly voucherService: VoucherService) { }
 
   @Get()
   async getVouchers(

@@ -31,6 +31,7 @@ const Navbar = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const { badgeCount } = useCartNotifications(); // Lấy badge count từ custom hook
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   // Lấy số lượng giỏ hàng khi user đăng nhập hoặc giỏ hàng thay đổi
   useEffect(() => {
@@ -39,10 +40,23 @@ const Navbar = () => {
     }
   }, [user]);
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchTerm.trim())}`);
+    }
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch(e);
+    }
+  };
+
   const handleLogoClick = () => navigate("/");
   const handleShopClick = () => navigate("/products");
   const handleNewArrivalsClick = () => navigate("/new-arrivals");
-  const handleOnSaleClick = () => navigate("/products?sort=top-discount");
+  const handleOnSaleClick = () => navigate("/on-sale");
   const handleBrandsClick = () => navigate("/products"); // hoặc /brands nếu có
   const handleProfileClick = () => navigate("/profile");
   const handleMyOrdersClick = () => navigate("/orders-tracking");
@@ -70,6 +84,12 @@ const Navbar = () => {
         {/* Navigation Menu */}
         <div className="hidden md:flex items-center space-x-8">
           <span
+            onClick={handleShopClick}
+            className="text-gray-700 hover:text-blue-600 cursor-pointer transition-colors font-medium"
+          >
+            Shop
+          </span>
+          <span
             onClick={handleOnSaleClick}
             className="text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
           >
@@ -81,21 +101,21 @@ const Navbar = () => {
           >
             New Arrivals
           </span>
-          <span
-            onClick={handleBrandsClick}
-            className="text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
-          >
-            Brands
-          </span>
         </div>
 
         {/* Search Bar */}
         <div className="flex-1 max-w-md mx-8 hidden md:block">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
+              onClick={handleSearch}
+            />
             <Input
               type="text"
               placeholder="Search for products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
               className="pl-10 pr-4 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -186,13 +206,42 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Search Bar */}
+      {/* Mobile Navigation & Search */}
       <div className="md:hidden mt-3">
+        {/* Mobile Navigation Links */}
+        <div className="flex items-center justify-center space-x-4 mb-3 pb-2 border-b border-gray-100">
+          <span
+            onClick={handleShopClick}
+            className="text-sm text-gray-700 hover:text-blue-600 cursor-pointer transition-colors font-medium"
+          >
+            Shop
+          </span>
+          <span
+            onClick={handleOnSaleClick}
+            className="text-sm text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
+          >
+            On Sale
+          </span>
+          <span
+            onClick={handleNewArrivalsClick}
+            className="text-sm text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
+          >
+            New Arrivals
+          </span>
+        </div>
+
+        {/* Mobile Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
+            onClick={handleSearch}
+          />
           <Input
             type="text"
             placeholder="Search for products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleSearchKeyPress}
             className="pl-10 pr-4 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500"
           />
         </div>

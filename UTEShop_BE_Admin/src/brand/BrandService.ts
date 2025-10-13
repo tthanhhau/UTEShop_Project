@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Brand, BrandDocument } from '../schemas/BrandSchema';
-import { CreateBrandDto } from './dto/CreateBrandDto';
-import { UpdateBrandDto } from './dto/UpdateBrandDto';
+import { CreateBrandDto } from '../brand/dto/CreateBrandDto';
+import { UpdateBrandDto } from '../brand/dto/UpdateBrandDto';
 
 @Injectable()
 export class BrandService {
   constructor(
     @InjectModel(Brand.name) private brandModel: Model<BrandDocument>,
-  ) {}
+  ) { }
 
   async findAll(page = 1, limit = 10, search = '') {
     const skip = (page - 1) * limit;

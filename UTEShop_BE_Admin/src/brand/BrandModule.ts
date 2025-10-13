@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { BrandController } from './BrandController';
-import { BrandService } from './BrandService';
+import { BrandController } from '../brand/BrandController';
+import { BrandService } from '../brand/BrandService';
 import { Brand, BrandSchema } from '../schemas/BrandSchema';
 
 @Module({
@@ -12,4 +12,4 @@ import { Brand, BrandSchema } from '../schemas/BrandSchema';
   providers: [BrandService],
   exports: [BrandService],
 })
-export class BrandModule {}
+export class BrandModule { }

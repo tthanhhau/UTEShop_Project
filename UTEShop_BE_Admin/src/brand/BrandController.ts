@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -27,10 +27,12 @@ export class BrandController {
   async getBrands(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
+    console.log(' BRAND Controller - search param:', search);
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    const result = await this.brandService.findAll(pageNum, limitNum);
+    const result = await this.brandService.findAll(pageNum, limitNum, search || '');
 
     return {
       success: true,
@@ -67,7 +69,6 @@ export class BrandController {
   @UseGuards(JwtAuthGuard)
   async uploadImage(@UploadedFile() file: Express.Multer.File) {
     try {
-      // Upload to Cloudinary
       const result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
@@ -96,9 +97,3 @@ export class BrandController {
     }
   }
 }
-
-
-
-
-
-

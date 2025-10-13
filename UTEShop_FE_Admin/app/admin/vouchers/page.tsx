@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import { FaTicketAlt, FaCheckCircle, FaClock, FaPercentage } from 'react-icons/fa';
 
@@ -9,6 +9,7 @@ export default function VouchersManagement() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({
     totalVouchers: 0,
     activeVouchers: 0,
@@ -29,26 +30,23 @@ export default function VouchersManagement() {
     rewardType: 'GENERAL'
   });
 
-  useEffect(() => {
-    fetchVouchers();
-    fetchStats();
-  }, []);
-
-  const fetchVouchers = async () => {
+  const fetchVouchers = useCallback(async (search = '') => {
     try {
       setLoading(true);
-      const response = await axios.get('/admin/vouchers');
+      const response = await axios.get('/admin/vouchers', {
+        params: { search, limit: 100 }
+      });
       // Backend trả về { success: true, data: [...], pagination: {...} }
       if (response.data.success) {
         const vouchersData = response.data.data || [];
         setVouchers(vouchersData);
-        
+
         // Calculate stats from vouchers
         const total = vouchersData.length;
         const active = vouchersData.filter((v: any) => v.isActive && new Date(v.endDate) > new Date()).length;
         const used = vouchersData.reduce((sum: number, v: any) => sum + (v.usesCount || 0), 0);
         const available = vouchersData.reduce((sum: number, v: any) => sum + ((v.maxIssued || 0) - (v.usesCount || 0)), 0);
-        
+
         setStats({
           totalVouchers: total,
           activeVouchers: active,
@@ -64,9 +62,9 @@ export default function VouchersManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await axios.get('/admin/vouchers/stats');
       if (response.data.success) {
@@ -76,7 +74,15 @@ export default function VouchersManagement() {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchVouchers(searchTerm);
+      fetchStats();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, fetchVouchers, fetchStats]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +95,7 @@ export default function VouchersManagement() {
       setShowModal(false);
       setEditingVoucher(null);
       resetForm();
-      fetchVouchers();
+      fetchVouchers(searchTerm);
     } catch (error) {
       console.error('Error saving voucher:', error);
     }
@@ -99,7 +105,7 @@ export default function VouchersManagement() {
     if (confirm('Xóa voucher này?')) {
       try {
         await axios.delete(`/admin/vouchers/${id}`);
-        fetchVouchers();
+        fetchVouchers(searchTerm);
       } catch (error) {
         console.error('Error deleting voucher:', error);
       }
@@ -138,7 +144,7 @@ export default function VouchersManagement() {
     const endDate = new Date(voucher.endDate);
     const issued = voucher.issuedCount || 0;
     const maxIssued = voucher.maxIssued || 0;
-    
+
     if (endDate < now) return 'Hết hạn';
     if (issued >= maxIssued) return 'Hết hạn';
     return 'Hoạt động';
@@ -168,6 +174,17 @@ export default function VouchersManagement() {
         >
           <span>+ Thêm Voucher</span>
         </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <input
+          type="text"
+          placeholder="Tìm kiếm voucher theo mã hoặc mô tả..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
       </div>
 
       {loading ? (
@@ -223,7 +240,7 @@ export default function VouchersManagement() {
                   const issuedPercent = maxIssued > 0 ? (issued / maxIssued) * 100 : 0;
                   const usedPercent = maxIssued > 0 ? (used / maxIssued) * 100 : 0;
                   const status = getVoucherStatus(voucher);
-                  
+
                   return (
                     <tr key={voucher._id} className="hover:bg-gray-50">
                       <td className="px-4 py-4">
@@ -243,7 +260,7 @@ export default function VouchersManagement() {
                           {issued}/{maxIssued}
                         </div>
                         <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-green-500 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(issuedPercent, 100)}%` }}
                           ></div>
@@ -254,7 +271,7 @@ export default function VouchersManagement() {
                           {used}/{maxIssued}
                         </div>
                         <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-purple-500 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(usedPercent, 100)}%` }}
                           ></div>
@@ -274,11 +291,10 @@ export default function VouchersManagement() {
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          status === 'Hoạt động' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${status === 'Hoạt động'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                          }`}>
                           {status}
                         </span>
                       </td>
@@ -329,7 +345,7 @@ export default function VouchersManagement() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{backgroundColor: 'rgba(128, 128, 128, 0.3)'}}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}>
           <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto relative">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900">

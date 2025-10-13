@@ -8,3 +8,4 @@ coverage/
 # Env & hệ thống
 .env*
 .DS_Store
+.env

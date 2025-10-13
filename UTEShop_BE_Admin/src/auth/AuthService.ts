@@ -4,14 +4,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from '../schemas/UserSchema';
-import { LoginDto } from './dto/LoginDto';
+import { LoginDto } from '../auth/dto/LoginDto';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;

@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ProductService } from './ProductService';
+import { ProductService } from '../product/ProductService';
 import { CreateProductDto } from './dto/CreateProductDto';
 import { UpdateProductDto } from './dto/UpdateProductDto';
 import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
@@ -17,17 +17,20 @@ import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 @Controller('admin/Products')
 @UseGuards(JwtAuthGuard)
 export class ProductController {
-  constructor(private readonly ProductService: ProductService) {}
+  constructor(private readonly ProductService: ProductService) { }
 
   @Get()
   async getProducts(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('category') category?: string,
+    @Query('brand') brand?: string,
+    @Query('search') search?: string,
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    const result = await this.ProductService.findAll(pageNum, limitNum);
-    
+    const result = await this.ProductService.findAll(pageNum, limitNum, search || '', category || '', brand || '');
+
     return {
       success: true,
       data: result.data,

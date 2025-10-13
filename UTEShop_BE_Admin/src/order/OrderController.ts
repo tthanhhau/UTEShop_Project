@@ -7,26 +7,29 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { OrderService } from './OrderService';
+import { OrderService } from '../order/OrderService';
 import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 
 @Controller('admin/orders')
 @UseGuards(JwtAuthGuard)
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   @Get()
   async getOrders(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('search') search?: string,
   ) {
+    console.log('🔴🔴🔴 ORDER Controller - search param:', search, 'status:', status);
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
     const result = await this.orderService.findAll(
       pageNum,
       limitNum,
       status || '',
+      search || '',
     );
 
     return {

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AnalyticsController } from './AnalyticsController';
-import { AnalyticsService } from './AnalyticsService';
+import { AnalyticsController } from '../analytics/AnalyticsController';
+import { AnalyticsService } from '../analytics/AnalyticsService';
 import { Order, OrderSchema } from '../schemas/OrderSchema';
 import { User, UserSchema } from '../schemas/UserSchema';
 import { Product, ProductSchema } from '../schemas/ProductSchema';
@@ -18,4 +18,4 @@ import { Product, ProductSchema } from '../schemas/ProductSchema';
   providers: [AnalyticsService],
   exports: [AnalyticsService],
 })
-export class AnalyticsModule {}
+export class AnalyticsModule { }

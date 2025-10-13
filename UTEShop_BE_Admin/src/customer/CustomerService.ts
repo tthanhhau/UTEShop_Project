@@ -9,18 +9,19 @@ export class CustomerService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
-  ) {}
+  ) { }
 
   async findAll(page = 1, limit = 10, search = '') {
     const skip = (page - 1) * limit;
     const query = search
       ? {
-          role: { $in: ['user', 'customer'] }, // Only customers, not admins
-          $or: [
-            { name: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } },
-          ],
-        }
+        role: { $in: ['user', 'customer'] }, // Only customers, not admins
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+        ],
+      }
       : { role: { $in: ['user', 'customer'] } };
 
     const [customers, total] = await Promise.all([
@@ -38,17 +39,17 @@ export class CustomerService {
     const enrichedCustomers = await Promise.all(
       customers.map(async (customer) => {
         const customerObj: any = customer.toObject();
-        
+
         // Get order stats for this customer
         const customerObjId = new Types.ObjectId((customer._id as Types.ObjectId).toString());
         const orders = await this.orderModel
           .find({ user: customerObjId })
           .select('totalPrice')
           .exec();
-        
+
         customerObj.totalOrders = orders.length;
         customerObj.totalSpent = orders.reduce((sum: number, order: any) => sum + (order.totalPrice || 0), 0);
-        
+
         return customerObj;
       }),
     );
@@ -94,7 +95,7 @@ export class CustomerService {
   async getCustomerOrderHistory(customerId: string) {
     try {
       console.log('Fetching customer order history for:', customerId);
-      
+
       // Get customer info
       const customer = await this.userModel
         .findById(customerId)
@@ -123,7 +124,7 @@ export class CustomerService {
 
       // Get customer with full details
       const customerObj: any = customer.toObject();
-      
+
       return {
         customer: customerObj,
         orders: orders || [],

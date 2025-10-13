@@ -7,13 +7,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CustomerService } from './CustomerService';
+import { CustomerService } from '../customer/CustomerService';
 import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 
 @Controller('admin/customers')
 @UseGuards(JwtAuthGuard)
 export class CustomerController {
-  constructor(private readonly customerService: CustomerService) {}
+  constructor(private readonly customerService: CustomerService) { }
 
   @Get()
   async getCustomers(
