@@ -18,6 +18,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import UserProfile from "./pages/Profile/Profile";
 import CartPage from "./pages/CartPage";
 import NewArrivalsPage from "./pages/NewArrivalsPage";
+import OnSalePage from "./pages/OnSalePage";
 import OrderPage from "./pages/OrderPage";
 import CheckoutPage from "./pages/CheckoutPage";
 
@@ -66,6 +67,7 @@ function App() {
               <Route path="products" element={<ProductListPage />} />
               <Route path="products/:id" element={<ProductDetailPage />} />
               <Route path="new-arrivals" element={<NewArrivalsPage />} />
+              <Route path="on-sale" element={<OnSalePage />} />
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
 
