@@ -94,6 +94,30 @@ function UserProfile() {
   };
   //Handle update profile
   const handleUpdateProfile = async () => {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert("Email không đúng định dạng!");
+      return;
+    }
+
+    // Validate phone number (10 digits only)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      alert("Số điện thoại phải có đúng 10 chữ số!");
+      return;
+    }
+
+    // Validate birthdate (not in future)
+    if (formData.birthDate) {
+      const birthDate = new Date(formData.birthDate);
+      const today = new Date();
+      if (birthDate > today) {
+        alert("Ngày sinh không thể là ngày trong tương lai!");
+        return;
+      }
+    }
+
     setIsUpdating(true); // Báo cho UI biết là đang xử lý
     try {
       const response = await api.put("/user/profile", formData);
@@ -196,14 +220,52 @@ function UserProfile() {
     setPasswordForm((prev) => ({ ...prev, [id]: value }));
   };
 
+  const validatePassword = (password) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    const errors = [];
+    if (password.length < minLength) {
+      errors.push(`Mật khẩu phải có ít nhất ${minLength} ký tự`);
+    }
+    if (!hasUpperCase) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 ký tự in hoa");
+    }
+    if (!hasNumber) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 chữ số");
+    }
+    if (!hasSpecialChar) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt");
+    }
+
+    return errors;
+  };
+
   const handleChangePassword = async () => {
-    // 1. Kiểm tra ở phía client trước
+    // 1. Kiểm tra mật khẩu hiện tại không được để trống
+    if (!passwordForm.currentPassword) {
+      alert("Vui lòng nhập mật khẩu hiện tại.");
+      return;
+    }
+
+    // 2. Kiểm tra mật khẩu mới có đúng định dạng
+    const passwordErrors = validatePassword(passwordForm.newPassword);
+    if (passwordErrors.length > 0) {
+      alert(passwordErrors.join("\n"));
+      return;
+    }
+
+    // 3. Kiểm tra mật khẩu mới và xác nhận mật khẩu
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert("Mật khẩu mới không khớp. Vui lòng nhập lại.");
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      alert("Mật khẩu mới phải có ít nhất 6 ký tự.");
+
+    // 4. Kiểm tra mật khẩu mới không được trùng với mật khẩu cũ
+    if (passwordForm.newPassword === passwordForm.currentPassword) {
+      alert("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
       return;
     }
 
@@ -252,10 +314,11 @@ function UserProfile() {
             {/* === PHẦN AVATAR ĐƠN GIẢN HÓA === */}
             <div className="relative">
               <Avatar
-                className={`h-20 w-20 ${isUploadingAvatar
+                className={`h-20 w-20 ${
+                  isUploadingAvatar
                     ? "opacity-50 cursor-not-allowed"
                     : "cursor-pointer"
-                  }`}
+                }`}
                 onClick={handleAvatarClick}
               >
                 <AvatarImage
@@ -346,6 +409,8 @@ function UserProfile() {
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
+                    pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                    placeholder="example@domain.com"
                   />
                 </div>
                 <div className="space-y-2">
@@ -353,7 +418,16 @@ function UserProfile() {
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      // Chỉ cho phép nhập số
+                      const value = e.target.value.replace(/\D/g, "");
+                      // Giới hạn 10 số
+                      if (value.length <= 10) {
+                        setFormData((prev) => ({ ...prev, phone: value }));
+                      }
+                    }}
+                    placeholder="Nhập số điện thoại 10 chữ số"
+                    maxLength={10}
                   />
                 </div>
                 <div className="space-y-2">
@@ -363,6 +437,7 @@ function UserProfile() {
                     type="date"
                     name="birthDate"
                     value={formData.birthDate}
+                    max={new Date().toISOString().split("T")[0]}
                     onChange={(e) =>
                       setFormData({ ...formData, birthDate: e.target.value })
                     }
@@ -429,11 +504,49 @@ function UserProfile() {
               </div>
               <div className="bg-muted p-4 rounded-lg">
                 <h4 className="font-medium mb-2">Yêu Cầu:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Nhiều hơn 8 ký tự</li>
-                  <li>• Bao gồm ít nhất 1 ký tự in hoa</li>
-                  <li>• Bao gồm ít nhất 1 chữ số</li>
-                  <li>• Bao gồm ít nhất 1 ký tự đặc biệt</li>
+                <ul className="text-sm space-y-1">
+                  <li
+                    className={`flex items-center gap-2 ${
+                      passwordForm.newPassword.length >= 8
+                        ? "text-green-600"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {passwordForm.newPassword.length >= 8 ? "✓" : "•"} Ít nhất 8
+                    ký tự
+                  </li>
+                  <li
+                    className={`flex items-center gap-2 ${
+                      /[A-Z]/.test(passwordForm.newPassword)
+                        ? "text-green-600"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {/[A-Z]/.test(passwordForm.newPassword) ? "✓" : "•"} Ít nhất
+                    1 ký tự in hoa
+                  </li>
+                  <li
+                    className={`flex items-center gap-2 ${
+                      /\d/.test(passwordForm.newPassword)
+                        ? "text-green-600"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {/\d/.test(passwordForm.newPassword) ? "✓" : "•"} Ít nhất 1
+                    chữ số
+                  </li>
+                  <li
+                    className={`flex items-center gap-2 ${
+                      /[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
+                        ? "text-green-600"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
+                      ? "✓"
+                      : "•"}{" "}
+                    Ít nhất 1 ký tự đặc biệt
+                  </li>
                 </ul>
               </div>
               <Separator />

@@ -14,9 +14,29 @@ function LoginPage() {
   const { loading, error, user } = useSelector((s) => s.auth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (value && !validateEmail(value)) {
+      setEmailError("Email không đúng định dạng");
+    } else {
+      setEmailError("");
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!validateEmail(email)) {
+      setEmailError("Email không đúng định dạng");
+      return;
+    }
     dispatch(loginUser({ email, password }));
   };
 
@@ -27,11 +47,10 @@ function LoginPage() {
   useEffect(() => {
     if (user) {
       // Lấy trang trước đó từ location state (nếu được redirect từ PrivateRoute)
-      const from = location.state?.from?.pathname || '/';
+      const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     }
   }, [user, navigate, location]);
-
 
   return (
     <div
@@ -49,8 +68,10 @@ function LoginPage() {
           <TextField
             label="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={handleEmailChange}
             placeholder="you@example.com"
+            error={emailError}
+            type="email"
           />
           <TextField
             label="Mật khẩu"
