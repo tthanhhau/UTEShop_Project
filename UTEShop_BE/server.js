@@ -4,7 +4,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { initializeAgenda } from "./src/config/agenda.js";
-import http from 'http'; 
+import http from 'http';
 import { initializeSocket, sendNotificationToUser } from './src/config/socket.js'; // Import từ file socket
 
 // Modules của bạn
@@ -27,6 +27,7 @@ import favoriteRoutes from "./src/routes/favoriteRoutes.js";
 import viewedProductRoutes from "./src/routes/viewedProductRoutes.js";
 import similarProductRoutes from "./src/routes/similarProductRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
+import elasticsearchRoutes from "./src/routes/elasticsearchRoutes.js";
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -84,6 +85,7 @@ app.use("/api/favorites", favoriteRoutes);
 app.use("/api/viewed-products", viewedProductRoutes);
 app.use("/api/similar-products", similarProductRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/elasticsearch", elasticsearchRoutes);
 
 // Admin routes
 import voucherRoutes from "./src/routes/voucherRoutes.js";
@@ -129,7 +131,7 @@ const PORT = Number(process.env.PORT) || 5000;
 const serverStart = async () => {
   try {
     await connectDB(); // chỉ start server sau khi DB OK
-    
+
     // Start agenda với error handling
     try {
       await agenda.start();
@@ -138,7 +140,7 @@ const serverStart = async () => {
       console.warn("⚠️  Agenda failed to start, but server will continue:", agendaError.message);
       // Server vẫn tiếp tục chạy ngay cả khi Agenda lỗi
     }
-    
+
     httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (e) {
     console.error("❌ Failed to start server:", e);

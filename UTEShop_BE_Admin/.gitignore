@@ -1,0 +1,11 @@
+# Node / Next / Build
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# Env & hệ thống
+.env*
+.DS_Store
+.env

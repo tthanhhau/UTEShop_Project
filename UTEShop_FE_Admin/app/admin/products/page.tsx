@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import MultiImageUpload from '../../../components/MultiImageUpload';
 
@@ -24,7 +24,8 @@ export default function ProductsManagement() {
   });
   const [filters, setFilters] = useState({
     category: '',
-    brand: ''
+    brand: '',
+    search: ''
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -34,11 +35,11 @@ export default function ProductsManagement() {
   });
 
   // Fetch products
-  const fetchProducts = async (page = 1, category = '', brand = '') => {
+  const fetchProducts = useCallback(async (page = 1, category = '', brand = '', search = '') => {
     try {
       setLoading(true);
       const response = await axios.get('/admin/Products', {
-        params: { page, limit: 10, category, brand }
+        params: { page, limit: 10, category, brand, search }
       });
 
       if (response.data.success) {
@@ -50,10 +51,10 @@ export default function ProductsManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Fetch categories and brands
-  const fetchCategoriesAndBrands = async () => {
+  const fetchCategoriesAndBrands = useCallback(async () => {
     try {
       const [categoriesRes, brandsRes] = await Promise.all([
         axios.get('/admin/Categorys'),
@@ -64,18 +65,34 @@ export default function ProductsManagement() {
     } catch (error) {
       console.error('Error fetching categories and brands:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchProducts();
     fetchCategoriesAndBrands();
-  }, []);
+  }, [fetchProducts, fetchCategoriesAndBrands]);
+
+  // Debounce search with useEffect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchProducts(1, filters.category, filters.brand, filters.search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search, filters.category, filters.brand, fetchProducts]);
 
   // Handle filter change
   const handleFilterChange = (filterType: string, value: string) => {
     const newFilters = { ...filters, [filterType]: value };
     setFilters(newFilters);
-    fetchProducts(1, newFilters.category, newFilters.brand);
+    if (filterType !== 'search') {
+      fetchProducts(1, newFilters.category, newFilters.brand, newFilters.search);
+    }
+  };
+
+  // Handle search - only update state, useEffect will handle fetch
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFilters({ ...filters, search: value });
   };
 
   // Handle form submit
@@ -99,7 +116,7 @@ export default function ProductsManagement() {
       setShowModal(false);
       setEditingProduct(null);
       resetForm();
-      fetchProducts(pagination.currentPage, filters.category, filters.brand);
+      fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
     } catch (error) {
       console.error('Error saving product:', error);
     }
@@ -110,7 +127,7 @@ export default function ProductsManagement() {
     if (confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
       try {
         await axios.delete(`/admin/Products/${id}`);
-        fetchProducts(pagination.currentPage, filters.category, filters.brand);
+        fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
       } catch (error) {
         console.error('Error deleting product:', error);
       }
@@ -127,7 +144,7 @@ export default function ProductsManagement() {
           data: { ids: selectedProducts }
         });
         setSelectedProducts([]);
-        fetchProducts(pagination.currentPage, filters.category, filters.brand);
+        fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
       } catch (error) {
         console.error('Error deleting products:', error);
       }
@@ -206,29 +223,43 @@ export default function ProductsManagement() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex gap-4">
-        <select
-          value={filters.category}
-          onChange={(e) => handleFilterChange('category', e.target.value)}
-          className="border rounded px-3 py-2"
-        >
-          <option value="">Tất cả danh mục</option>
-          {categories.map((cat: any) => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
-          ))}
-        </select>
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search Bar */}
+        <div className="flex gap-4">
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên sản phẩm..."
+            value={filters.search}
+            onChange={handleSearch}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
 
-        <select
-          value={filters.brand}
-          onChange={(e) => handleFilterChange('brand', e.target.value)}
-          className="border rounded px-3 py-2"
-        >
-          <option value="">Tất cả thương hiệu</option>
-          {brands.map((brand: any) => (
-            <option key={brand._id} value={brand._id}>{brand.name}</option>
-          ))}
-        </select>
+        {/* Filters */}
+        <div className="flex gap-4">
+          <select
+            value={filters.category}
+            onChange={(e) => handleFilterChange('category', e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            <option value="">Tất cả danh mục</option>
+            {categories.map((cat: any) => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters.brand}
+            onChange={(e) => handleFilterChange('brand', e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            <option value="">Tất cả thương hiệu</option>
+            {brands.map((brand: any) => (
+              <option key={brand._id} value={brand._id}>{brand.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
@@ -319,10 +350,10 @@ export default function ProductsManagement() {
           {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
             <button
               key={page}
-              onClick={() => fetchProducts(page, filters.category, filters.brand)}
+              onClick={() => fetchProducts(page, filters.category, filters.brand, filters.search)}
               className={`px-3 py-1 rounded ${page === pagination.currentPage
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-200 hover:bg-gray-300'
                 }`}
             >
               {page}

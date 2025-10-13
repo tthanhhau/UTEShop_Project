@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import { useRouter } from 'next/navigation';
 import { FaUsers, FaUserCheck, FaStar, FaShoppingBag } from 'react-icons/fa';
@@ -9,8 +9,9 @@ export default function CustomersManagement() {
   const router = useRouter();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
-    search: '',
     tier: 'all'
   });
   const [stats, setStats] = useState({
@@ -20,16 +21,13 @@ export default function CustomersManagement() {
     totalPoints: 0
   });
 
-  useEffect(() => {
-    fetchCustomers();
-    fetchStats();
-  }, []);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async (search = '') => {
     try {
-      setLoading(true);
+      if (isFirstLoad) {
+        setLoading(true);
+      }
       const response = await axios.get('/admin/customers', {
-        params: { search: filters.search, limit: 50 }
+        params: { search, limit: 50 }
       });
       // Backend trả về { success: true, data: [...], pagination: {...} }
       if (response.data.success) {
@@ -42,10 +40,11 @@ export default function CustomersManagement() {
       setCustomers([]);
     } finally {
       setLoading(false);
+      setIsFirstLoad(false);
     }
-  };
+  }, [isFirstLoad]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await axios.get('/admin/customers/stats');
       if (response.data.success) {
@@ -54,11 +53,21 @@ export default function CustomersManagement() {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, []);
 
-  const handleSearch = () => {
+  useEffect(() => {
     fetchCustomers();
-  };
+    fetchStats();
+  }, [fetchCustomers, fetchStats]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCustomers(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, fetchCustomers]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -171,9 +180,8 @@ export default function CustomersManagement() {
             <input
               type="text"
               placeholder="Tìm theo tên, email, SĐT..."
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -232,8 +240,8 @@ export default function CustomersManagement() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCustomers.map((customer: any) => (
-                  <tr 
-                    key={customer._id} 
+                  <tr
+                    key={customer._id}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => router.push(`/admin/customers/${customer._id}/orders`)}
                     title="Click để xem chi tiết đơn hàng"
