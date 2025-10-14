@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Package, Calendar, DollarSign } from "lucide-react";
+import {
+  Search,
+  Package,
+  Calendar,
+  DollarSign,
+  Star,
+  CheckCircle,
+} from "lucide-react";
 import api from "@/api/axiosConfig";
+import { checkOrderReviewed } from "../../api/reviewApi";
 
 // Mock data for order history
 const mockorders = [
@@ -31,20 +40,43 @@ const mockorders = [
 ];
 
 export function PurchaseHistory() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
-  //fetch api load du lieu
+  const [reviewStatus, setReviewStatus] = useState({});
+
+  // Xử lý điều hướng đến trang đánh giá sản phẩm
+  const handleReviewProduct = (productId, orderId) => {
+    navigate(`/products/${productId}?review=true&orderId=${orderId}#reviews`);
+  };
   useEffect(() => {
     const fetchOrdersData = async () => {
       try {
         const response = await api.get("/orders");
-        const filteredOrdersStatus = response.data.orders.filter(
+        const completedOrders = response.data.orders.filter(
           (order) => order.status === 5
         );
-        setOrdersData(filteredOrdersStatus);
+        setOrdersData(completedOrders);
+
+        // Check review status for each completed order
+        const reviewStatusMap = {};
+        await Promise.all(
+          completedOrders.map(async (order) => {
+            try {
+              const reviewCheck = await checkOrderReviewed(order._id);
+              reviewStatusMap[order._id] = reviewCheck.hasReview;
+            } catch (error) {
+              console.error(
+                `Error checking review for order ${order._id}:`,
+                error
+              );
+              reviewStatusMap[order._id] = false;
+            }
+          })
+        );
+        setReviewStatus(reviewStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
-        setError(err.message);
       }
     };
 
@@ -107,7 +139,10 @@ export function PurchaseHistory() {
           </Card>
         ) : (
           filteredorders.map((order) => (
-            <Card key={order.id} className="overflow-hidden bg-white rounded-xl border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <Card
+              key={order.id}
+              className="overflow-hidden bg-white rounded-xl border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200"
+            >
               <CardHeader className=" bg-white ">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
@@ -154,23 +189,44 @@ export function PurchaseHistory() {
                           <span>Giá: {formatPrice(item.price)}</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-4">
                         <div className="font-semibold text-foreground">
                           {formatPrice(item.price * item.quantity)}
+                        </div>
+                        <div className="flex-shrink-0">
+                          {reviewStatus[order._id] ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              className="bg-green-50 border-green-200 text-green-700"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Đã đánh giá
+                            </Button>
+                          ) : (
+                            <Button
+                              className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                              size="sm"
+                              onClick={() =>
+                                handleReviewProduct(item.product._id, order._id)
+                              }
+                            >
+                              <Star className="w-4 h-4 mr-2" />
+                              Đánh giá
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
-                  <Button variant="outline" className="flex-1 bg-blue-500 text-white hover:bg-blue-600">
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-blue-500 text-white hover:bg-blue-600"
+                  >
                     Mua lại
-                  </Button>
-                  <Button variant="outline" className="flex-1 bg-transparent hover:bg-gray-100">
-                    Xem chi tiết
-                  </Button>
-                  <Button variant="outline" className="flex-1 bg-transparent hover:bg-gray-100">
-                    Đánh giá sản phẩm
                   </Button>
                 </div>
               </CardContent>
