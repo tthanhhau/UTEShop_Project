@@ -11,9 +11,12 @@ import {
   DollarSign,
   Star,
   CheckCircle,
+  ShoppingCart,
 } from "lucide-react";
 import api from "@/api/axiosConfig";
 import { checkOrderReviewed } from "../../api/reviewApi";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../../features/cart/cartSlice";
 
 // Mock data for order history
 const mockorders = [
@@ -41,9 +44,11 @@ const mockorders = [
 
 export function PurchaseHistory() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
   const [reviewStatus, setReviewStatus] = useState({});
+  const [isAdding, setIsAdding] = useState(false);
 
   // Xử lý điều hướng đến trang đánh giá sản phẩm
   const handleReviewProduct = (productId, orderId) => {
@@ -90,6 +95,34 @@ export function PurchaseHistory() {
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
   );
+
+  // Xử lý logic mua lại
+  const handleRepurchase = async (order) => {
+    setIsAdding(true);
+    try {
+      // Thêm từng sản phẩm vào giỏ hàng
+      for (const item of order.items) {
+        await dispatch(
+          addToCart({
+            productId: item.product._id,
+            quantity: item.quantity,
+          })
+        ).unwrap();
+      }
+
+      // Chuyển hướng đến trang giỏ hàng
+      navigate("/cart");
+
+      // Hiển thị thông báo thành công (nếu bạn có notification system)
+      // dispatch(showNotification('Đã thêm tất cả sản phẩm vào giỏ hàng'));
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng:", error);
+      // Hiển thị thông báo lỗi
+      alert("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng");
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   // Đã xóa ": number" khỏi tham số price
   const formatPrice = (price) => {
@@ -225,8 +258,20 @@ export function PurchaseHistory() {
                   <Button
                     variant="outline"
                     className="flex-1 bg-blue-500 text-white hover:bg-blue-600"
+                    onClick={() => handleRepurchase(order)}
+                    disabled={isAdding}
                   >
-                    Mua lại
+                    {isAdding ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Mua lại
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
