@@ -65,7 +65,9 @@ export function OrderTracking() {
         setOrdersData(response.data.orders);
 
         // Check review status for delivered orders
-        const deliveredOrders = response.data.orders.filter(order => order.status === 5);
+        const deliveredOrders = response.data.orders.filter(
+          (order) => order.status === 5
+        );
         const reviewStatusMap = {};
 
         await Promise.all(
@@ -74,7 +76,10 @@ export function OrderTracking() {
               const reviewCheck = await checkOrderReviewed(order._id);
               reviewStatusMap[order._id] = reviewCheck.hasReview;
             } catch (error) {
-              console.error(`Error checking review for order ${order._id}:`, error);
+              console.error(
+                `Error checking review for order ${order._id}:`,
+                error
+              );
               reviewStatusMap[order._id] = false;
             }
           })
@@ -143,9 +148,9 @@ export function OrderTracking() {
 
   // Update review status after user completes review
   const updateReviewStatus = (orderId) => {
-    setReviewStatus(prev => ({
+    setReviewStatus((prev) => ({
       ...prev,
-      [orderId]: true
+      [orderId]: true,
     }));
   };
 
@@ -164,12 +169,13 @@ export function OrderTracking() {
           return (
             <div key={status} className="flex flex-col items-center flex-1">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted
-                  ? "bg-primary text-primary-foreground"
-                  : isActive
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  isCompleted
+                    ? "bg-primary text-primary-foreground"
+                    : isActive
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                  }`}
+                }`}
               >
                 <StatusIcon className="w-4 h-4" />
               </div>
@@ -186,8 +192,9 @@ export function OrderTracking() {
               </div>
               {index < statuses.length - 1 && (
                 <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
-                    }`}
+                  className={`absolute h-0.5 w-full top-4 left-1/2 ${
+                    isCompleted ? "bg-primary" : "bg-muted"
+                  }`}
                   style={{ transform: "translateX(50%)", zIndex: -1 }}
                 />
               )}
@@ -287,6 +294,35 @@ export function OrderTracking() {
                             {formatPrice(item.price)}
                           </div>
                         </div>
+                        {order.status === 5 && (
+                          <div className="flex-shrink-0">
+                            {reviewStatus[order._id] ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                className="bg-green-50 border-green-200 text-green-700"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Đã đánh giá
+                              </Button>
+                            ) : (
+                              <Button
+                                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                                size="sm"
+                                onClick={() =>
+                                  handleReviewProduct(
+                                    item.product._id,
+                                    order._id
+                                  )
+                                }
+                              >
+                                <Star className="w-4 h-4 mr-2" />
+                                Đánh giá
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -320,41 +356,13 @@ export function OrderTracking() {
                         )}
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        Chi tiết
-                      </Button>
+          
                       {order.status !== 6 && order.status !== 5 && (
                         <Button variant="outline" size="sm">
                           Liên hệ shop
                         </Button>
                       )}
-                      {order.status === 5 && (
-                        <div className="flex flex-col gap-2">
-                          {reviewStatus[order._id] ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled
-                              className="bg-green-50 border-green-200 text-green-700"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Đã đánh giá
-                            </Button>
-                          ) : (
-                            order.items.map((item, index) => (
-                              <Button
-                                key={index}
-                                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-                                size="sm"
-                                onClick={() => handleReviewProduct(item.product._id, order._id)}
-                              >
-                                <Star className="w-4 h-4 mr-2" />
-                                Đánh giá {item.product?.name?.substring(0, 20)}...
-                              </Button>
-                            ))
-                          )}
-                        </div>
-                      )}
+
                       {order.status === 1 && (
                         <Button
                           variant="destructive"
