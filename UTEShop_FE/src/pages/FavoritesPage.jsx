@@ -76,7 +76,7 @@ const FavoritesPage = () => {
 
     if (loading) {
         return (
-            <div className="container mx-auto px-4 py-8">
+            <div className="max-w-7xl mx-auto p-4">
                 <h1 className="text-2xl font-bold mb-6">Sản phẩm yêu thích</h1>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {Array.from({ length: 8 }).map((_, index) => (
@@ -93,7 +93,7 @@ const FavoritesPage = () => {
 
     if (error) {
         return (
-            <div className="container mx-auto px-4 py-8">
+            <div className="max-w-7xl mx-auto p-4">
                 <div className="text-center text-red-500">
                     <p>Có lỗi xảy ra: {error}</p>
                 </div>
@@ -102,7 +102,7 @@ const FavoritesPage = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto p-4">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Sản phẩm yêu thích</h1>
                 <div className="text-gray-600">
@@ -200,8 +200,8 @@ const FavoritesPage = () => {
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
                             className={`px-3 py-2 border rounded-lg transition-colors ${pageNum === currentPage
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'border-gray-300 hover:bg-gray-50'
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-gray-300 hover:bg-gray-50'
                                 }`}
                         >
                             {pageNum}

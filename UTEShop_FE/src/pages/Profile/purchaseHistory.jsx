@@ -88,13 +88,17 @@ export function PurchaseHistory() {
     fetchOrdersData();
   }, []);
 
-  const filteredorders = orders.filter(
-    (order) =>
-      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.items.some((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-  );
+  const filteredorders = (Array.isArray(orders) ? orders : []).filter((order) => {
+    const term = (searchTerm || '').toString().toLowerCase();
+    const orderId = (order?._id || '').toString().toLowerCase();
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const itemMatch = items.some((item) => {
+      const name = (item?.name || item?.product?.name || '').toString().toLowerCase();
+      const pid = (item?.product?._id || '').toString().toLowerCase();
+      return name.includes(term) || pid.includes(term);
+    });
+    return orderId.includes(term) || itemMatch;
+  });
 
   // Xử lý logic mua lại
   const handleRepurchase = async (order) => {
@@ -132,6 +136,15 @@ export function PurchaseHistory() {
     }).format(price);
   };
 
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <h2 className="text-xl font-semibold mb-2">Có lỗi xảy ra</h2>
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
@@ -156,7 +169,7 @@ export function PurchaseHistory() {
         </div>
       </div>
 
-      {/* order History List */}
+      {/* order History List - grouped by day */}
       <div className="space-y-6">
         {filteredorders.length === 0 ? (
           <Card>

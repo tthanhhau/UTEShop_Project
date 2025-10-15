@@ -40,10 +40,23 @@ class ElasticsearchService {
                         number_of_shards: 1,
                         number_of_replicas: 0,
                         analysis: {
+                            filter: {
+                                vn_ascii_folding: { type: 'asciifolding', preserve_original: false }
+                            },
                             analyzer: {
                                 vietnamese_analyzer: {
                                     type: 'standard',
                                     stopwords: '_vietnamese_'
+                                },
+                                vn_text: {
+                                    type: 'custom',
+                                    tokenizer: 'standard',
+                                    filter: ['lowercase', 'vn_ascii_folding']
+                                },
+                                vn_text_search: {
+                                    type: 'custom',
+                                    tokenizer: 'standard',
+                                    filter: ['lowercase', 'vn_ascii_folding']
                                 }
                             }
                         }
@@ -52,7 +65,8 @@ class ElasticsearchService {
                         properties: {
                             name: {
                                 type: 'text',
-                                analyzer: 'vietnamese_analyzer',
+                                analyzer: 'vn_text',
+                                search_analyzer: 'vn_text_search',
                                 fields: {
                                     keyword: { type: 'keyword' },
                                     suggest: { type: 'completion' }
@@ -60,7 +74,8 @@ class ElasticsearchService {
                             },
                             description: {
                                 type: 'text',
-                                analyzer: 'vietnamese_analyzer'
+                                analyzer: 'vn_text',
+                                search_analyzer: 'vn_text_search'
                             },
                             price: { type: 'float' },
                             discountedPrice: { type: 'float' },
@@ -73,7 +88,8 @@ class ElasticsearchService {
                                     _id: { type: 'keyword' },
                                     name: {
                                         type: 'text',
-                                        analyzer: 'vietnamese_analyzer',
+                                        analyzer: 'vn_text',
+                                        search_analyzer: 'vn_text_search',
                                         fields: { keyword: { type: 'keyword' } }
                                     }
                                 }
@@ -84,7 +100,8 @@ class ElasticsearchService {
                                     _id: { type: 'keyword' },
                                     name: {
                                         type: 'text',
-                                        analyzer: 'vietnamese_analyzer',
+                                        analyzer: 'vn_text',
+                                        search_analyzer: 'vn_text_search',
                                         fields: { keyword: { type: 'keyword' } }
                                     }
                                 }
@@ -244,7 +261,7 @@ class ElasticsearchService {
                 must.push({
                     multi_match: {
                         query,
-                        fields: ['name^3', 'description'],
+                        fields: ['name^5'],
                         type: 'best_fields',
                         fuzziness: 'AUTO',
                         operator: 'or'
@@ -366,21 +383,24 @@ class ElasticsearchService {
             const result = await this.client.search({
                 index: this.indexName,
                 body: {
-                    size: limit,
-                    query: {
-                        multi_match: {
-                            query,
-                            fields: ['name^3', 'description'],
-                            type: 'phrase_prefix'
+                    suggest: {
+                        name_suggest: {
+                            prefix: query,
+                            completion: {
+                                field: 'name.suggest',
+                                fuzzy: { fuzziness: 1 }
+                            }
                         }
                     },
-                    _source: ['name', 'price', 'discountedPrice', 'images']
+                    _source: ['name', 'price', 'discountedPrice', 'images'],
+                    size: 0
                 }
             });
 
-            return result.hits.hits.map(hit => ({
-                _id: hit._id,
-                ...hit._source
+            const options = result.suggest?.name_suggest?.[0]?.options || [];
+            return options.slice(0, limit).map(opt => ({
+                _id: opt._id,
+                ...opt._source
             }));
         } catch (error) {
             console.error('❌ Lỗi gợi ý:', error.message);

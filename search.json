@@ -1,0 +1,1 @@
+{size:5,query:{ multi_match:{ query:quan,fields: [name^3,description],type:best_fields,fuzziness:AUTO}}}
