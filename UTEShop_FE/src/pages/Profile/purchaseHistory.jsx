@@ -25,11 +25,13 @@ export function PurchaseHistory() {
   const [orders, setOrdersData] = useState([]);
   const [reviewStatus, setReviewStatus] = useState({});
   const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState(null); // Thêm state error để xử lý lỗi
 
   // Xử lý điều hướng đến trang đánh giá sản phẩm
   const handleReviewProduct = (productId, orderId) => {
     navigate(`/products/${productId}?review=true&orderId=${orderId}#reviews`);
   };
+
   useEffect(() => {
     const fetchOrdersData = async () => {
       try {
@@ -58,19 +60,29 @@ export function PurchaseHistory() {
         setReviewStatus(reviewStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
+        setError(err?.message || 'Lỗi không xác định'); // Xử lý lỗi an toàn
       }
     };
 
     fetchOrdersData();
   }, []);
 
-  const filteredorders = orders.filter(
-    (order) =>
-      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.items.some((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-  );
+  // ===== PHẦN TÌM KIẾM ĐÃ ĐƯỢC CẬP NHẬT TỪ ĐOẠN CODE 1 =====
+  const filteredorders = (Array.isArray(orders) ? orders : []).filter((order) => {
+    const term = (searchTerm || '').toString().toLowerCase();
+    const orderId = (order?._id || '').toString().toLowerCase();
+    const items = Array.isArray(order?.items) ? order.items : [];
+
+    const itemMatch = items.some((item) => {
+      // Tìm kiếm theo tên sản phẩm (ở 2 vị trí có thể có) và mã sản phẩm
+      const name = (item?.name || item?.product?.name || '').toString().toLowerCase();
+      const pid = (item?.product?._id || '').toString().toLowerCase();
+      return name.includes(term) || pid.includes(term);
+    });
+
+    return orderId.includes(term) || itemMatch;
+  });
+  // ==========================================================
 
   // Xử lý logic mua lại
   const handleRepurchase = async (order) => {
@@ -85,28 +97,31 @@ export function PurchaseHistory() {
           })
         ).unwrap();
       }
-
-      // Chuyển hướng đến trang giỏ hàng
       navigate("/cart");
-
-      // Hiển thị thông báo thành công (nếu bạn có notification system)
-      // dispatch(showNotification('Đã thêm tất cả sản phẩm vào giỏ hàng'));
     } catch (error) {
       console.error("Lỗi khi thêm vào giỏ hàng:", error);
-      // Hiển thị thông báo lỗi
       alert("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng");
     } finally {
       setIsAdding(false);
     }
   };
 
-  // Đã xóa ": number" khỏi tham số price
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
   };
+
+  // Thêm phần hiển thị lỗi
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <h2 className="text-xl font-semibold mb-2">Có lỗi xảy ra</h2>
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -119,7 +134,6 @@ export function PurchaseHistory() {
         </p>
       </div>
 
-      {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -132,7 +146,6 @@ export function PurchaseHistory() {
         </div>
       </div>
 
-      {/* order History List */}
       <div className="space-y-6">
         {filteredorders.length === 0 ? (
           <Card>
@@ -149,7 +162,7 @@ export function PurchaseHistory() {
         ) : (
           filteredorders.map((order) => (
             <Card
-              key={order.id}
+              key={order._id} // Sử dụng _id từ API thay vì id
               className="overflow-hidden bg-white rounded-xl border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200"
             >
               <CardHeader className=" bg-white ">
@@ -186,7 +199,7 @@ export function PurchaseHistory() {
                     >
                       <img
                         src={item.product?.images?.[0] || "/placeholder.svg"}
-                        alt={item.name}
+                        alt={item.product?.name}
                         className="w-16 h-16 object-cover rounded-md bg-muted"
                       />
                       <div className="flex-1 min-w-0">
@@ -218,7 +231,10 @@ export function PurchaseHistory() {
                               className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
                               size="sm"
                               onClick={() =>
-                                handleReviewProduct(item.product._id, order._id)
+                                handleReviewProduct(
+                                  item.product._id,
+                                  order._id
+                                )
                               }
                             >
                               <Star className="w-4 h-4 mr-2" />
