@@ -18,30 +18,6 @@ import { checkOrderReviewed } from "../../api/reviewApi";
 import { useDispatch } from "react-redux";
 import { addToCart } from "../../features/cart/cartSlice";
 
-// Mock data for order history
-const mockorders = [
-  {
-    id: "ORD-001",
-    date: "2024-01-15",
-    items: [
-      {
-        name: "Áo thun nam basic",
-        price: 299000,
-        quantity: 2,
-        image: "/men-s-basic-t-shirt.png",
-      },
-      {
-        name: "Quần jeans slim fit",
-        price: 599000,
-        quantity: 1,
-        image: "/slim-fit-jeans.png",
-      },
-    ],
-    total: 1197000,
-    status: "Đã giao thành công",
-  },
-];
-
 export function PurchaseHistory() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
