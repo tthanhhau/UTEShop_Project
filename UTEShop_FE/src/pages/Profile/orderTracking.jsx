@@ -66,7 +66,9 @@ export function OrderTracking() {
         setOrdersData(response.data.orders);
 
         // Check review status for delivered orders
-        const deliveredOrders = response.data.orders.filter(order => order.status === 5);
+        const deliveredOrders = response.data.orders.filter(
+          (order) => order.status === 5
+        );
         const reviewStatusMap = {};
 
         await Promise.all(
@@ -75,7 +77,10 @@ export function OrderTracking() {
               const reviewCheck = await checkOrderReviewed(order._id);
               reviewStatusMap[order._id] = reviewCheck.hasReview;
             } catch (error) {
-              console.error(`Error checking review for order ${order._id}:`, error);
+              console.error(
+                `Error checking review for order ${order._id}:`,
+                error
+              );
               reviewStatusMap[order._id] = false;
             }
           })
@@ -144,9 +149,9 @@ export function OrderTracking() {
 
   // Update review status after user completes review
   const updateReviewStatus = (orderId) => {
-    setReviewStatus(prev => ({
+    setReviewStatus((prev) => ({
       ...prev,
-      [orderId]: true
+      [orderId]: true,
     }));
   };
 
@@ -165,12 +170,13 @@ export function OrderTracking() {
           return (
             <div key={status} className="flex flex-col items-center flex-1">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted
-                  ? "bg-primary text-primary-foreground"
-                  : isActive
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  isCompleted
+                    ? "bg-primary text-primary-foreground"
+                    : isActive
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                  }`}
+                }`}
               >
                 <StatusIcon className="w-4 h-4" />
               </div>
@@ -187,8 +193,9 @@ export function OrderTracking() {
               </div>
               {index < statuses.length - 1 && (
                 <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
-                    }`}
+                  className={`absolute h-0.5 w-full top-4 left-1/2 ${
+                    isCompleted ? "bg-primary" : "bg-muted"
+                  }`}
                   style={{ transform: "translateX(50%)", zIndex: -1 }}
                 />
               )}
@@ -328,6 +335,39 @@ export function OrderTracking() {
                               ));
                             })()}
                           </div>
+                        </div>
+                        {order.status === 5 && (
+                          <div className="flex-shrink-0">
+                            {reviewStatus[order._id] ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                className="bg-green-50 border-green-200 text-green-700"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Đã đánh giá
+                              </Button>
+                            ) : (
+                              <Button
+                                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                                size="sm"
+                                onClick={() =>
+                                  handleReviewProduct(
+                                    item.product._id,
+                                    order._id
+                                  )
+                                }
+                              >
+                                <Star className="w-4 h-4 mr-2" />
+                                Đánh giá
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
 
                           {/* Status Timeline */}
                           {order.status !== 6 && (
@@ -339,91 +379,48 @@ export function OrderTracking() {
                             </div>
                           )}
 
-                          {/* Order Summary */}
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
-                            <div className="space-y-1">
-                              <div className="font-semibold text-lg">
-                                Tổng tiền: {formatPrice(order.totalPrice)}
-                              </div>
-                              {order.estimatedDelivery &&
-                                order.status !== 5 &&
-                                order.status !== 6 && (
-                                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                                    <Clock className="w-4 h-4" />
-                                    Dự kiến giao:{" "}
-                                    {new Date(order.createdAt).setDate(
-                                      new Date(order.createdAt).getDate() + 7
-                                    )}
-                                  </div>
-                                )}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
-                                Chi tiết
-                              </Button>
-                              {order.status !== 6 && order.status !== 5 && (
-                                <Button variant="outline" size="sm">
-                                  Liên hệ shop
-                                </Button>
-                              )}
-                              {order.status === 5 && (
-                                <div className="flex flex-col gap-2">
-                                  {reviewStatus[order._id] ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled
-                                      className="bg-green-50 border-green-200 text-green-700"
-                                    >
-                                      <CheckCircle className="w-4 h-4 mr-2" />
-                                      Đã đánh giá
-                                    </Button>
-                                  ) : (
-                                    (() => {
-                                      const term = (searchTerm || '').toString().toLowerCase();
-                                      const items = Array.isArray(order.items) ? order.items : [];
-                                      const displayedItems = term
-                                        ? items.filter((it) => {
-                                          const name = (it?.name || it?.product?.name || '').toString().toLowerCase();
-                                          const pid = (it?.product?._id || '').toString().toLowerCase();
-                                          return name.includes(term) || pid.includes(term);
-                                        })
-                                        : items;
-                                      return displayedItems.map((item, index) => (
-                                        <Button
-                                          key={index}
-                                          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-                                          size="sm"
-                                          onClick={() => handleReviewProduct(item.product._id, order._id)}
-                                        >
-                                          <Star className="w-4 h-4 mr-2" />
-                                          Đánh giá {item.product?.name?.substring(0, 20)}...
-                                        </Button>
-                                      ));
-                                    })()
-                                  )}
-                                </div>
-                              )}
-                              {order.status === 1 && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleCancel(order._id)}
-                                  disabled={loading}
-                                >
-                                  Hủy đơn
-                                </Button>
-                              )}
-                            </div>
+                  {/* Order Summary */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-lg">
+                        Tổng tiền: {formatPrice(order.totalPrice)}
+                      </div>
+                      {order.estimatedDelivery &&
+                        order.status !== 5 &&
+                        order.status !== 6 && (
+                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            Dự kiến giao:{" "}
+                            {new Date(order.createdAt).setDate(
+                              new Date(order.createdAt).getDate() + 7
+                            )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            ));
-          })()
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+          
+                      {order.status !== 6 && order.status !== 5 && (
+                        <Button variant="outline" size="sm">
+                          Liên hệ shop
+                        </Button>
+                      )}
+
+                      {order.status === 1 && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleCancel(order._id)}
+                          disabled={loading}
+                        >
+                          Hủy đơn
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>
