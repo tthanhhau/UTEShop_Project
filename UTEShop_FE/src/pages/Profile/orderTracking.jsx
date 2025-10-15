@@ -56,7 +56,9 @@ export function OrderTracking() {
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null); // Thêm state error
   const [reviewStatus, setReviewStatus] = useState({}); // Track review status for each order
+
   //fetch API
   useEffect(() => {
     const fetchOrdersData = async () => {
@@ -88,26 +90,29 @@ export function OrderTracking() {
         setReviewStatus(reviewStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
-        setError(err.message);
+        // Cập nhật xử lý lỗi an toàn hơn
+        setError(err?.message || 'Lỗi không xác định');
       }
     };
 
     fetchOrdersData();
   }, []);
 
-  const filteredOrders = orders.filter(
-    (order) =>
-      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.trackingNumber &&
-        order.trackingNumber
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
-      order.items.some((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-  );
+  // ===== PHẦN TÌM KIẾM ĐÃ ĐƯỢC CẬP NHẬT TỪ ĐOẠN CODE 1 =====
+  const filteredOrders = (Array.isArray(orders) ? orders : []).filter((order) => {
+    const term = (searchTerm || '').toString().toLowerCase();
+    const orderId = (order?._id || '').toString().toLowerCase();
+    const tracking = (order?.trackingNumber || '').toString().toLowerCase();
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const itemMatch = items.some((item) => {
+      // Tìm kiếm tên sản phẩm ở cả item.name và item.product.name
+      const name = (item?.name || item?.product?.name || '').toString().toLowerCase();
+      return name.includes(term);
+    });
+    return orderId.includes(term) || tracking.includes(term) || itemMatch;
+  });
+  // ==========================================================
 
-  // Đã xóa type annotation
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -115,19 +120,18 @@ export function OrderTracking() {
     }).format(price);
   };
 
-  // Đã xóa type annotation
   const getStatusProgress = (status) => {
-    if (status === 6) return 0; // Cancelled orders have no progress
+    if (status === 6) return 0;
     return Math.min((status / 5) * 100, 100);
   };
-  // logic huy don
+
   const handleCancel = async (orderId) => {
     if (!confirm("Bạn có chắc muốn hủy đơn hàng này?")) {
       return;
     }
     setLoading(true);
     try {
-      const response = await api.put(`/orders/${orderId}`);
+      await api.put(`/orders/${orderId}`);
       setOrdersData((prevOrders) =>
         prevOrders.map((order) =>
           order._id === orderId ? { ...order, status: 6 } : order
@@ -140,13 +144,10 @@ export function OrderTracking() {
     }
   };
 
-  // Xử lý điều hướng đến trang đánh giá sản phẩm
   const handleReviewProduct = (productId, orderId) => {
-    // Điều hướng đến trang chi tiết sản phẩm với query params để focus vào review section
     navigate(`/products/${productId}?review=true&orderId=${orderId}#reviews`);
   };
 
-  // Update review status after user completes review
   const updateReviewStatus = (orderId) => {
     setReviewStatus((prev) => ({
       ...prev,
@@ -154,37 +155,30 @@ export function OrderTracking() {
     }));
   };
 
-  // Đã xóa type annotation
   const renderStatusTimeline = (currentStatus) => {
     const statuses = [1, 2, 3, 4, 5];
 
     return (
       <div className="flex items-center justify-between mt-4">
         {statuses.map((status, index) => {
-          // Đã xóa type casting
           const StatusIcon = orderStatuses[status].icon;
           const isActive = currentStatus >= status && currentStatus !== 6;
           const isCompleted = currentStatus > status && currentStatus !== 6;
 
           return (
-            <div key={status} className="flex flex-col items-center flex-1">
+            <div key={status} className="flex flex-col items-center flex-1 relative">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isCompleted
-                    ? "bg-primary text-primary-foreground"
-                    : isActive
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted || isActive
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                }`}
+                  }`}
               >
                 <StatusIcon className="w-4 h-4" />
               </div>
               <div className="text-xs text-center mt-2 max-w-20">
                 <span
                   className={
-                    isActive
-                      ? "text-primary font-medium"
-                      : "text-muted-foreground"
+                    isActive ? "text-primary font-medium" : "text-muted-foreground"
                   }
                 >
                   {orderStatuses[status].label}
@@ -192,10 +186,9 @@ export function OrderTracking() {
               </div>
               {index < statuses.length - 1 && (
                 <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${
-                    isCompleted ? "bg-primary" : "bg-muted"
-                  }`}
-                  style={{ transform: "translateX(50%)", zIndex: -1 }}
+                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
+                    }`}
+                  style={{ transform: "translateX(0)", zIndex: -1 }} // Adjusted for better alignment
                 />
               )}
             </div>
@@ -204,6 +197,16 @@ export function OrderTracking() {
       </div>
     );
   };
+
+  // Thêm phần hiển thị lỗi
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <h2 className="text-xl font-semibold mb-2">Có lỗi xảy ra</h2>
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -216,12 +219,11 @@ export function OrderTracking() {
         </p>
       </div>
 
-      {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Tìm kiếm theo mã đơn hàng hoặc mã vận đơn..."
+            placeholder="Tìm kiếm theo mã đơn hàng, mã vận đơn hoặc tên sản phẩm..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-gray-100"
@@ -229,7 +231,6 @@ export function OrderTracking() {
         </div>
       </div>
 
-      {/* Orders List */}
       <div className="space-y-6">
         {filteredOrders.length === 0 ? (
           <Card>
@@ -245,7 +246,6 @@ export function OrderTracking() {
           </Card>
         ) : (
           filteredOrders.map((order) => {
-            // Đã xóa type casting
             const statusInfo = orderStatuses[order.status];
             const StatusIcon = statusInfo.icon;
 
@@ -260,9 +260,7 @@ export function OrderTracking() {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                         <span>
                           Ngày đặt:{" "}
-                          {new Date(order.createdAt).toLocaleDateString(
-                            "vi-VN"
-                          )}
+                          {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                         </span>
                       </div>
                     </div>
@@ -273,7 +271,6 @@ export function OrderTracking() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 bg-white">
-                  {/* Order Items */}
                   <div className="space-y-3 mb-6">
                     {order.items.map((item, index) => (
                       <div
@@ -282,7 +279,7 @@ export function OrderTracking() {
                       >
                         <img
                           src={item.product?.images?.[0] || "/placeholder.svg"}
-                          alt={item.name}
+                          alt={item.product?.name}
                           className="w-12 h-12 object-cover rounded-md bg-muted"
                         />
                         <div className="flex-1 min-w-0">
@@ -311,10 +308,7 @@ export function OrderTracking() {
                                 className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
                                 size="sm"
                                 onClick={() =>
-                                  handleReviewProduct(
-                                    item.product._id,
-                                    order._id
-                                  )
+                                  handleReviewProduct(item.product._id, order._id)
                                 }
                               >
                                 <Star className="w-4 h-4 mr-2" />
@@ -327,7 +321,6 @@ export function OrderTracking() {
                     ))}
                   </div>
 
-                  {/* Status Timeline */}
                   {order.status !== 6 && (
                     <div className="mb-6">
                       <h4 className="font-medium mb-3">Tiến độ đơn hàng</h4>
@@ -337,7 +330,6 @@ export function OrderTracking() {
                     </div>
                   )}
 
-                  {/* Order Summary */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
                     <div className="space-y-1">
                       <div className="font-semibold text-lg">
@@ -349,20 +341,20 @@ export function OrderTracking() {
                           <div className="text-sm text-muted-foreground flex items-center gap-1">
                             <Clock className="w-4 h-4" />
                             Dự kiến giao:{" "}
-                            {new Date(order.createdAt).setDate(
-                              new Date(order.createdAt).getDate() + 7
-                            )}
+                            {new Date(
+                              new Date(order.createdAt).setDate(
+                                new Date(order.createdAt).getDate() + 7
+                              )
+                            ).toLocaleDateString('vi-VN')}
                           </div>
                         )}
                     </div>
                     <div className="flex gap-2">
-          
                       {order.status !== 6 && order.status !== 5 && (
                         <Button variant="outline" size="sm">
                           Liên hệ shop
                         </Button>
                       )}
-
                       {order.status === 1 && (
                         <Button
                           variant="destructive"
