@@ -169,13 +169,12 @@ export function OrderTracking() {
           return (
             <div key={status} className="flex flex-col items-center flex-1">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isCompleted
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted
                     ? "bg-primary text-primary-foreground"
                     : isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                }`}
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
               >
                 <StatusIcon className="w-4 h-4" />
               </div>
@@ -192,9 +191,8 @@ export function OrderTracking() {
               </div>
               {index < statuses.length - 1 && (
                 <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${
-                    isCompleted ? "bg-primary" : "bg-muted"
-                  }`}
+                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
+                    }`}
                   style={{ transform: "translateX(50%)", zIndex: -1 }}
                 />
               )}
@@ -356,7 +354,7 @@ export function OrderTracking() {
                         )}
                     </div>
                     <div className="flex gap-2">
-          
+
                       {order.status !== 6 && order.status !== 5 && (
                         <Button variant="outline" size="sm">
                           Liên hệ shop
