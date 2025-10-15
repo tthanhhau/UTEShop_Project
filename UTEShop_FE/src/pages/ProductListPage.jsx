@@ -20,6 +20,14 @@ export default function ProductListPage() {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const brand = searchParams.get('brand') || '';
+    const minPrice = searchParams.get('minPrice') || '';
+    const maxPrice = searchParams.get('maxPrice') || '';
+    const minRating = searchParams.get('minRating') || '';
+
+    // Local UI state to avoid input cursor jump while typing
+    const [priceMinInput, setPriceMinInput] = useState(minPrice);
+    const [priceMaxInput, setPriceMaxInput] = useState(maxPrice);
+    const [ratingInput, setRatingInput] = useState(minRating);
 
     // Fetch categories and brands
     useEffect(() => {
@@ -59,7 +67,10 @@ export default function ProductListPage() {
                     sort,
                     ...(search && { search }),
                     ...(category && { category }),
-                    ...(brand && { brand })
+                    ...(brand && { brand }),
+                    ...(minPrice && { minPrice }),
+                    ...(maxPrice && { maxPrice }),
+                    ...(minRating && { minRating })
                 });
 
                 const res = await axios.get(`/products?${params}`);
@@ -78,7 +89,7 @@ export default function ProductListPage() {
             }
         };
         fetchProducts();
-    }, [page, sort, search, category, brand]);
+    }, [page, sort, search, category, brand, minPrice, maxPrice, minRating]);
 
     const handlePageChange = (newPage) => {
         setSearchParams(prev => ({ ...Object.fromEntries(prev), page: newPage.toString() }));
@@ -116,6 +127,27 @@ export default function ProductListPage() {
             page: '1'
         }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const commitPriceChange = (field, value) => {
+        setSearchParams(prev => {
+            const next = { ...Object.fromEntries(prev), page: '1' };
+            if (value === '' || value === null) {
+                delete next[field];
+            } else {
+                next[field] = value;
+            }
+            return next;
+        });
+    };
+
+    const handleRatingChange = (value) => {
+        setRatingInput(value);
+        setSearchParams(prev => {
+            const next = { ...Object.fromEntries(prev), page: '1' };
+            if (!value) delete next.minRating; else next.minRating = value;
+            return next;
+        });
     };
 
     if (loading) {
@@ -191,6 +223,46 @@ export default function ProductListPage() {
                             </option>
                         ))}
                     </select>
+
+                    {/* Price Range */}
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            step="1000"
+                            value={priceMinInput}
+                            onChange={(e) => setPriceMinInput(e.target.value)}
+                            onBlur={() => commitPriceChange('minPrice', priceMinInput)}
+                            placeholder="Giá từ"
+                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <span className="text-gray-500">-</span>
+                        <input
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            step="1000"
+                            value={priceMaxInput}
+                            onChange={(e) => setPriceMaxInput(e.target.value)}
+                            onBlur={() => commitPriceChange('maxPrice', priceMaxInput)}
+                            placeholder="đến"
+                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    {/* Rating Filter */}
+                    <select
+                        value={ratingInput}
+                        onChange={(e) => handleRatingChange(e.target.value)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                        <option value="">Tất cả số sao</option>
+                        <option value="4.5">Từ 4.5 sao</option>
+                        <option value="4">Từ 4 sao</option>
+                        <option value="3.5">Từ 3.5 sao</option>
+                        <option value="3">Từ 3 sao</option>
+                    </select>
                 </div>
 
                 {/* Sort Options */}
@@ -201,7 +273,9 @@ export default function ProductListPage() {
                         { value: 'most-viewed', label: 'Xem nhiều' },
                         { value: 'top-discount', label: 'Khuyến mãi' },
                         { value: 'price-asc', label: 'Giá tăng dần' },
-                        { value: 'price-desc', label: 'Giá giảm dần' }
+                        { value: 'price-desc', label: 'Giá giảm dần' },
+                        { value: 'alpha-asc', label: 'A → Z' },
+                        { value: 'alpha-desc', label: 'Z → A' }
                     ].map(option => (
                         <button
                             key={option.value}
