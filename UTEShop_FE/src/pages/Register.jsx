@@ -64,7 +64,7 @@ export default function Register() {
     try {
       await dispatch(verifyRegister({ email, code, name, password })).unwrap();
       // TODO: điều hướng nếu cần, ví dụ:
-      // navigate("/login");
+      navigate("/login");
     } catch (err) {
       const msg =
         err?.errors?.[0]?.msg ||
