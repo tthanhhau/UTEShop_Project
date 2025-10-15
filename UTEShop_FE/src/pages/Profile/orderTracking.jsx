@@ -56,7 +56,6 @@ export function OrderTracking() {
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [reviewStatus, setReviewStatus] = useState({}); // Track review status for each order
   //fetch API
   useEffect(() => {
@@ -89,24 +88,24 @@ export function OrderTracking() {
         setReviewStatus(reviewStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
-        setError(err?.message || 'Lỗi không xác định');
+        setError(err.message);
       }
     };
 
     fetchOrdersData();
   }, []);
 
-  const filteredOrders = (Array.isArray(orders) ? orders : []).filter((order) => {
-    const term = (searchTerm || '').toString().toLowerCase();
-    const orderId = (order?._id || '').toString().toLowerCase();
-    const tracking = (order?.trackingNumber || '').toString().toLowerCase();
-    const items = Array.isArray(order?.items) ? order.items : [];
-    const itemMatch = items.some((item) => {
-      const name = (item?.name || item?.product?.name || '').toString().toLowerCase();
-      return name.includes(term);
-    });
-    return orderId.includes(term) || tracking.includes(term) || itemMatch;
-  });
+  const filteredOrders = orders.filter(
+    (order) =>
+      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.trackingNumber &&
+        order.trackingNumber
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
+      order.items.some((item) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+  );
 
   // Đã xóa type annotation
   const formatPrice = (price) => {
@@ -206,15 +205,6 @@ export function OrderTracking() {
     );
   };
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <h2 className="text-xl font-semibold mb-2">Có lỗi xảy ra</h2>
-        <p className="text-red-600">{error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
@@ -228,27 +218,14 @@ export function OrderTracking() {
 
       {/* Search Bar */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 max-w-2xl">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Tìm kiếm theo mã đơn hàng, mã vận đơn hoặc tên sản phẩm..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-gray-100"
-            />
-          </div>
-          <Button
-            className="whitespace-nowrap"
-            onClick={() => {
-              const term = searchTerm.trim();
-              if (term.length >= 2) {
-                navigate(`/products?search=${encodeURIComponent(term)}`);
-              }
-            }}
-          >
-            Tìm sản phẩm
-          </Button>
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Tìm kiếm theo mã đơn hàng hoặc mã vận đơn..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-gray-100"
+          />
         </div>
       </div>
 
@@ -267,73 +244,54 @@ export function OrderTracking() {
             </CardContent>
           </Card>
         ) : (
-          (() => {
-            const sorted = [...filteredOrders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            const groups = sorted.reduce((acc, order) => {
-              const key = new Date(order.createdAt).toLocaleDateString('vi-VN');
-              (acc[key] ||= []).push(order);
-              return acc;
-            }, {});
+          filteredOrders.map((order) => {
+            // Đã xóa type casting
+            const statusInfo = orderStatuses[order.status];
+            const StatusIcon = statusInfo.icon;
 
-            return Object.entries(groups).map(([day, ordersInDay]) => (
-              <div key={day} className="rounded-2xl border border-gray-200 p-3 sm:p-4">
-                <div className="text-sm text-gray-600 mb-3">Ngày đặt: {day}</div>
-                <div className="space-y-6">
-                  {ordersInDay.map((order) => {
-                    // Đã xóa type casting
-                    const statusInfo = orderStatuses[order.status];
-                    const StatusIcon = statusInfo.icon;
-
-                    return (
-                      <Card key={order._id} className="overflow-hidden bg-white">
-                        <CardHeader className="bg-white border-b">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                              <CardTitle className="text-lg font-semibold">
-                                Đơn hàng #{order._id}
-                              </CardTitle>
-                            </div>
-                            <Badge variant="secondary" className={statusInfo.color}>
-                              <StatusIcon className="w-4 h-4 mr-1" />
-                              {statusInfo.label}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-6 bg-white">
-                          {/* Order Items */}
-                          <div className="space-y-3 mb-6">
-                            {(() => {
-                              const term = (searchTerm || '').toString().toLowerCase();
-                              const items = Array.isArray(order.items) ? order.items : [];
-                              const displayedItems = term
-                                ? items.filter((it) => {
-                                  const name = (it?.name || it?.product?.name || '').toString().toLowerCase();
-                                  const pid = (it?.product?._id || '').toString().toLowerCase();
-                                  return name.includes(term) || pid.includes(term);
-                                })
-                                : items;
-                              return displayedItems.map((item, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-4 p-3 bg-white border border-border rounded-lg"
-                                >
-                                  <img
-                                    src={item.product?.images?.[0] || "/placeholder.svg"}
-                                    alt={item.name}
-                                    className="w-12 h-12 object-cover rounded-md bg-muted"
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-foreground truncate">
-                                      {item.product?.name}
-                                    </h4>
-                                    <div className="text-sm text-muted-foreground">
-                                      Số lượng: {item.quantity} ×{" "}
-                                      {formatPrice(item.price)}
-                                    </div>
-                                  </div>
-                                </div>
-                              ));
-                            })()}
+            return (
+              <Card key={order._id} className="overflow-hidden bg-white">
+                <CardHeader className="bg-white border-b">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <CardTitle className="text-lg font-semibold">
+                        Đơn hàng #{order._id}
+                      </CardTitle>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span>
+                          Ngày đặt:{" "}
+                          {new Date(order.createdAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className={statusInfo.color}>
+                      <StatusIcon className="w-4 h-4 mr-1" />
+                      {statusInfo.label}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 bg-white">
+                  {/* Order Items */}
+                  <div className="space-y-3 mb-6">
+                    {order.items.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-4 p-3 bg-white border border-border rounded-lg"
+                      >
+                        <img
+                          src={item.product?.images?.[0] || "/placeholder.svg"}
+                          alt={item.name}
+                          className="w-12 h-12 object-cover rounded-md bg-muted"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-foreground truncate">
+                            {item.product?.name}
+                          </h4>
+                          <div className="text-sm text-muted-foreground">
+                            Số lượng: {item.quantity} ×{" "}
+                            {formatPrice(item.price)}
                           </div>
                         </div>
                         {order.status === 5 && (
@@ -369,15 +327,15 @@ export function OrderTracking() {
                     ))}
                   </div>
 
-                          {/* Status Timeline */}
-                          {order.status !== 6 && (
-                            <div className="mb-6">
-                              <h4 className="font-medium mb-3">Tiến độ đơn hàng</h4>
-                              <div className="relative">
-                                {renderStatusTimeline(order.status)}
-                              </div>
-                            </div>
-                          )}
+                  {/* Status Timeline */}
+                  {order.status !== 6 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium mb-3">Tiến độ đơn hàng</h4>
+                      <div className="relative">
+                        {renderStatusTimeline(order.status)}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Order Summary */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
