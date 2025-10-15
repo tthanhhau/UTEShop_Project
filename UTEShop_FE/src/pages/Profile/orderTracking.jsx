@@ -91,7 +91,7 @@ export function OrderTracking() {
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
         // Cập nhật xử lý lỗi an toàn hơn
-        setError(err?.message || 'Lỗi không xác định');
+        setError(err?.message || "Lỗi không xác định");
       }
     };
 
@@ -99,18 +99,22 @@ export function OrderTracking() {
   }, []);
 
   // ===== PHẦN TÌM KIẾM ĐÃ ĐƯỢC CẬP NHẬT TỪ ĐOẠN CODE 1 =====
-  const filteredOrders = (Array.isArray(orders) ? orders : []).filter((order) => {
-    const term = (searchTerm || '').toString().toLowerCase();
-    const orderId = (order?._id || '').toString().toLowerCase();
-    const tracking = (order?.trackingNumber || '').toString().toLowerCase();
-    const items = Array.isArray(order?.items) ? order.items : [];
-    const itemMatch = items.some((item) => {
-      // Tìm kiếm tên sản phẩm ở cả item.name và item.product.name
-      const name = (item?.name || item?.product?.name || '').toString().toLowerCase();
-      return name.includes(term);
-    });
-    return orderId.includes(term) || tracking.includes(term) || itemMatch;
-  });
+  const filteredOrders = (Array.isArray(orders) ? orders : []).filter(
+    (order) => {
+      const term = (searchTerm || "").toString().toLowerCase();
+      const orderId = (order?._id || "").toString().toLowerCase();
+      const tracking = (order?.trackingNumber || "").toString().toLowerCase();
+      const items = Array.isArray(order?.items) ? order.items : [];
+      const itemMatch = items.some((item) => {
+        // Tìm kiếm tên sản phẩm ở cả item.name và item.product.name
+        const name = (item?.name || item?.product?.name || "")
+          .toString()
+          .toLowerCase();
+        return name.includes(term);
+      });
+      return orderId.includes(term) || tracking.includes(term) || itemMatch;
+    }
+  );
   // ==========================================================
 
   const formatPrice = (price) => {
@@ -166,19 +170,25 @@ export function OrderTracking() {
           const isCompleted = currentStatus > status && currentStatus !== 6;
 
           return (
-            <div key={status} className="flex flex-col items-center flex-1 relative">
+            <div
+              key={status}
+              className="flex flex-col items-center flex-1 relative"
+            >
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted || isActive
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  isCompleted || isActive
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
-                  }`}
+                }`}
               >
                 <StatusIcon className="w-4 h-4" />
               </div>
               <div className="text-xs text-center mt-2 max-w-20">
                 <span
                   className={
-                    isActive ? "text-primary font-medium" : "text-muted-foreground"
+                    isActive
+                      ? "text-primary font-medium"
+                      : "text-muted-foreground"
                   }
                 >
                   {orderStatuses[status].label}
@@ -186,8 +196,9 @@ export function OrderTracking() {
               </div>
               {index < statuses.length - 1 && (
                 <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
-                    }`}
+                  className={`absolute h-0.5 w-full top-4 left-1/2 ${
+                    isCompleted ? "bg-primary" : "bg-muted"
+                  }`}
                   style={{ transform: "translateX(0)", zIndex: -1 }} // Adjusted for better alignment
                 />
               )}
@@ -260,7 +271,9 @@ export function OrderTracking() {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                         <span>
                           Ngày đặt:{" "}
-                          {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                          {new Date(order.createdAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
                         </span>
                       </div>
                     </div>
@@ -308,7 +321,10 @@ export function OrderTracking() {
                                 className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
                                 size="sm"
                                 onClick={() =>
-                                  handleReviewProduct(item.product._id, order._id)
+                                  handleReviewProduct(
+                                    item.product._id,
+                                    order._id
+                                  )
                                 }
                               >
                                 <Star className="w-4 h-4 mr-2" />
@@ -345,11 +361,14 @@ export function OrderTracking() {
                               new Date(order.createdAt).setDate(
                                 new Date(order.createdAt).getDate() + 7
                               )
-                            ).toLocaleDateString('vi-VN')}
+                            ).toLocaleDateString("vi-VN")}
                           </div>
                         )}
                     </div>
                     <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        Chi tiết
+                      </Button>
                       {order.status !== 6 && order.status !== 5 && (
                         <Button variant="outline" size="sm">
                           Liên hệ shop
