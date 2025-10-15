@@ -40,6 +40,8 @@ const Navbar = () => {
     }
   }, [user]);
 
+  // Bỏ auto-navigate để tránh điều hướng bất ngờ khi người dùng chỉ mới nhập
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
@@ -105,7 +107,7 @@ const Navbar = () => {
 
         {/* Search Bar */}
         <div className="flex-1 max-w-md mx-8 hidden md:block">
-          <div className="relative">
+          <form className="relative" onSubmit={handleSearch}>
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
               onClick={handleSearch}
@@ -118,7 +120,7 @@ const Navbar = () => {
               onKeyPress={handleSearchKeyPress}
               className="pl-10 pr-4 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
-          </div>
+          </form>
         </div>
 
         {/* Right Icons */}
@@ -231,7 +233,7 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Search Bar */}
-        <div className="relative">
+        <form className="relative" onSubmit={handleSearch}>
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
             onClick={handleSearch}
@@ -244,7 +246,7 @@ const Navbar = () => {
             onKeyPress={handleSearchKeyPress}
             className="pl-10 pr-4 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500"
           />
-        </div>
+        </form>
       </div>
     </nav>
   );
