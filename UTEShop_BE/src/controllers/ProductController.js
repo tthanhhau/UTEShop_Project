@@ -2,6 +2,7 @@ import Product from "../models/product.js";
 import Review from "../models/review.js";
 import Order from "../models/order.js";
 import mongoose from "mongoose";
+import elasticsearchService from "../services/elasticsearchService.js";
 
 // Lấy 4 khối sản phẩm cho trang chủ
 export const getHomeBlocks = async (req, res) => {
@@ -63,7 +64,7 @@ export const getHomeBlocks = async (req, res) => {
 // Lấy sản phẩm phân trang + sort
 export const getProducts = async (req, res) => {
     try {
-        const { page = 1, limit = 12, sort = "newest", category, search, brand } = req.query;
+        const { page = 1, limit = 12, sort = "newest", category, search, brand, minPrice, maxPrice, minRating } = req.query;
 
         const sortMap = {
             newest: { createdAt: -1 },
@@ -72,6 +73,8 @@ export const getProducts = async (req, res) => {
             "top-discount": { discountPercentage: -1 },
             "price-asc": { price: 1 },
             "price-desc": { price: -1 },
+            "alpha-asc": { name: 1 },
+            "alpha-desc": { name: -1 },
         };
 
         const sortOption = sortMap[sort] || sortMap["newest"];
@@ -89,18 +92,110 @@ export const getProducts = async (req, res) => {
                 ? new mongoose.Types.ObjectId(brand)
                 : brand;
         }
+        // Price range filter based on discounted price = price * (1 - discountPercentage/100)
+        const parsedMinPrice = Number.isFinite(parseFloat(minPrice)) ? parseFloat(minPrice) : undefined;
+        const parsedMaxPrice = Number.isFinite(parseFloat(maxPrice)) ? parseFloat(maxPrice) : undefined;
+        if (parsedMinPrice !== undefined || parsedMaxPrice !== undefined) {
+            const effectivePriceExpr = {
+                $multiply: [
+                    "$price",
+                    { $subtract: [1, { $divide: ["$discountPercentage", 100] }] }
+                ]
+            };
+            const comparisons = [];
+            if (parsedMinPrice !== undefined) {
+                comparisons.push({ $gte: [effectivePriceExpr, parsedMinPrice] });
+            }
+            if (parsedMaxPrice !== undefined) {
+                comparisons.push({ $lte: [effectivePriceExpr, parsedMaxPrice] });
+            }
+            if (comparisons.length === 1) {
+                filter.$expr = comparisons[0];
+            } else if (comparisons.length === 2) {
+                filter.$expr = { $and: comparisons };
+            }
+        }
+
+        let esMatchedIds = null;
         if (search) {
-            // Chỉ tìm trong tên sản phẩm để kết quả chính xác hơn
-            filter.name = { $regex: search, $options: 'i' };
+            // Dùng Elasticsearch để tìm không phân biệt dấu, sau đó lọc theo _id trong MongoDB
+            try {
+                const esResult = await elasticsearchService.searchProducts({
+                    query: search,
+                    page: 1,
+                    limit: 1000,
+                    sort: 'relevance'
+                });
+                esMatchedIds = esResult.products.map(p => new mongoose.Types.ObjectId(p._id));
+                // Nếu không có kết quả khớp, trả về rỗng ngay
+                if (esMatchedIds.length === 0) {
+                    return res.json({
+                        page: 1,
+                        limit: parseInt(limit),
+                        total: 0,
+                        totalPages: 0,
+                        items: []
+                    });
+                }
+                filter._id = { $in: esMatchedIds };
+            } catch (e) {
+                // fallback: regex (vẫn phân biệt dấu)
+                filter.name = { $regex: search, $options: 'i' };
+            }
+        }
+
+        // Rating filter (minimum average rating)
+        let ratingMatchedIds = null;
+        const parsedMinRating = Number.isFinite(parseFloat(minRating)) ? parseFloat(minRating) : undefined;
+        if (parsedMinRating !== undefined && parsedMinRating > 0) {
+            const ratingAgg = await Review.aggregate([
+                {
+                    $group: {
+                        _id: "$product",
+                        avgRating: { $avg: "$rating" }
+                    }
+                },
+                { $match: { avgRating: { $gte: parsedMinRating } } },
+                { $project: { _id: 1 } }
+            ]);
+            ratingMatchedIds = ratingAgg.map(doc => doc._id);
+            // Nếu không có sản phẩm nào đạt rating
+            if (ratingMatchedIds.length === 0) {
+                return res.json({
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: 0,
+                    totalPages: 0,
+                    items: []
+                });
+            }
+            if (filter._id && filter._id.$in) {
+                // Giao (intersection) giữa ES ids và rating ids
+                const set = new Set(ratingMatchedIds.map(id => id.toString()));
+                filter._id.$in = filter._id.$in.filter(id => set.has(id.toString()));
+                if (filter._id.$in.length === 0) {
+                    return res.json({
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        total: 0,
+                        totalPages: 0,
+                        items: []
+                    });
+                }
+            } else {
+                filter._id = { $in: ratingMatchedIds };
+            }
         }
 
         const pageNum = parseInt(page);
         const pageSize = parseInt(limit);
 
+        const isAlphaSort = sort === 'alpha-asc' || sort === 'alpha-desc';
         const [items, total] = await Promise.all([
             Product.find(filter)
                 .populate('category', 'name')
                 .populate('brand', 'name logo')
+                .collation(isAlphaSort ? { locale: 'vi', strength: 1 } : undefined)
                 .sort(sortOption)
                 .skip((pageNum - 1) * pageSize)
                 .limit(pageSize)
