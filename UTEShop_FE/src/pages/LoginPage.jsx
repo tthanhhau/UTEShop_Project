@@ -15,10 +15,17 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  const validatePassword = (password) => {
+    // Regex để kiểm tra ký tự đặc biệt: chỉ cho phép chữ cái, số và khoảng trắng
+    const specialCharsRegex = /[^a-zA-Z0-9\s]/;
+    return !specialCharsRegex.test(password);
   };
 
   const handleEmailChange = (e) => {
@@ -31,10 +38,24 @@ function LoginPage() {
     }
   };
 
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    if (value && !validatePassword(value)) {
+      setPasswordError("Mật khẩu không được chứa ký tự đặc biệt");
+    } else {
+      setPasswordError("");
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateEmail(email)) {
       setEmailError("Email không đúng định dạng");
+      return;
+    }
+    if (!validatePassword(password)) {
+      setPasswordError("Mật khẩu không được chứa ký tự đặc biệt");
       return;
     }
     dispatch(loginUser({ email, password }));
@@ -77,8 +98,9 @@ function LoginPage() {
             label="Mật khẩu"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={handlePasswordChange}
             placeholder="••••••••"
+            error={passwordError}
           />
 
           {error && <p className="text-sm text-red-600">{error}</p>}
