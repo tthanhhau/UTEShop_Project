@@ -8,7 +8,7 @@ class ElasticsearchService {
         this.client = new Client({
             node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200',
         });
-        this.indexName = process.env.ELASTICSEARCH_INDEX_PRODUCTS || 'uteshop_products';
+        this.indexName = process.env.ELASTICSEARCH_INDEX_PRODUCTS || 'uteshop_products2';
     }
 
     // Kiểm tra kết nối
