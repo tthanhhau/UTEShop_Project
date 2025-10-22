@@ -254,7 +254,7 @@ export default function DashboardPage() {
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {topProducts.map((product: any, index: number) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="text-2xl font-bold text-purple-600">#{index + 1}</span>
                   {product.images && product.images.length > 0 ? (
                     <img
@@ -267,14 +267,14 @@ export default function DashboardPage() {
                       <FaTshirt className="text-white" />
                     </div>
                   )}
-                  <div>
-                    <p className="font-medium text-gray-800 truncate max-w-[150px]" title={product.name}>
+                  <div className="min-w-0 max-w-[180px] sm:max-w-[250px] md:max-w-[300px]">
+                    <p className="font-medium text-gray-800 truncate text-sm" title={product.name}>
                       {product.name}
                     </p>
-                    <p className="text-sm text-gray-600">{product.soldCount || 0} đã bán</p>
+                    <p className="text-xs text-gray-600">{product.soldCount || 0} đã bán</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0 w-32">
                   <span className="text-blue-600 font-semibold text-sm block">
                     {formatCurrency(product.price || product.discountedPrice || product.originalPrice || 0)}
                   </span>
@@ -345,11 +345,11 @@ export default function DashboardPage() {
                               <FaTshirt className="text-white text-xl" />
                             </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-800 truncate" title={product.name}>
+                          <div className="min-w-0 max-w-[200px] sm:max-w-[300px] md:max-w-[400px]">
+                            <p className="font-semibold text-gray-800 truncate text-sm" title={product.name}>
                               {product.name}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-1 mt-1">
                               <span className="text-sm text-gray-600">
                                 {product.soldCount || 0} đã bán
                               </span>
@@ -364,7 +364,7 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right ml-4">
+                        <div className="text-right flex-shrink-0 w-40">
                           <div className="flex items-center gap-2 justify-end">
                             {product.discountPercentage > 0 && (
                               <span className="text-sm text-gray-400 line-through">
