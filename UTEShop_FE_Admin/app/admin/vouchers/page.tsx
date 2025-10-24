@@ -88,6 +88,11 @@ export default function VouchersManagement() {
     e.preventDefault();
     try {
       if (editingVoucher) {
+        // Check if new maxIssued is less than current usesCount
+        if (parseInt(formData.maxIssued) < (editingVoucher.usesCount || 0)) {
+          alert('Số lượng phát hành không thể nhỏ hơn số lượng đã sử dụng');
+          return;
+        }
         await axios.put(`/admin/vouchers/${editingVoucher._id}`, formData);
       } else {
         await axios.post('/admin/vouchers', formData);
