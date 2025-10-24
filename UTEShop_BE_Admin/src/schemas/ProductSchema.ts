@@ -26,6 +26,13 @@ export class Product {
   @Prop({ default: 0 })
   stock: number;
 
+  @Prop({ default: 0 })
+  soldCount: number;
+
+  @Prop({ default: 0 })
+  discountPercentage: number;
+
+
   @Prop({ default: true })
   isActive: boolean;
 }
