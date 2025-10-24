@@ -17,9 +17,9 @@ test.describe("Trang Đăng nhập", () => {
     );
 
     // Nhập văn bản vào trường mật khẩu
-    await page.getByPlaceholder("••••••••").fill("Hongphuc22@");
+    await page.getByPlaceholder("••••••••").fill("1234567");
     // Kiểm tra xem giá trị đã được nhập chính xác
-    await expect(page.getByPlaceholder("••••••••")).toHaveValue("Hongphuc22@");
+    await expect(page.getByPlaceholder("••••••••")).toHaveValue("1234567");
   });
 
   test("Đăng nhập thành công và chuyển hướng đến trang chủ", async ({
@@ -28,7 +28,7 @@ test.describe("Trang Đăng nhập", () => {
     await page
       .getByPlaceholder("you@example.com")
       .fill("22110401@student.hcmute.edu.vn");
-    await page.getByPlaceholder("••••••••").fill("Hongphuc22@");
+    await page.getByPlaceholder("••••••••").fill("1234567");
 
     // Nhấp vào nút "Đăng nhập"
     await page.getByRole("button", { name: "Đăng nhập" }).first().click();
@@ -62,7 +62,7 @@ test.describe("Trang Đăng nhập", () => {
     await page
       .getByPlaceholder("you@example.com")
       .fill("22110401@student.hcmute.edu.vn");
-    await page.getByPlaceholder("••••••••").fill("Hongphuc22@");
+    await page.getByPlaceholder("••••••••").fill("1234567");
 
     // Nhấp vào nút "Đăng nhập"
     await page.getByRole("button", { name: "Đăng nhập" }).first().click();
@@ -75,7 +75,7 @@ test.describe("Trang Đăng nhập", () => {
       await dialog.accept();
     });
 
-    const productName = 'Quần dài dệt chéo Loose Fit'; 
+    const productName = 'Miss Dior'; 
     const productCard = page.locator('.group.bg-white', { hasText: productName });
     await expect(productCard).toBeVisible();
     await productCard.locator('button:has-text("Thêm giỏ")').click();
@@ -85,7 +85,7 @@ test.describe("Trang Đăng nhập", () => {
     await page
       .getByPlaceholder("you@example.com")
       .fill("22110401@student.hcmute.edu.vn");
-    await page.getByPlaceholder("••••••••").fill("Hongphuc22@");
+    await page.getByPlaceholder("••••••••").fill("1234567");
 
     // Nhấp vào nút "Đăng nhập"
     await page.getByRole("button", { name: "Đăng nhập" }).first().click();
@@ -98,7 +98,7 @@ test.describe("Trang Đăng nhập", () => {
       await dialog.accept();
     });
 
-    const productName = 'Quần dài dệt chéo Loose Fit'; 
+    const productName = 'Miss Dior'; 
     const productCard = page.locator('.group.bg-white', { hasText: productName });
     await expect(productCard).toBeVisible();
     const addToFavoritesButton = productCard.getByRole('button', { name: 'Thêm vào yêu thích' });

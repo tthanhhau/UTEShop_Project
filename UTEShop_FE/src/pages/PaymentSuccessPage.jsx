@@ -81,7 +81,7 @@ const PaymentSuccessPage = () => {
             // Chuyển đến trang orders sau 1 giây
             setTimeout(() => {
                 console.log('🚀 Navigating to /orders now');
-                navigate('/orders');
+                navigate('/');
             }, 1000);
 
         } catch (error) {

@@ -1,5 +1,7 @@
+// elasticsearchService.js
 import { Client } from '@elastic/elasticsearch';
 import dotenv from 'dotenv';
+
 
 dotenv.config();
 
@@ -8,7 +10,7 @@ class ElasticsearchService {
         this.client = new Client({
             node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200',
         });
-        this.indexName = process.env.ELASTICSEARCH_INDEX_PRODUCTS || 'uteshop_products';
+        this.indexName = process.env.ELASTICSEARCH_INDEX_PRODUCTS || 'uteshop_products2';
     }
 
     // Kiểm tra kết nối
@@ -23,7 +25,7 @@ class ElasticsearchService {
         }
     }
 
-    // Tạo index với mapping
+    // Tạo index với mapping cải tiến
     async createIndex() {
         try {
             const exists = await this.client.indices.exists({ index: this.indexName });
@@ -57,6 +59,20 @@ class ElasticsearchService {
                                     type: 'custom',
                                     tokenizer: 'standard',
                                     filter: ['lowercase', 'vn_ascii_folding']
+                                },
+                                // Thêm analyzer ngram cho tìm kiếm tiền tố
+                                ngram_analyzer: {
+                                    type: 'custom',
+                                    tokenizer: 'standard',
+                                    filter: ['lowercase', 'vn_ascii_folding'],
+                                    char_filter: ['ngram_filter']
+                                }
+                            },
+                            char_filter: {
+                                ngram_filter: {
+                                    type: 'ngram',
+                                    min_gram: 1,
+                                    max_gram: 3
                                 }
                             }
                         }
@@ -69,7 +85,12 @@ class ElasticsearchService {
                                 search_analyzer: 'vn_text_search',
                                 fields: {
                                     keyword: { type: 'keyword' },
-                                    suggest: { type: 'completion' }
+                                    suggest: { type: 'completion' },
+                                    // Thêm field ngram để hỗ trợ tìm kiếm tiền tố
+                                    ngram: {
+                                        type: 'text',
+                                        analyzer: 'ngram_analyzer'
+                                    }
                                 }
                             },
                             description: {
@@ -238,7 +259,7 @@ class ElasticsearchService {
         }
     }
 
-    // Tìm kiếm sản phẩm
+    // Tìm kiếm sản phẩm - CẢI TIẾN
     async searchProducts({
         query = '',
         category = '',
@@ -256,17 +277,43 @@ class ElasticsearchService {
             const must = [];
             const filter = [];
 
-            // Full-text search với fuzzy matching
+            // Xử lý query tìm kiếm - CẢI TIẾN
             if (query) {
-                must.push({
-                    multi_match: {
-                        query,
-                        fields: ['name^5'],
-                        type: 'best_fields',
-                        fuzziness: 'AUTO',
-                        operator: 'or'
-                    }
-                });
+                // Nếu query chỉ có 1 ký tự, sử dụng wildcard search
+                if (query.length === 1) {
+                    must.push({
+                        bool: {
+                            should: [
+                                {
+                                    wildcard: {
+                                        name: {
+                                            value: `*${query}*`,
+                                            boost: 1.0
+                                        }
+                                    }
+                                },
+                                {
+                                    term: {
+                                        'name.ngram': query.toLowerCase()
+                                    }
+                                }
+                            ],
+                            minimum_should_match: 1
+                        }
+                    });
+                } else {
+                    // Query dài hơn 1 ký tự, sử dụng query_string để có flexibility cao hơn
+                    must.push({
+                        query_string: {
+                            query: query,
+                            fields: ['name^3', 'name.ngram^2', 'description'],
+                            type: 'best_fields',
+                            fuzziness: query.length > 2 ? 'AUTO' : 0,
+                            operator: 'or',
+                            minimum_should_match: '75%'
+                        }
+                    });
+                }
             } else {
                 must.push({ match_all: {} });
             }
@@ -377,30 +424,49 @@ class ElasticsearchService {
         }
     }
 
-    // Gợi ý tìm kiếm (autocomplete)
-    async suggest(query, limit = 5) {
+    // Gợi ý tìm kiếm (autocomplete) - CẢI TIẾN CHO TÍNH NĂNG AUTO-TIME
+    async suggest(query, limit = 10) {
         try {
+            // Cho phép query từ 1 ký tự trở lên
+            if (!query || query.length < 1) {
+                return [];
+            }
+
+            // Sử dụng search thay vì suggest để có kết quả tốt hơn với ký tự ngắn
             const result = await this.client.search({
                 index: this.indexName,
                 body: {
-                    suggest: {
-                        name_suggest: {
-                            prefix: query,
-                            completion: {
-                                field: 'name.suggest',
-                                fuzzy: { fuzziness: 1 }
-                            }
+                    query: {
+                        bool: {
+                            should: [
+                                // Tìm kiếm chính xác hoặc fuzzy
+                                {
+                                    query_string: {
+                                        query: `*${query}*`,
+                                        fields: ['name^3', 'name.ngram^2'],
+                                        fuzziness: query.length <= 2 ? 1 : 'AUTO',
+                                        operator: 'or',
+                                        minimum_should_match: '1'
+                                    }
+                                }
+                            ]
                         }
                     },
-                    _source: ['name', 'price', 'discountedPrice', 'images'],
-                    size: 0
+                    // Lấy thông tin cơ bản của sản phẩm
+                    _source: ['name', 'price', 'discountedPrice', 'images', 'category', 'brand'],
+                    size: limit,
+                    // Sắp xếp theo độ liên quan
+                    sort: [
+                        { _score: 'desc' },
+                        { soldCount: 'desc' }
+                    ]
                 }
             });
 
-            const options = result.suggest?.name_suggest?.[0]?.options || [];
-            return options.slice(0, limit).map(opt => ({
-                _id: opt._id,
-                ...opt._source
+            return result.hits.hits.map(hit => ({
+                _id: hit._id,
+                ...hit._source,
+                _score: hit._score
             }));
         } catch (error) {
             console.error('❌ Lỗi gợi ý:', error.message);
@@ -420,4 +486,3 @@ class ElasticsearchService {
 }
 
 export default new ElasticsearchService();
-
