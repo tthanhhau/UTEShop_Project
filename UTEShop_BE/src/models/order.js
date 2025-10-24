@@ -12,6 +12,8 @@ const statusToNumberMap = {
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    customerName: { type: String, required: true },
+    customerPhone: { type: String, required: true },
     items: [
       {
         product: {
@@ -24,6 +26,7 @@ const orderSchema = new mongoose.Schema(
         discountPercentage: { type: Number, default: 0 }, // % giảm giá tại thời điểm đặt hàng
         discountedPrice: { type: Number, required: true }, // Giá đã giảm tại thời điểm đặt hàng
         price: { type: Number, required: true }, // Giá cuối cùng (đã giảm) - để tương thích với code cũ
+        //price: { type: Number, required: true }, // Giá cuối cùng (đã giảm) để tương thích với code cũ
       },
     ],
     totalPrice: { type: Number, required: true },
