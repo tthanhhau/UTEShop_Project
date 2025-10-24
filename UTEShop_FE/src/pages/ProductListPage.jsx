@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "../api/axiosConfig";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
+import SearchAutocomplete from '../components/SearchAutocomplete';
 
 export default function ProductListPage() {
     const [products, setProducts] = useState([]);
@@ -55,32 +56,83 @@ export default function ProductListPage() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Xử lý khi chọn sản phẩm từ autocomplete
+    const handleProductSelect = (product) => {
+        // Điều hướng đến trang chi tiết sản phẩm
+        navigate(`/product/${product._id}`);
+    };
+
     useEffect(() => {
         const fetchProducts = async () => {
             try {
                 setLoading(true);
                 setError(null);
 
-                const params = new URLSearchParams({
-                    page,
-                    limit: '12',
-                    sort,
-                    ...(search && { search }),
-                    ...(category && { category }),
-                    ...(brand && { brand }),
-                    ...(minPrice && { minPrice }),
-                    ...(maxPrice && { maxPrice }),
-                    ...(minRating && { minRating })
-                });
+                // Kiểm tra nếu có search query, sử dụng Elasticsearch
+                if (search) {
+                    try {
+                        const params = new URLSearchParams({
+                            q: search,
+                            page,
+                            limit: '12',
+                            sort,
+                            ...(category && { category }),
+                            ...(brand && { brand }),
+                            ...(minPrice && { minPrice }),
+                            ...(maxPrice && { maxPrice }),
+                            ...(minRating && { minRating })
+                        });
 
-                const res = await axios.get(`/products?${params}`);
-                setProducts(res.data.items || []);
-                setPagination({
-                    page: res.data.page,
-                    totalPages: res.data.totalPages,
-                    total: res.data.total,
-                    limit: res.data.limit
-                });
+                        const res = await axios.get(`/elasticsearch/search?${params}`);
+                        setProducts(res.data.data || []);
+                        setPagination(res.data.pagination || {});
+                    } catch (elasticsearchError) {
+                        console.log("Elasticsearch error, falling back to regular API:", elasticsearchError);
+                        // Fallback to regular API if Elasticsearch fails
+                        const params = new URLSearchParams({
+                            page,
+                            limit: '12',
+                            sort,
+                            ...(search && { search }),
+                            ...(category && { category }),
+                            ...(brand && { brand }),
+                            ...(minPrice && { minPrice }),
+                            ...(maxPrice && { maxPrice }),
+                            ...(minRating && { minRating })
+                        });
+
+                        const res = await axios.get(`/products?${params}`);
+                        setProducts(res.data.items || []);
+                        setPagination({
+                            page: res.data.page,
+                            totalPages: res.data.totalPages,
+                            total: res.data.total,
+                            limit: res.data.limit
+                        });
+                    }
+                } else {
+                    // Sử dụng API thông thường khi không có search
+                    const params = new URLSearchParams({
+                        page,
+                        limit: '12',
+                        sort,
+                        ...(search && { search }),
+                        ...(category && { category }),
+                        ...(brand && { brand }),
+                        ...(minPrice && { minPrice }),
+                        ...(maxPrice && { maxPrice }),
+                        ...(minRating && { minRating })
+                    });
+
+                    const res = await axios.get(`/products?${params}`);
+                    setProducts(res.data.items || []);
+                    setPagination({
+                        page: res.data.page,
+                        totalPages: res.data.totalPages,
+                        total: res.data.total,
+                        limit: res.data.limit
+                    });
+                }
             } catch (err) {
                 console.error("Lỗi khi lấy sản phẩm:", err);
                 setError("Không thể tải danh sách sản phẩm");
@@ -179,22 +231,14 @@ export default function ProductListPage() {
                 <h1 className="text-3xl font-bold text-gray-800 mb-4">Tất cả sản phẩm</h1>
 
                 {/* Search and Filter Bar */}
-
                 <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                    {/*
+                    {/* SearchAutocomplete Component - THÊM VÀO ĐÂY */}
                     <div className="relative flex-1 max-w-md">
-                        <input
-                            type="text"
+                        <SearchAutocomplete
+                            onProductSelect={handleProductSelect}
                             placeholder="Tìm kiếm sản phẩm..."
-                            value={search}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
-                        <svg className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
                     </div>
-                    */}
 
                     {/* Category Filter */}
                     <select
@@ -486,4 +530,3 @@ export default function ProductListPage() {
         </div>
     );
 }
-
