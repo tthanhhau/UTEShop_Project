@@ -17,6 +17,9 @@ class OrderController {
       paymentMethod = "COD",
       codDetails,
       totalPrice: providedTotalPrice,
+      customerName,
+      phoneNumber, // Accept phoneNumber from frontend
+      customerPhone, // Also accept customerPhone for backward compatibility
       momoOrderId, // Cho thanh toán MoMo
       momoRequestId, // requestId từ MoMo để đối soát giao dịch
     } = req.body;
@@ -45,6 +48,23 @@ class OrderController {
       return res.status(400).json({
         message: "Shipping address is required",
         code: "NO_ADDRESS",
+      });
+    }
+
+    // Validate customer name
+    if (!customerName || !customerName.trim()) {
+      return res.status(400).json({
+        message: "Customer name is required",
+        code: "NO_CUSTOMER_NAME",
+      });
+    }
+
+    // Validate customer phone - accept both phoneNumber and customerPhone fields
+    const finalCustomerPhone = phoneNumber || customerPhone;
+    if (!finalCustomerPhone || !finalCustomerPhone.trim()) {
+      return res.status(400).json({
+        message: "Customer phone is required",
+        code: "NO_CUSTOMER_PHONE",
       });
     }
 
@@ -117,6 +137,8 @@ class OrderController {
     // Create order
     const order = new Order({
       user: userId,
+      customerName: customerName.trim(),
+      customerPhone: finalCustomerPhone.trim(),
       items: orderItems,
       totalPrice,
       shippingAddress: shippingAddress.trim(),
@@ -138,7 +160,7 @@ class OrderController {
 
     // Save order
     await order.save();
-    
+
     // Schedule job with Agenda (if available)
     try {
       const agenda = req.app.locals.agenda;
@@ -151,12 +173,12 @@ class OrderController {
     } catch (agendaError) {
       console.warn("⚠️ Agenda scheduling failed (non-critical):", agendaError.message);
     }
-    
+
     console.log("✅ ORDER - Order saved successfully:", order._id);
 
     // Remove ordered items from user's cart
     const notificationMessage = `Đơn hàng #${order._id} của bạn đã được tạo thành công!`;
-    
+
     // 1. Lưu thông báo vào database
     const newNotification = new Notification({
       user: userId,
@@ -260,10 +282,10 @@ class OrderController {
 
   // Get all orders for admin
   getAllOrdersAdmin = asyncHandler(async (req, res) => {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
+    const {
+      page = 1,
+      limit = 10,
+      status,
       paymentStatus,
       paymentMethod,
       sortBy = 'createdAt',
@@ -410,7 +432,7 @@ class OrderController {
     try {
       const io = req.app.locals.io;
       const sendNotificationToUser = req.app.locals.sendNotificationToUser;
-      
+
       if (io && sendNotificationToUser && status) {
         sendNotificationToUser(io, order.user, 'order_status_update', {
           orderId: order._id,
