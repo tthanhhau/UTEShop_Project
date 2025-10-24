@@ -28,30 +28,94 @@ export const getProducts = asyncHandler(async (req, res) => {
     if (category) filter.category = category;
     if (brand) filter.brand = brand;
 
+    // Check if we need to sort by price (which requires aggregation)
+    const isPriceSort = sort === 'price-asc' || sort === 'price-desc';
+
     // Sort options
     const sortMap = {
         newest: { createdAt: -1 },
         'best-selling': { soldCount: -1 },
         'most-viewed': { viewCount: -1 },
         'top-discount': { discountPercentage: -1 },
-        'price-asc': { price: 1 },
-        'price-desc': { price: -1 },
         'name-asc': { name: 1 },
         'name-desc': { name: -1 }
     };
 
     const sortOption = sortMap[sort] || sortMap.newest;
 
-    const [products, total] = await Promise.all([
-        Product.find(filter)
-            .populate('category', 'name')
-            .populate('brand', 'name')
-            .sort(sortOption)
-            .skip((pageNum - 1) * pageSize)
-            .limit(pageSize)
-            .lean(),
-        Product.countDocuments(filter)
-    ]);
+    let products, total;
+
+    if (isPriceSort) {
+        // Use aggregation pipeline for price sorting to calculate final price
+        const pipeline = [
+            { $match: filter },
+            {
+                $addFields: {
+                    finalPrice: {
+                        $multiply: [
+                            "$price",
+                            { $subtract: [1, { $divide: ["$discountPercentage", 100] }] }
+                        ]
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "category"
+                }
+            },
+            {
+                $lookup: {
+                    from: "brands",
+                    localField: "brand",
+                    foreignField: "_id",
+                    as: "brand"
+                }
+            },
+            {
+                $addFields: {
+                    category: { $arrayElemAt: ["$category", 0] },
+                    brand: { $arrayElemAt: ["$brand", 0] }
+                }
+            },
+            {
+                $sort: sort === 'price-asc' ? { finalPrice: 1 } : { finalPrice: -1 }
+            }
+        ];
+
+        const [aggregationResult, countResult] = await Promise.all([
+            Product.aggregate([
+                ...pipeline,
+                { $skip: (pageNum - 1) * pageSize },
+                { $limit: pageSize }
+            ]),
+            Product.aggregate([
+                { $match: filter },
+                { $count: "total" }
+            ])
+        ]);
+
+        products = aggregationResult;
+        total = countResult[0]?.total || 0;
+    } else {
+        // Regular query for non-price sorting
+        const [productsResult, totalResult] = await Promise.all([
+            Product.find(filter)
+                .populate('category', 'name')
+                .populate('brand', 'name')
+                .sort(sortOption)
+                .skip((pageNum - 1) * pageSize)
+                .limit(pageSize)
+                .lean(),
+            Product.countDocuments(filter)
+        ]);
+
+        products = productsResult;
+        total = totalResult;
+    }
 
     // Tính giá sau giảm cho mỗi sản phẩm
     const productsWithDiscount = products.map(product => ({
