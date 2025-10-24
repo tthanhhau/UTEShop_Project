@@ -277,7 +277,9 @@ export class AnalyticsService {
     };
   }
 
+  // 🧩 Lấy top sản phẩm bán chạy theo soldCount (và tính doanh thu)
   async getTopProducts(limit: number = 10) {
+    // Lấy sản phẩm theo soldCount
     const topProducts = await this.productModel
       .find({ soldCount: { $gt: 0 } })
       .populate('category', 'name')
@@ -285,49 +287,49 @@ export class AnalyticsService {
       .sort({ soldCount: -1 })
       .limit(limit);
 
-    const productsWithRevenue = await Promise.all(
-      topProducts.map(async (product: any) => {
-        const revenueResult = await this.orderModel.aggregate([
-          { $match: { status: 'delivered' } },
-          { $unwind: '$items' },
-          { $match: { 'items.product': product._id } },
-          {
-            $group: {
-              _id: '$items.product',
-              totalRevenue: {
-                $sum: { $multiply: ['$items.price', '$items.quantity'] },
-              },
-              deliveredQuantity: { $sum: '$items.quantity' },
-            },
-          },
-        ]);
+    console.log(
+      '🔍 DEBUG - Top products by soldCount:',
+      topProducts.slice(0, 5).map((p) => ({
+        name: p.name,
+        soldCount: p.soldCount,
+        stock: p.stock,
+      })),
+    );
 
-        const revenue = revenueResult[0]?.totalRevenue || 0;
-        const deliveredQuantity = revenueResult[0]?.deliveredQuantity || 0;
+    // Tính doanh thu = soldCount * (price sau khi giảm)
+    const productsWithRevenue = topProducts.map((product: any) => {
+      const discountPercent = product.discountPercentage || 0;
+      const discountedPrice =
+        product.price - (product.price * discountPercent) / 100;
 
-        // Đảm bảo price và discountPercentage có giá trị hợp lệ
-        const originalPrice = product.price || 0;
-        const discountPercent = product.discountPercentage || 0;
-        const discountedPrice = originalPrice - (originalPrice * discountPercent / 100);
+      const revenue = (product.soldCount || 0) * discountedPrice;
 
-        return {
-          _id: product._id,
-          name: product.name,
-          originalPrice: originalPrice,
-          discountedPrice: Math.round(discountedPrice),
-          price: Math.round(discountedPrice),
-          soldCount: product.soldCount,
-          sold: product.soldCount,
-          deliveredQuantity,
-          revenue,
-          category: product.category?.name || 'Không có danh mục',
-          brand: product.brand?.name || 'Không có thương hiệu',
-          images: product.images,
-          discountPercentage: discountPercent,
-          stock: product.stock,
-          color: this.getRandomGradient(),
-        };
-      }),
+      return {
+        _id: product._id,
+        name: product.name,
+        originalPrice: product.price,
+        discountedPrice,
+        price: discountedPrice,
+        soldCount: product.soldCount,
+        sold: product.soldCount,
+        deliveredQuantity: product.soldCount, // vì không dùng order nữa
+        revenue,
+        category: product.category?.name || 'Không có danh mục',
+        brand: product.brand?.name || 'Không có thương hiệu',
+        images: product.images,
+        discountPercentage: discountPercent,
+        stock: product.stock,
+        color: this.getRandomGradient(),
+      };
+    });
+
+    console.log(
+      '🔍 DEBUG - Final products with revenue:',
+      productsWithRevenue.slice(0, 3).map((p) => ({
+        name: p.name,
+        soldCount: p.soldCount,
+        revenue: p.revenue,
+      })),
     );
 
     return {
@@ -336,6 +338,9 @@ export class AnalyticsService {
       limit,
     };
   }
+
+
+
 
   private getRandomGradient(): string {
     const gradients = [
