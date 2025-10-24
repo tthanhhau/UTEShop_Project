@@ -22,6 +22,7 @@ const CheckoutPage = () => {
     const [customerName, setCustomerName] = useState('');
     const [shippingAddress, setShippingAddress] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
+    const [phoneError, setPhoneError] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('MOMO');
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState('');
@@ -109,6 +110,46 @@ const CheckoutPage = () => {
         }
     }, [user, isInitialized]);
 
+    // Validate số điện thoại
+    const validatePhoneNumber = (phone) => {
+        // Loại bỏ tất cả ký tự không phải số
+        const cleanPhone = phone.replace(/\D/g, '');
+
+        // Kiểm tra độ dài
+        if (cleanPhone.length === 0) {
+            return { isValid: false, message: 'Vui lòng nhập số điện thoại' };
+        }
+
+        if (cleanPhone.length < 10) {
+            return { isValid: false, message: 'Số điện thoại phải có ít nhất 10 số' };
+        }
+
+        if (cleanPhone.length > 10) {
+            return { isValid: false, message: 'Số điện thoại không được quá 10 số' };
+        }
+
+        // Kiểm tra số điện thoại Việt Nam (bắt đầu bằng 0)
+        if (!cleanPhone.startsWith('0')) {
+            return { isValid: false, message: 'Số điện thoại phải bắt đầu bằng số 0' };
+        }
+
+        return { isValid: true, message: '' };
+    };
+
+    // Handle phone number change
+    const handlePhoneNumberChange = (e) => {
+        const value = e.target.value;
+
+        // Chỉ cho phép nhập số
+        const numericValue = value.replace(/\D/g, '');
+
+        setPhoneNumber(numericValue);
+
+        // Validate và hiển thị lỗi
+        const validation = validatePhoneNumber(numericValue);
+        setPhoneError(validation.message);
+    };
+
     // Tính tổng giá
     const calculateTotalPrice = () => {
         if (isFromCart && cartItems.length > 0) {
@@ -153,8 +194,9 @@ const CheckoutPage = () => {
         }
 
         // Kiểm tra số điện thoại
-        if (!phoneNumber.trim()) {
-            alert('Vui lòng nhập số điện thoại');
+        const phoneValidation = validatePhoneNumber(phoneNumber);
+        if (!phoneValidation.isValid) {
+            setPhoneError(phoneValidation.message);
             return;
         }
 
@@ -385,14 +427,15 @@ const CheckoutPage = () => {
                             <input
                                 type="tel"
                                 value={phoneNumber}
-                                onChange={(e) => {
-                                    console.log('Phone number changed:', e.target.value);
-                                    setPhoneNumber(e.target.value);
-                                }}
-                                placeholder="Nhập số điện thoại"
+                                onChange={handlePhoneNumberChange}
+                                placeholder="Nhập số điện thoại (VD: 0123456789)"
                                 required
-                                className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 ${phoneError
+                                        ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                                        : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                    }`}
                             />
+                            {phoneError && <p className="mt-1 text-sm text-red-600">{phoneError}</p>}
                         </div>
 
                         {/* Phương thức thanh toán */}
@@ -421,7 +464,7 @@ const CheckoutPage = () => {
                                         : `Thanh toán cho sản phẩm: ${productDetails.name}`
                                     }
                                     onError={handleMoMoPaymentError}
-                                    disabled={isProcessingPayment || !customerName.trim() || !shippingAddress.trim() || !phoneNumber.trim()}
+                                    disabled={isProcessingPayment || !customerName.trim() || !shippingAddress.trim() || !phoneNumber.trim() || phoneError}
                                     productDetails={productDetails}
                                     cartItems={cartItems}
                                     isFromCart={isFromCart}

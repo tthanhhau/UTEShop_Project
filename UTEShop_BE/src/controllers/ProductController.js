@@ -66,13 +66,14 @@ export const getProducts = async (req, res) => {
     try {
         const { page = 1, limit = 12, sort = "newest", category, search, brand, minPrice, maxPrice, minRating } = req.query;
 
+        // Check if we need to sort by price (which requires aggregation)
+        const isPriceSort = sort === 'price-asc' || sort === 'price-desc';
+
         const sortMap = {
             newest: { createdAt: -1 },
             "best-selling": { soldCount: -1 },
             "most-viewed": { viewCount: -1 },
             "top-discount": { discountPercentage: -1 },
-            "price-asc": { price: 1 },
-            "price-desc": { price: -1 },
             "alpha-asc": { name: 1 },
             "alpha-desc": { name: -1 },
         };
@@ -190,18 +191,81 @@ export const getProducts = async (req, res) => {
         const pageNum = parseInt(page);
         const pageSize = parseInt(limit);
 
-        const isAlphaSort = sort === 'alpha-asc' || sort === 'alpha-desc';
-        const [items, total] = await Promise.all([
-            Product.find(filter)
-                .populate('category', 'name')
-                .populate('brand', 'name logo')
-                .collation(isAlphaSort ? { locale: 'vi', strength: 1 } : undefined)
-                .sort(sortOption)
-                .skip((pageNum - 1) * pageSize)
-                .limit(pageSize)
-                .lean(),
-            Product.countDocuments(filter),
-        ]);
+        let items, total;
+
+        if (isPriceSort) {
+            // Use aggregation pipeline for price sorting to calculate final price
+            const pipeline = [
+                { $match: filter },
+                {
+                    $addFields: {
+                        finalPrice: {
+                            $multiply: [
+                                "$price",
+                                { $subtract: [1, { $divide: ["$discountPercentage", 100] }] }
+                            ]
+                        }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "categories",
+                        localField: "category",
+                        foreignField: "_id",
+                        as: "category"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "brands",
+                        localField: "brand",
+                        foreignField: "_id",
+                        as: "brand"
+                    }
+                },
+                {
+                    $addFields: {
+                        category: { $arrayElemAt: ["$category", 0] },
+                        brand: { $arrayElemAt: ["$brand", 0] }
+                    }
+                },
+                {
+                    $sort: sort === 'price-asc' ? { finalPrice: 1 } : { finalPrice: -1 }
+                }
+            ];
+
+            const [aggregationResult, countResult] = await Promise.all([
+                Product.aggregate([
+                    ...pipeline,
+                    { $skip: (pageNum - 1) * pageSize },
+                    { $limit: pageSize }
+                ]),
+                Product.aggregate([
+                    { $match: filter },
+                    { $count: "total" }
+                ])
+            ]);
+
+            items = aggregationResult;
+            total = countResult[0]?.total || 0;
+        } else {
+            // Regular query for non-price sorting
+            const isAlphaSort = sort === 'alpha-asc' || sort === 'alpha-desc';
+            const [itemsResult, totalResult] = await Promise.all([
+                Product.find(filter)
+                    .populate('category', 'name')
+                    .populate('brand', 'name logo')
+                    .collation(isAlphaSort ? { locale: 'vi', strength: 1 } : undefined)
+                    .sort(sortOption)
+                    .skip((pageNum - 1) * pageSize)
+                    .limit(pageSize)
+                    .lean(),
+                Product.countDocuments(filter),
+            ]);
+
+            items = itemsResult;
+            total = totalResult;
+        }
 
         res.json({
             page: pageNum,
