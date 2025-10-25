@@ -131,6 +131,7 @@ class ElasticsearchService {
                             viewCount: { type: 'integer' },
                             averageRating: { type: 'float' },
                             reviewCount: { type: 'integer' },
+                            isActive: { type: 'boolean' },
                             createdAt: { type: 'date' },
                             updatedAt: { type: 'date' }
                         }
@@ -168,6 +169,7 @@ class ElasticsearchService {
                 viewCount: product.viewCount || 0,
                 averageRating: product.averageRating || 0,
                 reviewCount: product.reviewCount || 0,
+                isActive: product.isActive !== undefined ? product.isActive : true,
                 createdAt: product.createdAt,
                 updatedAt: product.updatedAt
             };
@@ -211,6 +213,7 @@ class ElasticsearchService {
                     viewCount: product.viewCount || 0,
                     averageRating: product.averageRating || 0,
                     reviewCount: product.reviewCount || 0,
+                    isActive: product.isActive !== undefined ? product.isActive : true,
                     createdAt: product.createdAt,
                     updatedAt: product.updatedAt
                 }
@@ -340,6 +343,11 @@ class ElasticsearchService {
                         lte: maxPrice
                     }
                 }
+            });
+
+            // Chỉ tìm kiếm sản phẩm đang active
+            filter.push({
+                term: { isActive: true }
             });
 
             // Build sort

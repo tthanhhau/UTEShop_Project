@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import MultiImageUpload from '../../../components/MultiImageUpload';
+import { FaEdit, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function ProductsManagement() {
   const [products, setProducts] = useState([]);
@@ -131,6 +132,16 @@ export default function ProductsManagement() {
       } catch (error) {
         console.error('Error deleting product:', error);
       }
+    }
+  };
+
+  // Handle toggle product visibility
+  const handleToggleVisibility = async (id: string) => {
+    try {
+      await axios.patch(`/admin/Products/${id}/toggle-visibility`);
+      fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
+    } catch (error) {
+      console.error('Error toggling product visibility:', error);
     }
   };
 
@@ -296,6 +307,9 @@ export default function ProductsManagement() {
                   Kho
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Hành động
                 </th>
               </tr>
@@ -322,16 +336,25 @@ export default function ProductsManagement() {
                   <td className="px-6 py-4">{product.stock}</td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => handleEdit(product)}
-                      className="text-blue-600 hover:text-blue-800 mr-3"
+                      onClick={() => handleToggleVisibility(product._id)}
+                      className={`p-2 rounded-full ${product.isActive ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 hover:bg-gray-100'}`}
+                      title={product.isActive ? 'Click để ẩn sản phẩm' : 'Click để hiển thị sản phẩm'}
                     >
-                      Sửa
+                      {product.isActive ? <FaEye /> : <FaEyeSlash />}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleEdit(product)}
+                      className="text-purple-600 hover:text-purple-900 mr-4"
+                    >
+                      <FaEdit className="inline" />
                     </button>
                     <button
                       onClick={() => handleDelete(product._id)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-red-600 hover:text-red-900"
                     >
-                      Xóa
+                      <FaTrash className="inline" />
                     </button>
                   </td>
                 </tr>

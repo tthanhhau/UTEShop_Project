@@ -8,25 +8,25 @@ import elasticsearchService from "../services/elasticsearchService.js";
 export const getHomeBlocks = async (req, res) => {
     try {
         const [newest, bestSelling, mostViewed, topDiscount, totalCounts] = await Promise.all([
-            Product.find()
+            Product.find({ isActive: true })
                 .populate('category', 'name')
                 .populate('brand', 'name logo')
                 .sort({ createdAt: -1 })
                 .limit(8)
                 .lean(),
-            Product.find()
+            Product.find({ isActive: true })
                 .populate('category', 'name')
                 .populate('brand', 'name logo')
                 .sort({ soldCount: -1 })
                 .limit(6)
                 .lean(),
-            Product.find()
+            Product.find({ isActive: true })
                 .populate('category', 'name')
                 .populate('brand', 'name logo')
                 .sort({ viewCount: -1 })
                 .limit(8)
                 .lean(),
-            Product.find()
+            Product.find({ isActive: true })
                 .populate('category', 'name')
                 .populate('brand', 'name logo')
                 .sort({ discountPercentage: -1 })
@@ -34,10 +34,10 @@ export const getHomeBlocks = async (req, res) => {
                 .lean(),
             // Đếm tổng số sản phẩm cho mỗi category
             Promise.all([
-                Product.countDocuments().lean(), // total newest
-                Product.countDocuments({ soldCount: { $gt: 0 } }).lean(), // total bestselling
-                Product.countDocuments({ viewCount: { $gt: 0 } }).lean(), // total mostviewed
-                Product.countDocuments({ discountPercentage: { $gt: 0 } }).lean() // total discount
+                Product.countDocuments({ isActive: true }).lean(), // total newest
+                Product.countDocuments({ isActive: true, soldCount: { $gt: 0 } }).lean(), // total bestselling
+                Product.countDocuments({ isActive: true, viewCount: { $gt: 0 } }).lean(), // total mostviewed
+                Product.countDocuments({ isActive: true, discountPercentage: { $gt: 0 } }).lean() // total discount
             ])
         ]);
 
@@ -81,7 +81,7 @@ export const getProducts = async (req, res) => {
         const sortOption = sortMap[sort] || sortMap["newest"];
 
         // Build filter
-        const filter = {};
+        const filter = { isActive: true };
         // Convert string to ObjectId for category and brand
         if (category) {
             filter.category = mongoose.Types.ObjectId.isValid(category)

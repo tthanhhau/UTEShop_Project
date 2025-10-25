@@ -205,7 +205,9 @@ export const createProduct = asyncHandler(async (req, res) => {
         images: images || [],
         category,
         brand,
-        discountPercentage
+        discountPercentage,
+        isActive: true,  // Mặc định là active khi tạo mới
+        isVisible: true  // Mặc định là visible khi tạo mới
     });
 
     const populatedProduct = await Product.findById(product._id)
@@ -346,7 +348,7 @@ export const toggleDiscount = asyncHandler(async (req, res) => {
     });
 });
 
-// Toggle visibility status (có thể thêm field isVisible vào schema sau)
+// Toggle visibility status
 export const toggleVisibility = asyncHandler(async (req, res) => {
     const product = await Product.findById(req.params.id);
 
@@ -357,16 +359,20 @@ export const toggleVisibility = asyncHandler(async (req, res) => {
         });
     }
 
-    // Tạm thời dùng stock > 0 để đại diện cho visibility
+    // Toggle visibility status - đồng bộ cả hai trường isActive và isVisible
+    const newVisibilityStatus = !product.isVisible;
     const updatedProduct = await Product.findByIdAndUpdate(
         req.params.id,
-        { stock: product.stock > 0 ? 0 : 10 }, // Toggle stock between 0 and 10
+        {
+            isVisible: newVisibilityStatus,
+            isActive: newVisibilityStatus  // Đồng bộ hóa với isActive
+        },
         { new: true }
     ).populate('category', 'name').populate('brand', 'name');
 
     res.status(200).json({
         success: true,
         data: updatedProduct,
-        message: `Đã ${updatedProduct.stock > 0 ? 'hiển thị' : 'ẩn'} sản phẩm`
+        message: `Đã ${updatedProduct.isVisible ? 'hiển thị' : 'ẩn'} sản phẩm`
     });
 });
