@@ -4,9 +4,11 @@ import Cart from "../models/cart.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import momoService from "../services/momoServices.js";
 import Notification from "../models/Notification.js";
+import User from "../models/user.js";
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
+    const POINT_TO_VND = 100;
     console.log("🛒 ORDER CREATE - req.user:", req.user);
     console.log("🛒 ORDER CREATE - req.body:", req.body);
     const { agenda, io, sendNotificationToUser } = req.app.locals;
@@ -17,6 +19,9 @@ class OrderController {
       paymentMethod = "COD",
       codDetails,
       totalPrice: providedTotalPrice,
+      voucher,
+      voucherDiscount,
+      usedPointsAmount,
       momoOrderId, // Cho thanh toán MoMo
       momoRequestId, // requestId từ MoMo để đối soát giao dịch
     } = req.body;
@@ -48,8 +53,8 @@ class OrderController {
       });
     }
 
-    // Validate items and calculate total price
-    let totalPrice = 0;
+    // ✅ TÍNH SUBTOTAL TỪ ITEMS
+    let subtotal = 0; // Đổi tên để tránh nhầm lẫn
     const orderItems = await Promise.all(
       items.map(async (item) => {
         const product = await Product.findById(item.product);
@@ -61,12 +66,13 @@ class OrderController {
         }
 
         // Calculate discounted price
-        const discountAmount = (product.price * product.discountPercentage) / 100;
+        const discountAmount =
+          (product.price * product.discountPercentage) / 100;
         const discountedPrice = product.price - discountAmount;
 
-        // Calculate item price with discount and update total
+        // Calculate item price with discount and update subtotal
         const itemPrice = discountedPrice * item.quantity;
-        totalPrice += itemPrice;
+        subtotal += itemPrice; // ← Cộng vào subtotal
 
         // Reduce product stock
         product.stock -= item.quantity;
@@ -76,16 +82,39 @@ class OrderController {
         return {
           product: item.product,
           quantity: item.quantity,
-          originalPrice: product.price, // Giá gốc
-          discountPercentage: product.discountPercentage, // % giảm giá
-          discountedPrice: discountedPrice, // Giá đã giảm
-          price: discountedPrice, // Giá cuối cùng (đã giảm) để tương thích với code cũ
+          originalPrice: product.price,
+          discountPercentage: product.discountPercentage,
+          discountedPrice: discountedPrice,
+          price: discountedPrice,
         };
       })
     );
 
-    console.log("💰 ORDER - Calculated total price:", totalPrice);
-    console.log("💰 ORDER - Provided total price:", providedTotalPrice);
+    console.log("💰 Subtotal from items:", subtotal);
+    console.log("🎟️ Voucher discount:", voucherDiscount);
+    console.log("⭐ Points deduction:", usedPointsAmount);
+
+    const finalTotal = subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
+    console.log("💵 Final total:", finalTotal);
+
+    // ✅ TRỪ ĐIỂM CỦA USER
+    if (usedPointsAmount > 0) {
+      const user = await User.findById(req.user._id);
+      const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
+      
+      if (user.loyaltyPoints.balance < pointsUsed) {
+        return res.status(400).json({
+          message: "Insufficient loyalty points",
+          code: "INSUFFICIENT_POINTS",
+        });
+      }
+      
+      user.loyaltyPoints.balance -= pointsUsed;
+      await user.save();
+      
+      console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
+    }
+
 
     // Xử lý thanh toán online nếu cần
     let onlinePaymentInfo = {};
@@ -94,9 +123,15 @@ class OrderController {
     if (paymentMethod === "MOMO" && momoOrderId) {
       // Kiểm tra trạng thái thanh toán MoMo
       const requestIdForQuery = momoRequestId || momoOrderId;
-      const paymentResult = await momoService.queryTransaction(momoOrderId, requestIdForQuery);
+      const paymentResult = await momoService.queryTransaction(
+        momoOrderId,
+        requestIdForQuery
+      );
 
-      if (!paymentResult.success || String(paymentResult.data.resultCode) !== '0') {
+      if (
+        !paymentResult.success ||
+        String(paymentResult.data.resultCode) !== "0"
+      ) {
         return res.status(400).json({
           message: "Payment verification failed",
           code: "PAYMENT_FAILED",
@@ -106,7 +141,7 @@ class OrderController {
 
       onlinePaymentInfo = {
         transactionId: paymentResult.data.transId,
-        gateway: 'MOMO',
+        gateway: "MOMO",
         paidAt: new Date(),
         amount: paymentResult.data.amount,
       };
@@ -118,7 +153,10 @@ class OrderController {
     const order = new Order({
       user: userId,
       items: orderItems,
-      totalPrice,
+      totalPrice: finalTotal,
+      voucher: voucher || null,
+      voucherDiscount: voucherDiscount || 0,
+      usedPointsAmount: usedPointsAmount || 0,
       shippingAddress: shippingAddress.trim(),
       paymentMethod,
       paymentStatus: initialPaymentStatus,
@@ -129,16 +167,9 @@ class OrderController {
       ...(Object.keys(onlinePaymentInfo).length > 0 && { onlinePaymentInfo }),
     });
 
-    console.log("📝 ORDER - Creating order:", {
-      user: userId,
-      items: orderItems.length,
-      totalPrice,
-      shippingAddress,
-    });
-
     // Save order
     await order.save();
-    
+
     // Schedule job with Agenda (if available)
     try {
       const agenda = req.app.locals.agenda;
@@ -149,14 +180,17 @@ class OrderController {
         console.log(`Job scheduled for order ${order._id} in 1 minute.`);
       }
     } catch (agendaError) {
-      console.warn("⚠️ Agenda scheduling failed (non-critical):", agendaError.message);
+      console.warn(
+        "⚠️ Agenda scheduling failed (non-critical):",
+        agendaError.message
+      );
     }
-    
+
     console.log("✅ ORDER - Order saved successfully:", order._id);
 
     // Remove ordered items from user's cart
     const notificationMessage = `Đơn hàng #${order._id} của bạn đã được tạo thành công!`;
-    
+
     // 1. Lưu thông báo vào database
     const newNotification = new Notification({
       user: userId,
@@ -165,25 +199,30 @@ class OrderController {
     });
     await newNotification.save();
 
-    sendNotificationToUser(io, userId, 'new_notification', newNotification);
+    sendNotificationToUser(io, userId, "new_notification", newNotification);
 
     // Clear user's cart after order creation
     try {
       const cart = await Cart.findOne({ user: userId });
       if (cart && cart.items.length > 0) {
         // Lấy danh sách product IDs đã đặt hàng
-        const orderedProductIds = orderItems.map(item => item.product.toString());
+        const orderedProductIds = orderItems.map((item) =>
+          item.product.toString()
+        );
 
         // Lọc ra những sản phẩm chưa được đặt hàng
         const remainingItems = cart.items.filter(
-          cartItem => !orderedProductIds.includes(cartItem.product.toString())
+          (cartItem) => !orderedProductIds.includes(cartItem.product.toString())
         );
 
         // Cập nhật giỏ hàng với những sản phẩm còn lại
         cart.items = remainingItems;
         await cart.save();
 
-        console.log("🛒 ORDER - Removed ordered items from cart, remaining items:", remainingItems.length);
+        console.log(
+          "🛒 ORDER - Removed ordered items from cart, remaining items:",
+          remainingItems.length
+        );
       }
     } catch (cartError) {
       console.log(
@@ -260,14 +299,14 @@ class OrderController {
 
   // Get all orders for admin
   getAllOrdersAdmin = asyncHandler(async (req, res) => {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
+    const {
+      page = 1,
+      limit = 10,
+      status,
       paymentStatus,
       paymentMethod,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     // Build filter
@@ -278,7 +317,7 @@ class OrderController {
 
     // Build sort
     const sort = {};
-    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
 
     const orders = await Order.find(filter)
       .populate("user", "name email phone")
@@ -296,8 +335,8 @@ class OrderController {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / parseInt(limit)),
         totalItems: total,
-        itemsPerPage: parseInt(limit)
-      }
+        itemsPerPage: parseInt(limit),
+      },
     });
   });
 
@@ -323,20 +362,20 @@ class OrderController {
       cancelledOrders,
       totalRevenue,
       paidOrders,
-      unpaidOrders
+      unpaidOrders,
     ] = await Promise.all([
       Order.countDocuments(dateFilter),
-      Order.countDocuments({ ...dateFilter, status: 'pending' }),
-      Order.countDocuments({ ...dateFilter, status: 'processing' }),
-      Order.countDocuments({ ...dateFilter, status: 'shipped' }),
-      Order.countDocuments({ ...dateFilter, status: 'delivered' }),
-      Order.countDocuments({ ...dateFilter, status: 'cancelled' }),
+      Order.countDocuments({ ...dateFilter, status: "pending" }),
+      Order.countDocuments({ ...dateFilter, status: "processing" }),
+      Order.countDocuments({ ...dateFilter, status: "shipped" }),
+      Order.countDocuments({ ...dateFilter, status: "delivered" }),
+      Order.countDocuments({ ...dateFilter, status: "cancelled" }),
       Order.aggregate([
-        { $match: { ...dateFilter, status: 'delivered' } },
-        { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+        { $match: { ...dateFilter, status: "delivered" } },
+        { $group: { _id: null, total: { $sum: "$totalPrice" } } },
       ]),
-      Order.countDocuments({ ...dateFilter, paymentStatus: 'paid' }),
-      Order.countDocuments({ ...dateFilter, paymentStatus: 'unpaid' })
+      Order.countDocuments({ ...dateFilter, paymentStatus: "paid" }),
+      Order.countDocuments({ ...dateFilter, paymentStatus: "unpaid" }),
     ]);
 
     res.status(200).json({
@@ -348,14 +387,14 @@ class OrderController {
           processing: processingOrders,
           shipped: shippedOrders,
           delivered: deliveredOrders,
-          cancelled: cancelledOrders
+          cancelled: cancelledOrders,
         },
         totalRevenue: totalRevenue[0]?.total || 0,
         paymentStatus: {
           paid: paidOrders,
-          unpaid: unpaidOrders
-        }
-      }
+          unpaid: unpaidOrders,
+        },
+      },
     });
   });
 
@@ -370,13 +409,13 @@ class OrderController {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      order
+      order,
     });
   });
 
@@ -390,7 +429,7 @@ class OrderController {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
       });
     }
 
@@ -410,16 +449,19 @@ class OrderController {
     try {
       const io = req.app.locals.io;
       const sendNotificationToUser = req.app.locals.sendNotificationToUser;
-      
+
       if (io && sendNotificationToUser && status) {
-        sendNotificationToUser(io, order.user, 'order_status_update', {
+        sendNotificationToUser(io, order.user, "order_status_update", {
           orderId: order._id,
           newStatus: status,
-          message: `Đơn hàng #${order._id} của bạn đã được cập nhật sang trạng thái: ${status}`
+          message: `Đơn hàng #${order._id} của bạn đã được cập nhật sang trạng thái: ${status}`,
         });
       }
     } catch (notificationError) {
-      console.warn("⚠️ Notification failed (non-critical):", notificationError.message);
+      console.warn(
+        "⚠️ Notification failed (non-critical):",
+        notificationError.message
+      );
     }
 
     const updatedOrder = await Order.findById(orderId)
@@ -429,7 +471,7 @@ class OrderController {
     res.status(200).json({
       success: true,
       message: "Order updated successfully",
-      order: updatedOrder
+      order: updatedOrder,
     });
   });
 }
