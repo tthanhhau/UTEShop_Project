@@ -19,7 +19,7 @@ router.get("/:id/stats", getProductStats);
 router.get("/:id", async (req, res) => {
     try {
         const Product = (await import("../models/product.js")).default;
-        const product = await Product.findById(req.params.id)
+        const product = await Product.findOne({ _id: req.params.id, isActive: true })
             .populate('category', 'name')
             .populate('brand', 'name logo website country');
         if (!product) return res.status(404).json({ message: "Product not found" });
