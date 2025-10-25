@@ -15,9 +15,24 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, MapPin, Edit, Trash2, Plus, Lock } from "lucide-react";
+import { User, MapPin, Edit, Trash2, Plus, Lock, Award } from "lucide-react";
 import { useEffect } from "react";
 import { updateUserProfile } from "@/features/auth/authSlice";
+const TIER_STYLES = {
+  // Hạng Đồng
+  bronze:
+    "bg-orange-200 text-orange-800 border-orange-300 hover:bg-orange-200/80",
+  // Hạng Bạc
+  silver: "bg-slate-200 text-slate-800 border-slate-300 hover:bg-slate-200/80",
+  // Hạng Vàng
+  gold: "bg-amber-200 text-amber-800 border-amber-300 hover:bg-amber-200/80",
+  // Hạng Bạch Kim
+  platinum:
+    "bg-violet-200 text-violet-800 border-violet-300 hover:bg-violet-200/80",
+  // Mặc định
+  default: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100/80",
+};
+
 function UserProfile() {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState("personal");
@@ -293,31 +308,31 @@ function UserProfile() {
     }
   };
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Header */}
-      <div className="mb-8">
+    <div className="container mx-auto px-4 py-8 max-w-4xl bg-gray-50/30">
+      {/* Header with gradient background */}
+      <div className="mb-8 bg-gradient-to-r from-white via-gray-50 to-white p-6 rounded-lg shadow-sm backdrop-blur-sm">
         <h1
-          className="text-4xl font-bold text-foreground mb-2"
+          className="text-4xl font-bold bg-gradient-to-r from-violet-700 to-indigo-700 bg-clip-text text-transparent mb-2"
           style={{ fontFamily: "var(--font-playfair)" }}
         >
           Trang cá nhân
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-muted-foreground text-lg italic">
           S'habiller est un mode de vie.
         </p>
       </div>
 
       {/* Profile Overview Card */}
-      <Card className="mb-8">
+      <Card className="mb-8 bg-gradient-to-b from-white to-gray-50/50 border border-gray-100 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             {/* === PHẦN AVATAR ĐƠN GIẢN HÓA === */}
-            <div className="relative">
+            <div className="relative group">
               <Avatar
-                className={`h-20 w-20 ${
+                className={`h-24 w-24 ring-2 ring-offset-2 ring-violet-400 transition-all duration-300 ${
                   isUploadingAvatar
                     ? "opacity-50 cursor-not-allowed"
-                    : "cursor-pointer"
+                    : "cursor-pointer hover:ring-indigo-500 hover:scale-105"
                 }`}
                 onClick={handleAvatarClick}
               >
@@ -353,10 +368,20 @@ function UserProfile() {
                 {userInfo?.name}
               </h2>
               <p className="text-muted-foreground">{userInfo?.email}</p>
-              {/* Badge bây giờ sẽ luôn hiển thị */}
-              <Badge variant="secondary" className="mt-2">
-                Premium Member
-              </Badge>
+              <div className="flex items-center gap-3 mt-2">
+                <Badge
+                  className={`${
+                    TIER_STYLES[userInfo?.loyaltyPoints.tier.toLowerCase()] ||
+                    TIER_STYLES.default
+                  } flex items-center gap-1.5`}
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  {userInfo?.loyaltyPoints.tier}
+                </Badge>
+                <span className="text-sm font-medium text-foreground">
+                  {userInfo?.loyaltyPoints.balance} điểm
+                </span>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -368,16 +393,25 @@ function UserProfile() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="personal" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3 p-1 bg-gray-50 rounded-xl">
+          <TabsTrigger
+            value="personal"
+            className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-md transition-all duration-300"
+          >
             <User className="h-4 w-4" />
             Thông Tin Cá Nhân
           </TabsTrigger>
-          <TabsTrigger value="password" className="flex items-center gap-2">
+          <TabsTrigger
+            value="password"
+            className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-md transition-all duration-300"
+          >
             <Lock className="h-4 w-4" />
             Mật Khẩu
           </TabsTrigger>
-          <TabsTrigger value="addresses" className="flex items-center gap-2">
+          <TabsTrigger
+            value="addresses"
+            className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-violet-700 data-[state=active]:shadow-md transition-all duration-300"
+          >
             <MapPin className="h-4 w-4" />
             Địa Chỉ
           </TabsTrigger>
@@ -385,10 +419,12 @@ function UserProfile() {
 
         {/* Personal Info Tab */}
         <TabsContent value="personal">
-          <Card>
-            <CardHeader>
-              <CardTitle>Thông Tin Cá Nhân</CardTitle>
-              <CardDescription>
+          <Card className="border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-b from-white to-gray-50/50">
+            <CardHeader className="bg-gradient-to-r from-gray-50/80 to-white border-b border-gray-100">
+              <CardTitle className="text-xl text-gray-800">
+                Thông Tin Cá Nhân
+              </CardTitle>
+              <CardDescription className="text-gray-600">
                 Thay đổi thông tin cá nhân của bạn
               </CardDescription>
             </CardHeader>
@@ -447,23 +483,30 @@ function UserProfile() {
               <Separator />
               <div className="flex gap-2">
                 <Button
-                  className="bg-primary hover:bg-primary/90"
+                  className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white transition-all duration-300 transform hover:scale-105"
                   disabled={isUpdating}
                   onClick={handleUpdateProfile}
                 >
                   {isUpdating ? "Đang lưu..." : "Lưu Thay Đổi"}
                 </Button>
-                <Button variant="outline">Hủy</Button>
+                <Button
+                  variant="outline"
+                  className="border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-300"
+                >
+                  Hủy
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="password">
-          <Card>
-            <CardHeader>
-              <CardTitle>Đổi Mật Khẩu</CardTitle>
-              <CardDescription>
+          <Card className="border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-b from-white to-gray-50/50">
+            <CardHeader className="bg-gradient-to-r from-gray-50/80 to-white border-b border-gray-100">
+              <CardTitle className="text-xl text-gray-800">
+                Đổi Mật Khẩu
+              </CardTitle>
+              <CardDescription className="text-gray-600">
                 Đảm bảo tài khoản của bạn được bảo mật
               </CardDescription>
             </CardHeader>
@@ -502,8 +545,8 @@ function UserProfile() {
                   />
                 </div>
               </div>
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Yêu Cầu:</h4>
+              <div className="bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+                <h4 className="font-medium mb-2 text-gray-700">Yêu Cầu:</h4>
                 <ul className="text-sm space-y-1">
                   <li
                     className={`flex items-center gap-2 ${
@@ -554,11 +597,16 @@ function UserProfile() {
                 <Button
                   onClick={handleChangePassword}
                   disabled={isUpdatingPassword}
-                  className="bg-primary hover:bg-primary/90"
+                  className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white transition-all duration-300 transform hover:scale-105"
                 >
                   {isUpdatingPassword ? "Đang lưu..." : "Lưu"}
                 </Button>
-                <Button variant="outline">Hủy</Button>
+                <Button
+                  variant="outline"
+                  className="hover:bg-gray-50 transition-all duration-300"
+                >
+                  Hủy
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -566,11 +614,11 @@ function UserProfile() {
 
         {/* Addresses Tab */}
         <TabsContent value="addresses">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-b from-white to-gray-50/50">
+            <CardHeader className="bg-gradient-to-r from-gray-50/80 to-white border-b border-gray-100 flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Địa Chỉ</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-xl text-gray-800">Địa Chỉ</CardTitle>
+                <CardDescription className="text-gray-600">
                   Thay đổi địa chỉ nhận hàng của bạn
                 </CardDescription>
               </div>
@@ -648,7 +696,10 @@ function UserProfile() {
                       <p className="text-muted-foreground mb-4">
                         Bạn chưa có địa chỉ nào được lưu.
                       </p>
-                      <Button onClick={handleEditAddressClick}>
+                      <Button
+                        onClick={handleEditAddressClick}
+                        className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white transition-all duration-300 transform hover:scale-105"
+                      >
                         <Plus className="h-4 w-4 mr-2" />
                         Thêm địa chỉ mới
                       </Button>

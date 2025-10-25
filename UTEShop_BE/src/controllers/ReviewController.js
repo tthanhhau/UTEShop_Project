@@ -130,7 +130,6 @@ export const createReview = async (req, res) => {
     
     // 1. Tìm tất cả voucher REVIEW đang hoạt động
     const allReviewVouchers = await Voucher.find({
-      rewardType: 'REVIEW',
       startDate: { $lte: now },
       endDate: { $gt: now },
       $expr: { $lt: ["$claimsCount", "$maxIssued"] },
@@ -176,12 +175,18 @@ export const createReview = async (req, res) => {
     });
 
     const reviewVouchers = availableVouchers; // Rename để giữ tương thích code bên dưới
+    let loyalPoints = 0;
+
+    if(orderId){
+      const orderUser = await Order.findById(orderId);
+      loyalPoints = orderUser.totalPrice ? Math.floor(orderUser.totalPrice / 10) : 0;
+    }
 
     // 2. Định nghĩa phần thưởng điểm tích lũy
     const pointsReward = {
       type: "POINTS",
-      description: "Nhận 100 điểm tích lũy",
-      value: 100, // Số điểm sẽ nhận
+      description: `Nhận ${loyalPoints || 100} điểm tích lũy cho đánh giá`,
+      value: loyalPoints || 100, // Số điểm sẽ nhận
     };
 
     // 3. Tạo danh sách phần thưởng
