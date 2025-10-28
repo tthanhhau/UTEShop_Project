@@ -9,6 +9,7 @@ import {
   ShoppingBasket,
   Heart,
   Bell,
+  ReceiptJapaneseYen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,12 +27,14 @@ import { useEffect } from "react";
 import { useCartNotifications } from "../../hooks/useCartNotifications";
 import { getCartItemCount } from "../../features/cart/cartSlice";
 import { NotificationBell } from "../NotificationBell";
+import api from "@/api/axiosConfig";
 const Navbar = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const { badgeCount } = useCartNotifications(); // Lấy badge count từ custom hook
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [userP, setUserP] = React.useState(null);
 
   // Lấy số lượng giỏ hàng khi user đăng nhập hoặc giỏ hàng thay đổi
   useEffect(() => {
@@ -50,7 +53,7 @@ const Navbar = () => {
   };
 
   const handleSearchKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSearch(e);
     }
   };
@@ -64,6 +67,7 @@ const Navbar = () => {
   const handleMyOrdersClick = () => navigate("/orders-tracking");
   const handlePurchaseHistoryClick = () => navigate("/purchase-history");
   const handleFavoritesClick = () => navigate("/favorites");
+  const handleVoucherClick = () => navigate("/vouchers");
 
   const handleLogout = () => {
     dispatch(logout());
@@ -134,9 +138,7 @@ const Navbar = () => {
           >
             <ShoppingCart className="h-5 w-5 text-gray-700" />
             {user && badgeCount > 0 && (
-              <span
-                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]"
-              >
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
                 {badgeCount > 99 ? "99+" : badgeCount}
               </span>
             )}
@@ -154,9 +156,7 @@ const Navbar = () => {
             </Button>
           )}
           {/* Notifications Icon */}
-          {user && (
-            <NotificationBell />
-          )}
+          {user && <NotificationBell />}
 
           {/* User / Auth */}
           {user ? (
@@ -168,22 +168,26 @@ const Navbar = () => {
                 >
                   <User className="h-5 w-5 text-gray-700" />
                   <span className="text-gray-700 font-medium hidden sm:inline">
-                    {user.name || user.email.split('@')[0]}
+                    {user.name || user.email.split("@")[0]}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onClick={handleProfileClick}>
                   <User className="mr-2 h-4 w-4" />
-                  <span>My Profile</span>
+                  <span>Trang cá nhân</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleMyOrdersClick}>
                   <ShoppingBasket className="mr-2 h-4 w-4" />
-                  <span>My Orders</span>
+                  <span>Đơn hàng</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleVoucherClick}>
+                  <ReceiptJapaneseYen className="mr-2 h-4 w-4" />
+                  <span>Thẻ giảm giá</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handlePurchaseHistoryClick}>
                   <ShoppingBag className="mr-2 h-4 w-4" />
-                  <span>Purchase History</span>
+                  <span>Lịch sử mua</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -191,7 +195,7 @@ const Navbar = () => {
                   className="text-red-600 focus:text-red-600"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <span>Đăng xuất</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
