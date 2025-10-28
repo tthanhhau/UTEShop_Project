@@ -246,13 +246,7 @@ export default function PointsManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Quản lý Điểm tích lũy</h1>
-        <button
-          onClick={() => openPointsModal()}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200"
-        >
-          <i className="fas fa-plus"></i>
-          <span>Điều chỉnh điểm</span>
-        </button>
+        {/* Đã xoá nút Điều chỉnh điểm */}
       </div>
 
       {/* Stats Cards */}

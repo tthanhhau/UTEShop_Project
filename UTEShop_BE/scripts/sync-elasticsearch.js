@@ -14,7 +14,7 @@ async function syncElasticsearch() {
         console.log('🚀 Bắt đầu đồng bộ Elasticsearch...\n');
 
         // Connect to MongoDB
-        await mongoose.connect(MONGO_URI);
+        await mongoose.connect(MONGO_URI, { family: 4 });
         console.log('✅ Đã kết nối MongoDB');
 
         // Check Elasticsearch connection
