@@ -15,7 +15,11 @@ const MoMoPaymentForm = ({
     quantity,
     customerName,
     shippingAddress,
-    phoneNumber
+    phoneNumber,
+     // === THÊM 3 PROP MỚI ===
+    voucher,
+    voucherDiscount,
+    usedPointsAmount
 }) => {
     const navigate = useNavigate();
     const [isProcessing, setIsProcessing] = useState(false);
