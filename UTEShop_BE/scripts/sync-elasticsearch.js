@@ -7,14 +7,14 @@ import elasticsearchService from '../src/services/elasticsearchService.js';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/shop';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fashion_store';
 
 async function syncElasticsearch() {
     try {
         console.log('🚀 Bắt đầu đồng bộ Elasticsearch...\n');
 
         // Connect to MongoDB
-        await mongoose.connect(MONGO_URI);
+        await mongoose.connect(MONGO_URI, { family: 4 });
         console.log('✅ Đã kết nối MongoDB');
 
         // Check Elasticsearch connection

@@ -89,4 +89,32 @@ export class ProductService {
   async deleteMultiple(ids: string[]) {
     return this.productModel.deleteMany({ _id: { $in: ids } }).exec();
   }
+
+  async toggleVisibility(id: string) {
+    const product = await this.productModel.findById(id);
+
+    if (!product) {
+      throw new Error('Sản phẩm không tồn tại');
+    }
+
+    const updatedProduct = await this.productModel
+      .findByIdAndUpdate(
+        id,
+        { isActive: !product.isActive },
+        { new: true }
+      )
+      .populate('category')
+      .populate('brand')
+      .exec();
+
+    if (!updatedProduct) {
+      throw new Error('Không thể cập nhật sản phẩm');
+    }
+
+    return {
+      success: true,
+      data: updatedProduct,
+      message: `Đã ${updatedProduct.isActive ? 'hiển thị' : 'ẩn'} sản phẩm`
+    };
+  }
 }

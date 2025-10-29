@@ -4,7 +4,7 @@ import axios from './axios';
 export const authApi = {
   login: (credentials: { email: string; password: string }) =>
     axios.post('/auth/admin/login', credentials),
-  getProfile: () => axios.get('/auth/admin/me'),
+  getProfile: () => axios.get('/auth/me'),
 };
 
 // Analytics API
@@ -33,23 +33,23 @@ export const brandApi = {
 // Category API
 export const categoryApi = {
   getAll: (params?: { page?: number; limit?: number; search?: string }) =>
-    axios.get('/admin/Categorys', { params }),
-  getById: (id: string) => axios.get(`/admin/Categorys/${id}`),
-  create: (data: any) => axios.post('/admin/Categorys', data),
-  update: (id: string, data: any) => axios.put(`/admin/Categorys/${id}`, data),
-  delete: (id: string) => axios.delete(`/admin/Categorys/${id}`),
-  deleteMultiple: (ids: string[]) => axios.delete('/admin/Categorys/multiple/delete', { data: { ids } }),
+    axios.get('/admin/categories', { params }),
+  getById: (id: string) => axios.get(`/admin/categories/${id}`),
+  create: (data: any) => axios.post('/admin/categories', data),
+  update: (id: string, data: any) => axios.put(`/admin/categories/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/categories/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/categories/multiple/delete', { data: { ids } }),
 };
 
 // Product API
 export const productApi = {
   getAll: (params?: { page?: number; limit?: number; search?: string }) =>
-    axios.get('/admin/Products', { params }),
-  getById: (id: string) => axios.get(`/admin/Products/${id}`),
-  create: (data: any) => axios.post('/admin/Products', data),
-  update: (id: string, data: any) => axios.put(`/admin/Products/${id}`, data),
-  delete: (id: string) => axios.delete(`/admin/Products/${id}`),
-  deleteMultiple: (ids: string[]) => axios.delete('/admin/Products/multiple/delete', { data: { ids } }),
+    axios.get('/admin/products', { params }),
+  getById: (id: string) => axios.get(`/admin/products/${id}`),
+  create: (data: any) => axios.post('/admin/products', data),
+  update: (id: string, data: any) => axios.put(`/admin/products/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/products/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/products/multiple/delete', { data: { ids } }),
 };
 
 // Order API

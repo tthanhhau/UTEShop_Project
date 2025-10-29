@@ -694,6 +694,12 @@ const CheckoutPage = () => {
                   customerName={customerName}
                   shippingAddress={shippingAddress}
                   phoneNumber={phoneNumber}
+
+                   // === THÊM 3 DÒNG SAU ===
+    voucher={selectedVoucherId}
+    voucherDiscount={calculateFinalTotal().voucherAmount}
+    usedPointsAmount={calculateFinalTotal().pointsDeduction}
+                  
                 />
               </div>
             )}

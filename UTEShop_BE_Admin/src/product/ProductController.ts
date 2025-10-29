@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import { ProductService } from '../product/ProductService';
 import { CreateProductDto } from './dto/CreateProductDto';
@@ -59,6 +60,11 @@ export class ProductController {
   @Delete('multiple/delete')
   async deleteMultipleProducts(@Body('ids') ids: string[]) {
     return this.ProductService.deleteMultiple(ids);
+  }
+
+  @Patch(':id/toggle-visibility')
+  async toggleVisibility(@Param('id') id: string) {
+    return this.ProductService.toggleVisibility(id);
   }
 }
 
