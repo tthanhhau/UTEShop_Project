@@ -94,27 +94,27 @@ class OrderController {
     console.log("🎟️ Voucher discount:", voucherDiscount);
     console.log("⭐ Points deduction:", usedPointsAmount);
 
-    const finalTotal = subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
+    const finalTotal =
+      subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
     console.log("💵 Final total:", finalTotal);
 
     // ✅ TRỪ ĐIỂM CỦA USER
     if (usedPointsAmount > 0) {
       const user = await User.findById(req.user._id);
       const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
-      
+
       if (user.loyaltyPoints.balance < pointsUsed) {
         return res.status(400).json({
           message: "Insufficient loyalty points",
           code: "INSUFFICIENT_POINTS",
         });
       }
-      
+
       user.loyaltyPoints.balance -= pointsUsed;
       await user.save();
-      
+
       console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
     }
-
 
     // Xử lý thanh toán online nếu cần
     let onlinePaymentInfo = {};
@@ -130,12 +130,15 @@ class OrderController {
 
       if (
         !paymentResult.success ||
-        String(paymentResult.data.resultCode) !== "0"
+        String(paymentResult.data.resultCode) !== "0" ||
+        paymentResult.data.amount !== finalTotal // Thêm điều kiện kiểm tra số tiền
       ) {
         return res.status(400).json({
           message: "Payment verification failed",
           code: "PAYMENT_FAILED",
-          error: paymentResult.data?.message || "Payment not completed",
+          error:
+            paymentResult.data?.message ||
+            "Payment amount mismatch or payment not completed",
         });
       }
 
@@ -143,7 +146,7 @@ class OrderController {
         transactionId: paymentResult.data.transId,
         gateway: "MOMO",
         paidAt: new Date(),
-        amount: paymentResult.data.amount,
+        amount: paymentResult.data.amount, // Số tiền thực tế đã thanh toán
       };
 
       initialPaymentStatus = "paid";
