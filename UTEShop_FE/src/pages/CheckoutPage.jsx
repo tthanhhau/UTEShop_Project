@@ -684,6 +684,9 @@ const CheckoutPage = () => {
                     !phoneNumber.trim() ||
                     phoneError
                   }
+                  voucher={selectedVoucherId}
+                  voucherDiscount={calculateFinalTotal().voucherAmount}
+                  usedPointsAmount={calculateFinalTotal().pointsDeduction}
                   productDetails={productDetails}
                   cartItems={cartItems}
                   isFromCart={isFromCart}
