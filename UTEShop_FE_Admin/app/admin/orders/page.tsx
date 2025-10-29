@@ -394,6 +394,32 @@ export default function OrderManagement() {
                       >
                         <i className="fas fa-eye"></i>
                       </button>
+                      {/* Nút chuyển trạng thái tuần tự */}
+                      {(() => {
+                        // Ánh xạ trạng thái tiếp theo
+                        const statusFlow: any = {
+                          processing: "prepared",
+                          prepared: "shipped",
+                          shipped: "delivered"
+                        };
+                        const nextStatus = statusFlow[order.status];
+                        // Chỉ hiện với các trạng thái trong flow, không hiện khi đã delivered hoặc cancelled hoặc pending
+                        if (nextStatus && order.status !== 'delivered' && order.status !== 'cancelled') {
+                          return (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await updateOrderStatus(order._id, nextStatus);
+                              }}
+                              className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-700 transition-colors text-xs"
+                              title="Chuyển trạng thái tiếp theo"
+                            >
+                              Chuyển trạng thái
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </td>
                 </tr>

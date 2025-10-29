@@ -159,7 +159,8 @@ export const login = asyncHandler(async (req, res) => {
     id: user._id, // Thêm id để tương thích
     email: user.email,
     name: user.name,
-    role: user.role
+    role: user.role,
+    loyaltyPoints: user.loyaltyPoints.balance
   };
 
   console.log('🔑 LOGIN - Creating token with payload:', payload);

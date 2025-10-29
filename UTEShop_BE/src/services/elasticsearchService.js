@@ -39,11 +39,18 @@ class ElasticsearchService {
                 index: this.indexName,
                 body: {
                     settings: {
+                        "index.max_ngram_diff": 10,
                         number_of_shards: 1,
                         number_of_replicas: 0,
                         analysis: {
                             filter: {
-                                vn_ascii_folding: { type: 'asciifolding', preserve_original: false }
+                                vn_ascii_folding: { type: 'asciifolding', preserve_original: false },
+                                ngram_token_filter: {
+                                    type: 'ngram',
+                                    min_gram: 1,
+                                    max_gram: 10, // Tăng max_gram để bắt được các từ dài hơn
+                                    token_chars: ['letter', 'digit']
+                                }
                             },
                             analyzer: {
                                 vietnamese_analyzer: {
@@ -60,19 +67,10 @@ class ElasticsearchService {
                                     tokenizer: 'standard',
                                     filter: ['lowercase', 'vn_ascii_folding']
                                 },
-                                // Thêm analyzer ngram cho tìm kiếm tiền tố
                                 ngram_analyzer: {
                                     type: 'custom',
                                     tokenizer: 'standard',
-                                    filter: ['lowercase', 'vn_ascii_folding'],
-                                    char_filter: ['ngram_filter']
-                                }
-                            },
-                            char_filter: {
-                                ngram_filter: {
-                                    type: 'ngram',
-                                    min_gram: 1,
-                                    max_gram: 3
+                                    filter: ['lowercase', 'vn_ascii_folding', 'ngram_token_filter']
                                 }
                             }
                         }
