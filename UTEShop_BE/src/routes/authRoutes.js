@@ -44,6 +44,13 @@ const resetVerifySchema = z.object({
   }),
 });
 
+const loginSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+    password: z.string().min(1),
+  }),
+});
+
 // ------------------- Route Definitions -------------------
 
 // --- OTP & Registration Routes ---
@@ -55,7 +62,7 @@ router.post("/forgot/request-otp", validate(emailSchema), resetRequestOtp);
 router.post("/forgot/verify", validate(resetVerifySchema), resetVerify);
 
 // --- Standard Auth Routes ---
-router.post("/login", login);
+router.post("/login", validate(loginSchema), login);
 router.get("/me", requireAuth, me);
 router.post("/refresh", refreshTokenController);
 router.post("/logout", logout);

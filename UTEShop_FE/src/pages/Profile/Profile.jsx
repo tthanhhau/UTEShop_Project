@@ -116,10 +116,10 @@ function UserProfile() {
       return;
     }
 
-    // Validate phone number (10 digits only)
-    const phoneRegex = /^\d{10}$/;
+    // Validate phone number (10 digits starting with 0)
+    const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(formData.phone)) {
-      alert("Số điện thoại phải có đúng 10 chữ số!");
+      alert("Số điện thoại phải có đúng 10 chữ số và bắt đầu bằng số 0!");
       return;
     }
 
@@ -549,41 +549,37 @@ function UserProfile() {
                 <h4 className="font-medium mb-2 text-gray-700">Yêu Cầu:</h4>
                 <ul className="text-sm space-y-1">
                   <li
-                    className={`flex items-center gap-2 ${
-                      passwordForm.newPassword.length >= 8
+                    className={`flex items-center gap-2 ${passwordForm.newPassword.length >= 8
                         ? "text-green-600"
                         : "text-muted-foreground"
-                    }`}
+                      }`}
                   >
                     {passwordForm.newPassword.length >= 8 ? "✓" : "•"} Ít nhất 8
                     ký tự
                   </li>
                   <li
-                    className={`flex items-center gap-2 ${
-                      /[A-Z]/.test(passwordForm.newPassword)
+                    className={`flex items-center gap-2 ${/[A-Z]/.test(passwordForm.newPassword)
                         ? "text-green-600"
                         : "text-muted-foreground"
-                    }`}
+                      }`}
                   >
                     {/[A-Z]/.test(passwordForm.newPassword) ? "✓" : "•"} Ít nhất
                     1 ký tự in hoa
                   </li>
                   <li
-                    className={`flex items-center gap-2 ${
-                      /\d/.test(passwordForm.newPassword)
+                    className={`flex items-center gap-2 ${/\d/.test(passwordForm.newPassword)
                         ? "text-green-600"
                         : "text-muted-foreground"
-                    }`}
+                      }`}
                   >
                     {/\d/.test(passwordForm.newPassword) ? "✓" : "•"} Ít nhất 1
                     chữ số
                   </li>
                   <li
-                    className={`flex items-center gap-2 ${
-                      /[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
+                    className={`flex items-center gap-2 ${/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
                         ? "text-green-600"
                         : "text-muted-foreground"
-                    }`}
+                      }`}
                   >
                     {/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
                       ? "✓"

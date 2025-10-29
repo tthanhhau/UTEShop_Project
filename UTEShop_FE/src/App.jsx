@@ -19,7 +19,6 @@ import UserProfile from "./pages/Profile/Profile";
 import CartPage from "./pages/CartPage";
 import NewArrivalsPage from "./pages/NewArrivalsPage";
 import OnSalePage from "./pages/OnSalePage";
-import OrderPage from "./pages/OrderPage";
 import CheckoutPage from "./pages/CheckoutPage";
 
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -75,7 +74,6 @@ function App() {
               <Route path="payment/success" element={<PaymentSuccessPage />} />
               <Route path="payment/failure" element={<PaymentFailurePage />} />
 
-              <Route path="orders" element={<OrderPage />} />
               <Route path="orders-tracking" element={<OrderTracking />} />
               <Route path="purchase-history" element={<PurchaseHistory />} />
               <Route path="vouchers" element={<VouchersPage />} />

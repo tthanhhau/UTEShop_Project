@@ -21,6 +21,8 @@ const productSchema = new mongoose.Schema(
     soldCount: { type: Number, default: 0, index: true },          // số lượng bán
     viewCount: { type: Number, default: 0, index: true },          // số lượt xem
     discountPercentage: { type: Number, default: 0, min: 0, max: 100 }, // % giảm giá
+    isActive: { type: Boolean, default: true, index: true },      // trạng thái hiển thị sản phẩm
+    isVisible: { type: Boolean, default: true, index: true },     // trạng thái hiển thị sản phẩm (dùng cho admin)
   },
   { timestamps: true }
 );

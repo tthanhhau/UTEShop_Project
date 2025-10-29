@@ -125,13 +125,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex items-center justify-center h-16 bg-gradient-to-r from-purple-600 to-indigo-600 relative">
-          {!sidebarCollapsed && (
-            <h1 className="text-xl font-bold text-white">Fashion Admin</h1>
-          )}
-          {sidebarCollapsed && (
+          {/* Logo area: Chỉ hiện icon logo khi thu gọn, hiện cả chữ khi mở rộng */}
+          {sidebarCollapsed ? (
             <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg hover:bg-white/30 transition-all duration-200 border border-white/20">
-              <FaCube className="text-white" />
+              <FaCube className="text-white text-2xl" />
             </div>
+          ) : (
+            <h1 className="text-xl font-bold text-white">Fashion Admin</h1>
           )}
 
           <button
@@ -143,28 +143,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
+        {/* Menu dưới header, luôn hiển thị đủ icon các tab khi thu gọn */}
         <nav className="mt-8">
-          <div className="px-4 space-y-1">
+          <div className="px-2 space-y-1">
             {menuStructure.map((item, index) => (
               <div key={item.key || item.path || index}>
                 {item.hasSubmenu ? (
                   <button
                     onClick={() => !sidebarCollapsed && item.key && toggleSubmenu(item.key)}
-                    className={`w-full flex items-center ${
-                      sidebarCollapsed ? 'justify-center' : 'justify-between'
-                    } px-4 py-3 rounded-lg transition-colors duration-200 ${
-                      isMenuItemActive(item)
-                        ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                    title={sidebarCollapsed ? item.label : ''}
+                    className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-2 py-3 rounded-lg transition-colors duration-200 ${isMenuItemActive(item)
+                      ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                    title={item.label}
                   >
-                    <div className="flex items-center">
-                      <item.icon
-                        className={`${sidebarCollapsed ? '' : 'mr-3'} ${
-                          isMenuItemActive(item) ? 'text-purple-600' : ''
-                        }`}
-                      />
+                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
+                      <item.icon className={`text-2xl ${sidebarCollapsed ? '' : 'mr-3'} ${isMenuItemActive(item) ? 'text-purple-600' : ''}`} />
                       {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                     </div>
                     {!sidebarCollapsed && item.key && (
@@ -182,20 +175,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 ) : (
                   <Link
                     href={item.path || '#'}
-                    className={`flex items-center ${
-                      sidebarCollapsed ? 'justify-center' : ''
-                    } px-4 py-3 rounded-lg transition-colors duration-200 ${
-                      isActive(item.path, item.exact)
-                        ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                    title={sidebarCollapsed ? item.label : ''}
+                    className={`flex items-center ${sidebarCollapsed ? 'justify-center' : ''} px-2 py-3 rounded-lg transition-colors duration-200 ${isActive(item.path, item.exact)
+                      ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                    title={item.label}
                   >
-                    <item.icon
-                      className={`${sidebarCollapsed ? '' : 'mr-3'} ${
-                        isActive(item.path, item.exact) ? 'text-purple-600' : ''
-                      }`}
-                    />
+                    <item.icon className={`text-2xl ${sidebarCollapsed ? '' : 'mr-3'} ${isActive(item.path, item.exact) ? 'text-purple-600' : ''}`} />
                     {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                   </Link>
                 )}

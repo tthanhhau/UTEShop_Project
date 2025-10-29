@@ -4,7 +4,7 @@ import Order from '../models/order.js';
 
 // Hàm này sẽ được gọi từ server.js
 export const initializeAgenda = (io, sendNotificationToUser) => {
-    const mongoConnectionString = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/uteshop';
+    const mongoConnectionString = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fashion_store';
     
     const agenda = new Agenda({ 
         db: { 

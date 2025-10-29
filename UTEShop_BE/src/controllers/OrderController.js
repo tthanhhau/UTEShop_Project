@@ -4,11 +4,12 @@ import Cart from "../models/cart.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import momoService from "../services/momoServices.js";
 import Notification from "../models/Notification.js";
-import User from "../models/user.js";
+import User from "../models/user.js"; // Import User model
+
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
-    const POINT_TO_VND = 100;
+    const POINT_TO_VND = 100; // Thêm hằng số quy đổi điểm
     console.log("🛒 ORDER CREATE - req.user:", req.user);
     console.log("🛒 ORDER CREATE - req.body:", req.body);
     const { agenda, io, sendNotificationToUser } = req.app.locals;
@@ -18,13 +19,28 @@ class OrderController {
       shippingAddress,
       paymentMethod = "COD",
       codDetails,
-      totalPrice: providedTotalPrice,
+      totalPrice: providedTotalPrice, // Giá này từ client, có thể không dùng
+      
+      // Trường mới từ File 2
       voucher,
       voucherDiscount,
       usedPointsAmount,
-      momoOrderId, // Cho thanh toán MoMo
-      momoRequestId, // requestId từ MoMo để đối soát giao dịch
+      
+      // Trường thanh toán MoMo
+      momoOrderId, 
+      momoRequestId, 
+      
+      // === SỬA LỖI: Thêm lại các trường từ File 1 ===
+      customerName,
+      phoneNumber,
+      customerPhone,
+      // ==========================================
     } = req.body;
+
+    // Debug log
+    console.log('🔍 ORDER CREATE - customerName from body:', customerName);
+    console.log('🔍 ORDER CREATE - phoneNumber from body:', phoneNumber);
+    console.log('🔍 ORDER CREATE - customerPhone from body:', customerPhone);
 
     // Kiểm tra user authentication
     if (!req.user || !req.user._id) {
@@ -53,7 +69,24 @@ class OrderController {
       });
     }
 
-    // ✅ TÍNH SUBTOTAL TỪ ITEMS
+    // === SỬA LỖI: Thêm lại validation cho thông tin khách hàng từ File 1 ===
+    if (!customerName || !customerName.trim()) {
+      return res.status(400).json({
+        message: "Customer name is required",
+        code: "NO_CUSTOMER_NAME",
+      });
+    }
+
+    const finalCustomerPhone = phoneNumber || customerPhone;
+    if (!finalCustomerPhone || !finalCustomerPhone.trim()) {
+      return res.status(400).json({
+        message: "Customer phone is required",
+        code: "NO_CUSTOMER_PHONE",
+      });
+    }
+    // ===================================================================
+
+    // ✅ TÍNH SUBTOTAL TỪ ITEMS (Logic từ File 2)
     let subtotal = 0; // Đổi tên để tránh nhầm lẫn
     const orderItems = await Promise.all(
       items.map(async (item) => {
@@ -94,11 +127,11 @@ class OrderController {
     console.log("🎟️ Voucher discount:", voucherDiscount);
     console.log("⭐ Points deduction:", usedPointsAmount);
 
-    const finalTotal =
-      subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
+    // Tính toán tổng tiền cuối cùng (Logic từ File 2)
+    const finalTotal = subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
     console.log("💵 Final total:", finalTotal);
 
-    // ✅ TRỪ ĐIỂM CỦA USER
+    // ✅ TRỪ ĐIỂM CỦA USER (Logic từ File 2)
     if (usedPointsAmount > 0) {
       const user = await User.findById(req.user._id);
       const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
@@ -155,11 +188,17 @@ class OrderController {
     // Create order
     const order = new Order({
       user: userId,
+      // === SỬA LỖI: Sử dụng biến đã validate từ File 1 ===
+      customerName: customerName.trim(),
+      customerPhone: finalCustomerPhone.trim(),
+      // =============================================
       items: orderItems,
-      totalPrice: finalTotal,
+      // === SỬA LỖI: Sử dụng các trường mới từ File 2 ===
+      totalPrice: finalTotal, // Sử dụng giá đã trừ voucher/điểm
       voucher: voucher || null,
       voucherDiscount: voucherDiscount || 0,
       usedPointsAmount: usedPointsAmount || 0,
+      // =============================================
       shippingAddress: shippingAddress.trim(),
       paymentMethod,
       paymentStatus: initialPaymentStatus,
