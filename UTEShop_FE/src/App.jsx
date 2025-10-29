@@ -46,6 +46,7 @@ import ProductManagement from "./pages/Admin/ProductManagement";
 
 import PrivateRoute from "./components/utils/PrivateRoute";
 import AdminRoute from "./components/utils/AdminRoute";
+import VouchersPage from "./pages/VouchersPage";
 Modal.setAppElement("#root");
 
 function App() {
@@ -75,6 +76,7 @@ function App() {
 
               <Route path="orders-tracking" element={<OrderTracking />} />
               <Route path="purchase-history" element={<PurchaseHistory />} />
+              <Route path="vouchers" element={<VouchersPage />} />
 
               {/* Protected routes for favorites and viewed products */}
               <Route
