@@ -29,6 +29,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 import { OrderTracking } from "./pages/Profile/orderTracking";
 import { PurchaseHistory } from "./pages/Profile/purchaseHistory";
+import OrderDetail from "./pages/OrderDetail";
 
 // Admin components
 import AdminLogin from "./pages/Admin/AdminLogin";
@@ -74,8 +75,30 @@ function App() {
               <Route path="payment/success" element={<PaymentSuccessPage />} />
               <Route path="payment/failure" element={<PaymentFailurePage />} />
 
-              <Route path="orders-tracking" element={<OrderTracking />} />
-              <Route path="purchase-history" element={<PurchaseHistory />} />
+              <Route
+                path="orders-tracking"
+                element={
+                  <PrivateRoute>
+                    <OrderTracking />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="orders/:orderId"
+                element={
+                  <PrivateRoute>
+                    <OrderDetail />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="purchase-history"
+                element={
+                  <PrivateRoute>
+                    <PurchaseHistory />
+                  </PrivateRoute>
+                }
+              />
               <Route path="vouchers" element={<VouchersPage />} />
 
               {/* Protected routes for favorites and viewed products */}

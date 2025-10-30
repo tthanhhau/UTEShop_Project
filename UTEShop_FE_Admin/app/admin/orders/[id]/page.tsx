@@ -4,9 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '../../../../lib/axios';
 
-export default function OrderDetailPage({ params }: { params: { id: string } }) {
+export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const orderId = params.id;
+  const [orderId, setOrderId] = useState<string>('');
+  
+  useEffect(() => {
+    params.then(p => setOrderId(p.id));
+  }, [params]);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +22,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchOrderDetail();
+    if (orderId) {
+      fetchOrderDetail();
+    }
   }, [orderId]);
 
   const fetchOrderDetail = async () => {
@@ -45,22 +51,24 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     try {
       setSaving(true);
       
+      // Backend sẽ tự động update paymentStatus nếu cần (COD + delivered)
       await axios.put(`/admin/orders/${orderId}/status`, {
         status: editData.status
       });
 
+      // Nếu có thay đổi paymentStatus thủ công (không phải auto), vẫn cập nhật
       if (editData.paymentStatus !== order.paymentStatus) {
         await axios.put(`/admin/orders/${orderId}/payment-status`, {
           paymentStatus: editData.paymentStatus
         });
       }
 
-      alert('Cập nhật thành công!');
-      fetchOrderDetail();
+      // Reload trang ngay lập tức để đảm bảo hiển thị đúng trạng thái mới nhất
+      // Đặc biệt quan trọng khi chuyển sang "delivered" với COD (backend tự động set paymentStatus = 'paid')
+      window.location.reload();
     } catch (error) {
       console.error('Error updating order:', error);
       alert('Lỗi cập nhật!');
-    } finally {
       setSaving(false);
     }
   };

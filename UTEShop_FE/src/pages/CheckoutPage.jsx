@@ -288,6 +288,17 @@ const CheckoutPage = () => {
         pointsDeduction,
       } = calculateFinalTotal();
 
+      // Tìm voucher object từ selectedVoucherId
+      const selectedVoucher = vouchers.find(
+        (v) => v._id === selectedVoucherId || v.code === selectedVoucherId
+      );
+      
+      // Tạo voucher object để gửi đi (chỉ gửi code và description)
+      const voucherData = selectedVoucher ? {
+        code: selectedVoucher.code,
+        description: selectedVoucher.description || `Giảm ${selectedVoucher.type === 'PERCENT' ? selectedVoucher.value + '%' : selectedVoucher.value + 'đ'}`
+      } : null;
+
       let orderData;
       if (isFromCart && cartItems.length > 0) {
         // Tạo đơn hàng từ giỏ hàng
@@ -298,7 +309,7 @@ const CheckoutPage = () => {
             price: item.product.price,
           })),
           totalPrice,
-          voucher: selectedVoucherId || null,
+          voucher: voucherData,
           voucherDiscount: voucherAmount || 0,
           usedPointsAmount: pointsDeduction || 0,
           customerName,
@@ -321,7 +332,7 @@ const CheckoutPage = () => {
             },
           ],
           totalPrice,
-          voucher: selectedVoucherId || null,
+          voucher: voucherData,
           voucherDiscount: voucherAmount || 0,
           usedPointsAmount: pointsDeduction || 0,
           customerName,
@@ -472,26 +483,26 @@ const CheckoutPage = () => {
                     {cartItems.some(
                       (item) => item.product.discountPercentage > 0
                     ) && (
-                      <div className="flex justify-between text-red-600">
-                        <span>Discount</span>
-                        <span>
-                          -
-                          {cartItems
-                            .reduce((total, item) => {
-                              const discount =
-                                item.product.discountPercentage > 0
-                                  ? (item.product.price *
+                        <div className="flex justify-between text-red-600">
+                          <span>Discount</span>
+                          <span>
+                            -
+                            {cartItems
+                              .reduce((total, item) => {
+                                const discount =
+                                  item.product.discountPercentage > 0
+                                    ? (item.product.price *
                                       item.quantity *
                                       item.product.discountPercentage) /
                                     100
-                                  : 0;
-                              return total + discount;
-                            }, 0)
-                            .toLocaleString()}
-                          ₫
-                        </span>
-                      </div>
-                    )}
+                                    : 0;
+                                return total + discount;
+                              }, 0)
+                              .toLocaleString()}
+                            ₫
+                          </span>
+                        </div>
+                      )}
                   </>
                 ) : (
                   // Hiển thị summary cho sản phẩm đơn lẻ
@@ -513,7 +524,7 @@ const CheckoutPage = () => {
                             (productDetails.price *
                               quantity *
                               productDetails.discountPercentage) /
-                              100
+                            100
                           ).toLocaleString()}
                           ₫
                         </span>
@@ -602,11 +613,10 @@ const CheckoutPage = () => {
                 onChange={handlePhoneNumberChange}
                 placeholder="Nhập số điện thoại (VD: 0123456789)"
                 required
-                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 ${
-                  phoneError
+                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 ${phoneError
                     ? "border-red-500 focus:ring-red-500 focus:border-red-500"
                     : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                }`}
+                  }`}
               />
               {phoneError && (
                 <p className="mt-1 text-sm text-red-600">{phoneError}</p>
@@ -684,6 +694,17 @@ const CheckoutPage = () => {
                     !phoneNumber.trim() ||
                     phoneError
                   }
+                  voucher={(() => {
+                    const selectedVoucher = vouchers.find(
+                      (v) => v._id === selectedVoucherId || v.code === selectedVoucherId
+                    );
+                    return selectedVoucher ? {
+                      code: selectedVoucher.code,
+                      description: selectedVoucher.description || `Giảm ${selectedVoucher.type === 'PERCENT' ? selectedVoucher.value + '%' : selectedVoucher.value + 'đ'}`
+                    } : null;
+                  })()}
+                  voucherDiscount={calculateFinalTotal().voucherAmount}
+                  usedPointsAmount={calculateFinalTotal().pointsDeduction}
                   productDetails={productDetails}
                   cartItems={cartItems}
                   isFromCart={isFromCart}
@@ -691,12 +712,6 @@ const CheckoutPage = () => {
                   customerName={customerName}
                   shippingAddress={shippingAddress}
                   phoneNumber={phoneNumber}
-
-                   // === THÊM 3 DÒNG SAU ===
-    voucher={selectedVoucherId}
-    voucherDiscount={calculateFinalTotal().voucherAmount}
-    usedPointsAmount={calculateFinalTotal().pointsDeduction}
-                  
                 />
               </div>
             )}

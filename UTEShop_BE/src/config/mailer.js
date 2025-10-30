@@ -2,9 +2,7 @@
 import nodemailer from 'nodemailer';
 
 export const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST || 'smtp.gmail.com',
-  port: Number(process.env.MAIL_PORT || 587),
-  secure: String(process.env.MAIL_PORT) === '465', // 465 => SSL
+  service: 'gmail',
   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
@@ -22,7 +20,17 @@ export async function sendMail({ to, subject, text, html, from }) {
   });
 }
 
-// (tuỳ chọn) kiểm tra cấu hình SMTP
+// Kiểm tra kết nối SMTP
 export async function verifyMailer() {
-  return transporter.verify();
+  try {
+    const result = await transporter.verify();
+    console.log('✅ SMTP connection verified:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ SMTP connection error:', error);
+    throw error;
+  }
 }
+
+// Kiểm tra kết nối ngay khi khởi động
+verifyMailer().catch(console.error);
