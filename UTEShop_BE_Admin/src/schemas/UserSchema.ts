@@ -34,6 +34,12 @@ export class User {
 
   @Prop({ type: [String], default: [] })
   voucherClaims?: string[];
+
+  @Prop()
+  resetPasswordOtp?: string;
+
+  @Prop()
+  resetPasswordOtpExpiry?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
