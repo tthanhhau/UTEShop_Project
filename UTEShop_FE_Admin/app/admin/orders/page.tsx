@@ -49,6 +49,7 @@ export default function OrderManagement() {
         limit: pageSize
       };
 
+      console.log('🔍 FETCH ORDERS - params:', params);
       const response = await axios.get('/admin/orders', { params });
 
       if (response.data.success) {
@@ -335,7 +336,7 @@ export default function OrderManagement() {
             >
               <option value="all">Tất cả</option>
               <option value="COD">COD</option>
-              <option value="MoMo">MoMo</option>
+              <option value="MOMO">MoMo</option>
             </select>
           </div>
 
@@ -438,16 +439,6 @@ export default function OrderManagement() {
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/admin/orders/${order._id}`);
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Xem chi tiết"
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
                       {/* Nút chuyển trạng thái tuần tự */}
                       {(() => {
                         // Ánh xạ trạng thái tiếp theo
