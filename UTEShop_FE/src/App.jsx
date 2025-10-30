@@ -74,6 +74,7 @@ function App() {
               <Route path="payment/success" element={<PaymentSuccessPage />} />
               <Route path="payment/failure" element={<PaymentFailurePage />} />
 
+              <Route path="orders" element={<OrderTracking />} />
               <Route path="orders-tracking" element={<OrderTracking />} />
               <Route path="purchase-history" element={<PurchaseHistory />} />
               <Route path="vouchers" element={<VouchersPage />} />

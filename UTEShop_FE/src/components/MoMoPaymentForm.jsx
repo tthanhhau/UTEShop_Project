@@ -16,7 +16,7 @@ const MoMoPaymentForm = ({
     customerName,
     shippingAddress,
     phoneNumber,
-     // === THÊM 3 PROP MỚI ===
+    // === THÊM 3 PROP MỚI ===
     voucher,
     voucherDiscount,
     usedPointsAmount
@@ -191,13 +191,20 @@ const MoMoPaymentForm = ({
             const response = await api.post('/orders', orderData);
 
             if (response.data.success) {
-                console.log('✅ Order created successfully, navigating to orders...');
+                console.log('✅ Order created successfully, navigating to payment success page...');
 
-                // Xóa localStorage
+                // Lưu thông tin đơn hàng vào localStorage để hiển thị trên trang success
+                localStorage.setItem('momoPaymentSuccess', JSON.stringify({
+                    orderId: response.data.order._id,
+                    orderData: response.data.order,
+                    timestamp: Date.now()
+                }));
+
+                // Xóa localStorage cũ
                 localStorage.removeItem('momoPaymentData');
 
-                // Chuyển đến trang orders
-                navigate('/orders');
+                // Chuyển đến trang thanh toán thành công
+                navigate('/payment/success');
             }
         } catch (error) {
             console.error('❌ Error creating order:', error);
