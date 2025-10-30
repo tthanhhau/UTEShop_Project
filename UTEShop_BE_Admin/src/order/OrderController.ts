@@ -20,15 +20,19 @@ export class OrderController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('paymentStatus') paymentStatus?: string,
+    @Query('paymentMethod') paymentMethod?: string,
     @Query('search') search?: string,
   ) {
-    console.log('🔴🔴🔴 ORDER Controller - search param:', search, 'status:', status);
+    console.log('🔴🔴🔴 ORDER Controller - search param:', search, 'status:', status, 'paymentStatus:', paymentStatus, 'paymentMethod:', paymentMethod);
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
     const result = await this.orderService.findAll(
       pageNum,
       limitNum,
       status || '',
+      paymentStatus || '',
+      paymentMethod || '',
       search || '',
     );
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,46 +6,90 @@ import {
   fetchNotificationsAsync,
   markNotificationsAsReadAsync,
 } from "../redux/notificationSlice";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "@/api/axiosConfig";
 
 export function NotificationBell() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { items, unreadCount } = useSelector((state) => state.notifications);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedNotif, setSelectedNotif] = useState(null);
   const [orderPreview, setOrderPreview] = useState(null);
+  const dropdownRef = useRef(null);
 
   // Tải thông báo lần đầu khi component được mount
   useEffect(() => {
     dispatch(fetchNotificationsAsync());
   }, [dispatch]);
 
+  // Click outside để đóng dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   const handleBellClick = () => {
     setIsDropdownOpen(!isDropdownOpen);
-    // Nếu có thông báo chưa đọc, đánh dấu là đã đọc khi mở dropdown
-    if (unreadCount > 0) {
-      dispatch(markNotificationsAsReadAsync());
-    }
+    // Không mark as read khi mở dropdown
+    // Chỉ mark as read khi user click "Chi tiết"
   };
 
   const openNotif = async (notif) => {
+    console.log('Opening notification:', notif); // Debug
     setSelectedNotif(notif);
     setOrderPreview(null);
     setIsDropdownOpen(false);
-    // Nếu có orderId, lấy nhanh thông tin sản phẩm trong đơn
-    const orderId = notif?.meta?.orderId || notif?.orderId;
+    
+    // Extract orderId từ nhiều nguồn (notification mới/cũ)
+    let orderId = notif?.orderId || notif?.meta?.orderId;
+    
+    // Nếu không có orderId trực tiếp, thử extract từ message hoặc link
+    if (!orderId) {
+      const messageMatch = notif?.message?.match(/#([a-f0-9]{24})/i);
+      if (messageMatch) orderId = messageMatch[1];
+      else {
+        const linkMatch = notif?.link?.match(/\/orders\/tracking\/([a-f0-9]{24})/i);
+        if (linkMatch) orderId = linkMatch[1];
+      }
+    }
+    
+    console.log('Extracted orderId:', orderId); // Debug
+    
     if (orderId) {
       try {
-        const { data } = await api.get(`/orders/${orderId}`);
+        const response = await api.get(`/orders/${orderId}`);
+        console.log('Order API response:', response.data); // Debug
+        
+        // API có thể trả về data.order hoặc data trực tiếp
+        const orderData = response.data.order || response.data;
+        
         setOrderPreview({
-          _id: data._id,
-          items: data.items || [],
-          totalPrice: data.totalPrice,
-          createdAt: data.createdAt,
+          _id: orderData._id || orderId,
+          items: orderData.items || [],
+          totalPrice: orderData.totalPrice,
+          createdAt: orderData.createdAt,
         });
       } catch (e) {
-        // ignore preview failure
+        console.error('Failed to fetch order preview:', e);
+        // Vẫn set orderId để có thể navigate
+        setOrderPreview({
+          _id: orderId,
+          items: [],
+          totalPrice: 0,
+          createdAt: null,
+        });
       }
     }
   };
@@ -55,8 +99,49 @@ export function NotificationBell() {
     setOrderPreview(null);
   };
 
+  const extractOrderIdFromNotification = (notif) => {
+    // 1. Thử lấy orderId trực tiếp (notification mới)
+    if (notif?.orderId) return notif.orderId;
+    if (notif?.meta?.orderId) return notif.meta.orderId;
+    
+    // 2. Thử extract từ message: "Đơn hàng #690xxxxx của bạn..."
+    const messageMatch = notif?.message?.match(/#([a-f0-9]{24})/i);
+    if (messageMatch) return messageMatch[1];
+    
+    // 3. Thử extract từ link: "/orders/tracking/690xxxxx"
+    const linkMatch = notif?.link?.match(/\/orders\/tracking\/([a-f0-9]{24})/i);
+    if (linkMatch) return linkMatch[1];
+    
+    // 4. Thử từ orderPreview
+    if (orderPreview?._id) return orderPreview._id;
+    
+    return null;
+  };
+
+  const handleViewOrderDetail = () => {
+    const orderId = extractOrderIdFromNotification(selectedNotif);
+    
+    console.log('🔍 Full notification object:', selectedNotif);
+    console.log('🔍 OrderPreview:', orderPreview);
+    console.log('🔍 Extracted orderId:', orderId);
+    
+    // Đánh dấu thông báo là đã đọc khi click "Chi tiết"
+    dispatch(markNotificationsAsReadAsync());
+    
+    closeModal();
+    
+    if (orderId) {
+      // Navigate đến trang order tracking với orderId để highlight
+      console.log('🔍 Will navigate to: /orders-tracking?highlight=' + orderId);
+      navigate(`/orders-tracking?highlight=${orderId}`);
+    } else {
+      // Nếu không có orderId, vẫn đến trang tracking
+      navigate('/orders-tracking');
+    }
+  };
+
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <Button
         variant="ghost"
         size="icon"
@@ -65,8 +150,8 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5 text-gray-700" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-            {unreadCount}
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </Button>
@@ -114,7 +199,6 @@ export function NotificationBell() {
 
             {orderPreview && (
               <div className="rounded-lg border p-3 mb-3">
-                <div className="text-sm font-medium mb-2">Đơn hàng #{orderPreview._id}</div>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {orderPreview.items.map((it, idx) => (
                     <div key={idx} className="flex items-center gap-3">
@@ -131,6 +215,9 @@ export function NotificationBell() {
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={closeModal}>Đóng</Button>
+              <Button onClick={handleViewOrderDetail} className="bg-primary text-white hover:bg-primary/90">
+                Chi tiết
+              </Button>
             </div>
           </div>
         </div>

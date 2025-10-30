@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,17 @@ import {
   Star,
 } from "lucide-react";
 
-// Order status mapping
+// Order status mapping (string to number)
+const statusToNumberMap = {
+  pending: 1,
+  processing: 2,
+  prepared: 3,
+  shipped: 4,
+  delivered: 5,
+  cancelled: 6,
+};
+
+// Order status info
 const orderStatuses = {
   1: {
     label: "Đơn hàng mới",
@@ -53,11 +63,14 @@ const orderStatuses = {
 
 export function OrderTracking() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null); // Thêm state error
-  const [reviewStatus, setReviewStatus] = useState({}); // Track review status for each order
+  const [error, setError] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState({});
+  const [highlightedOrderId, setHighlightedOrderId] = useState(null);
+  const orderRefs = useRef({});
 
   //fetch API
   useEffect(() => {
@@ -68,7 +81,12 @@ export function OrderTracking() {
 
         // Check review status for delivered orders
         const deliveredOrders = response.data.orders.filter(
-          (order) => order.status === 5
+          (order) => {
+            const statusNum = typeof order.status === 'string' 
+              ? statusToNumberMap[order.status] || 0
+              : order.status || 0;
+            return statusNum === 5;
+          }
         );
         const reviewStatusMap = {};
 
@@ -97,6 +115,32 @@ export function OrderTracking() {
 
     fetchOrdersData();
   }, []);
+
+  // Scroll đến đơn hàng được highlight từ notification
+  useEffect(() => {
+    const highlightOrderId = searchParams.get('highlight');
+    if (highlightOrderId && orders.length > 0) {
+      setHighlightedOrderId(highlightOrderId);
+      
+      // Đợi DOM render xong rồi scroll
+      setTimeout(() => {
+        const orderElement = orderRefs.current[highlightOrderId];
+        if (orderElement) {
+          orderElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          
+          // Bỏ highlight sau 1 giây
+          setTimeout(() => {
+            setHighlightedOrderId(null);
+            // Xóa query param
+            setSearchParams({});
+          }, 1000);
+        }
+      }, 300);
+    }
+  }, [orders, searchParams, setSearchParams]);
 
   // ===== PHẦN TÌM KIẾM ĐÃ ĐƯỢC CẬP NHẬT TỪ ĐOẠN CODE 1 =====
   const filteredOrders = (Array.isArray(orders) ? orders : []).filter(
@@ -176,8 +220,8 @@ export function OrderTracking() {
             >
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted || isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
                   }`}
               >
                 <StatusIcon className="w-4 h-4" />
@@ -255,11 +299,27 @@ export function OrderTracking() {
           </Card>
         ) : (
           filteredOrders.map((order) => {
-            const statusInfo = orderStatuses[order.status];
+            // Convert status string to number
+            const statusNumber = typeof order.status === 'string' 
+              ? statusToNumberMap[order.status] || 1
+              : order.status || 1;
+            
+            // Kiểm tra an toàn: nếu status không hợp lệ, dùng mặc định
+            const statusInfo = orderStatuses[statusNumber] || orderStatuses[1];
             const StatusIcon = statusInfo.icon;
 
+            const isHighlighted = highlightedOrderId === order._id;
+            
             return (
-              <Card key={order._id} className="overflow-hidden bg-white">
+              <Card 
+                key={order._id} 
+                ref={(el) => (orderRefs.current[order._id] = el)}
+                className={`overflow-hidden bg-white transition-all duration-300 ${
+                  isHighlighted 
+                    ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl scale-[1.02]' 
+                    : ''
+                }`}
+              >
                 <CardHeader className="bg-white border-b">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -302,7 +362,7 @@ export function OrderTracking() {
                             {formatPrice(item.price)}
                           </div>
                         </div>
-                        {order.status === 5 && (
+                        {statusNumber === 5 && (
                           <div className="flex-shrink-0">
                             {reviewStatus[order._id] ? (
                               <Button
@@ -335,11 +395,11 @@ export function OrderTracking() {
                     ))}
                   </div>
 
-                  {order.status !== 6 && (
+                  {statusNumber !== 6 && (
                     <div className="mb-6">
                       <h4 className="font-medium mb-3">Tiến độ đơn hàng</h4>
                       <div className="relative">
-                        {renderStatusTimeline(order.status)}
+                        {renderStatusTimeline(statusNumber)}
                       </div>
                     </div>
                   )}
@@ -350,8 +410,8 @@ export function OrderTracking() {
                         Tổng tiền: {formatPrice(order.totalPrice)}
                       </div>
                       {order.estimatedDelivery &&
-                        order.status !== 5 &&
-                        order.status !== 6 && (
+                        statusNumber !== 5 &&
+                        statusNumber !== 6 && (
                           <div className="text-sm text-muted-foreground flex items-center gap-1">
                             <Clock className="w-4 h-4" />
                             Dự kiến giao:{" "}
@@ -364,15 +424,19 @@ export function OrderTracking() {
                         )}
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/orders/${order._id}`)}
+                      >
                         Chi tiết
                       </Button>
-                      {order.status !== 6 && order.status !== 5 && (
+                      {statusNumber !== 6 && statusNumber !== 5 && (
                         <Button variant="outline" size="sm">
                           Liên hệ shop
                         </Button>
                       )}
-                      {order.status === 1 && (
+                      {statusNumber === 1 && (
                         <Button
                           variant="destructive"
                           size="sm"
