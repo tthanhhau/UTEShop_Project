@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { join } from 'path';
 
 // Modules
 import { AuthModule } from './auth/AuthModule';
@@ -14,12 +15,14 @@ import { CustomerModule } from './customer/CustomerModule';
 import { VoucherModule } from './voucher/VoucherModule';
 import { PointsModule } from './points/PointsModule';
 import { AnalyticsModule } from './analytics/AnalyticsModule';
+import { MailerModule } from './config/mailer.module';
 
 @Module({
   imports: [
     // Config Module
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: 'D:/Nam4HK1/cnpmm_nop/UTEShop_Project/UTEShop_BE_Admin/.env',
     }),
 
     // MongoDB Connection
@@ -28,7 +31,7 @@ import { AnalyticsModule } from './analytics/AnalyticsModule';
       useFactory: async (configService: ConfigService) => {
         const uri = configService.get<string>('MONGODB_URI') ||
           configService.get<string>('MONGO_URI') ||
-          'mongodb://127.0.0.1:27017/fashion_store';
+          'mongodb://127.0.0.1:27017/shop';
         console.log('🔗 Connecting to MongoDB:', uri);
         return {
           uri,
@@ -60,6 +63,7 @@ import { AnalyticsModule } from './analytics/AnalyticsModule';
     VoucherModule,
     PointsModule,
     AnalyticsModule,
+    MailerModule,
   ],
 })
 export class AppModule { }

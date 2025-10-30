@@ -7,7 +7,7 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3001'],
+    origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3002'],
     credentials: true,
   });
 
@@ -17,7 +17,7 @@ async function bootstrap() {
   // Set global prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3002;
   await app.listen(port);
   console.log(`🚀 Admin Backend running on: http://localhost:${port}/api`);
 }
