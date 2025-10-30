@@ -40,6 +40,18 @@ export class Order {
 
   @Prop()
   deliveredAt?: Date;
+
+  @Prop({ default: 0 })
+  usedPoints?: number;
+
+  @Prop({ default: 0 })
+  usedPointsAmount?: number;
+
+  @Prop({ default: 0 })
+  voucherDiscount?: number;
+
+  @Prop({ type: Types.ObjectId, ref: 'Voucher' })
+  voucher?: Types.ObjectId;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
