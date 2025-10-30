@@ -138,7 +138,7 @@ export const login = asyncHandler(async (req, res) => {
   if (!user) {
     console.log('❌ LOGIN - User not found:', email);
     return res.status(401).json({
-      message: 'Sai email hoặc mật khẩu',
+      message: 'Sai email ',
       code: 'INVALID_CREDENTIALS'
     });
   }
@@ -148,7 +148,7 @@ export const login = asyncHandler(async (req, res) => {
   if (!ok) {
     console.log('❌ LOGIN - Wrong password for:', email);
     return res.status(401).json({
-      message: 'Sai email hoặc mật khẩu',
+      message: 'Sai  mật khẩu',
       code: 'INVALID_CREDENTIALS'
     });
   }

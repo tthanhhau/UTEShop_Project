@@ -337,8 +337,15 @@ const CheckoutPage = () => {
 
       const result = await dispatch(createOrder(orderData)).unwrap();
 
-      alert("Đặt hàng thành công!");
-      navigate("/orders");
+      // Lưu thông tin đơn hàng vào localStorage để hiển thị trên trang success
+      localStorage.setItem('momoPaymentSuccess', JSON.stringify({
+        orderId: result.order._id,
+        orderData: result.order,
+        timestamp: Date.now()
+      }));
+
+      // Chuyển đến trang thanh toán thành công
+      navigate("/payment/success");
     } catch (error) {
       console.error("Order Creation Error:", error);
 
@@ -472,26 +479,26 @@ const CheckoutPage = () => {
                     {cartItems.some(
                       (item) => item.product.discountPercentage > 0
                     ) && (
-                      <div className="flex justify-between text-red-600">
-                        <span>Discount</span>
-                        <span>
-                          -
-                          {cartItems
-                            .reduce((total, item) => {
-                              const discount =
-                                item.product.discountPercentage > 0
-                                  ? (item.product.price *
+                        <div className="flex justify-between text-red-600">
+                          <span>Discount</span>
+                          <span>
+                            -
+                            {cartItems
+                              .reduce((total, item) => {
+                                const discount =
+                                  item.product.discountPercentage > 0
+                                    ? (item.product.price *
                                       item.quantity *
                                       item.product.discountPercentage) /
                                     100
-                                  : 0;
-                              return total + discount;
-                            }, 0)
-                            .toLocaleString()}
-                          ₫
-                        </span>
-                      </div>
-                    )}
+                                    : 0;
+                                return total + discount;
+                              }, 0)
+                              .toLocaleString()}
+                            ₫
+                          </span>
+                        </div>
+                      )}
                   </>
                 ) : (
                   // Hiển thị summary cho sản phẩm đơn lẻ
@@ -513,7 +520,7 @@ const CheckoutPage = () => {
                             (productDetails.price *
                               quantity *
                               productDetails.discountPercentage) /
-                              100
+                            100
                           ).toLocaleString()}
                           ₫
                         </span>
@@ -602,11 +609,10 @@ const CheckoutPage = () => {
                 onChange={handlePhoneNumberChange}
                 placeholder="Nhập số điện thoại (VD: 0123456789)"
                 required
-                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 ${
-                  phoneError
+                className={`flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 ${phoneError
                     ? "border-red-500 focus:ring-red-500 focus:border-red-500"
                     : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                }`}
+                  }`}
               />
               {phoneError && (
                 <p className="mt-1 text-sm text-red-600">{phoneError}</p>
@@ -692,11 +698,11 @@ const CheckoutPage = () => {
                   shippingAddress={shippingAddress}
                   phoneNumber={phoneNumber}
 
-                   // === THÊM 3 DÒNG SAU ===
-    voucher={selectedVoucherId}
-    voucherDiscount={calculateFinalTotal().voucherAmount}
-    usedPointsAmount={calculateFinalTotal().pointsDeduction}
-                  
+                  // === THÊM 3 DÒNG SAU ===
+                  voucher={selectedVoucherId}
+                  voucherDiscount={calculateFinalTotal().voucherAmount}
+                  usedPointsAmount={calculateFinalTotal().pointsDeduction}
+
                 />
               </div>
             )}

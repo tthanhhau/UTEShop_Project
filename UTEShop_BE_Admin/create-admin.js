@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fashion_store';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/shop';
 
 // User Schema
 const UserSchema = new mongoose.Schema(

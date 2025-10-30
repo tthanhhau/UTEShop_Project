@@ -7,6 +7,10 @@ import { AuthController } from '../auth/AuthController';
 import { AuthService } from '../auth/AuthService';
 import { JwtStrategy } from '../auth/strategies/JwtStrategy';
 import { User, UserSchema } from '../schemas/UserSchema';
+import { ForgotPasswordDto } from '../auth/dto/ForgotPasswordDto';
+import { ResetPasswordDto } from '../auth/dto/ResetPasswordDto';
+import { MailerModule } from '../config/mailer.module';
+import { MailerService } from '../services/mailer.service';
 
 @Module({
   imports: [
@@ -20,9 +24,10 @@ import { User, UserSchema } from '../schemas/UserSchema';
       }),
       inject: [ConfigService],
     }),
+    MailerModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, MailerService],
   exports: [AuthService],
 })
 export class AuthModule { }
