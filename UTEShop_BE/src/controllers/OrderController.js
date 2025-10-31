@@ -9,7 +9,7 @@ import User from "../models/user.js"; // Import User model
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
-    const POINT_TO_VND = 100; // Thêm hằng số quy đổi điểm
+    const POINT_TO_VND = 100;
     console.log("🛒 ORDER CREATE - req.user:", req.user);
     console.log("🛒 ORDER CREATE - req.body:", req.body);
     const { agenda, io, sendNotificationToUser } = req.app.locals;
@@ -19,28 +19,21 @@ class OrderController {
       shippingAddress,
       paymentMethod = "COD",
       codDetails,
-      totalPrice: providedTotalPrice, // Giá này từ client, có thể không dùng
-
-      // Trường mới từ File 2
+      totalPrice: providedTotalPrice,
       voucher,
       voucherDiscount,
       usedPointsAmount,
-
-      // Trường thanh toán MoMo
       momoOrderId,
       momoRequestId,
-
-      // === SỬA LỖI: Thêm lại các trường từ File 1 ===
       customerName,
       phoneNumber,
       customerPhone,
-      // ==========================================
     } = req.body;
 
     // Debug log
-    console.log('🔍 ORDER CREATE - customerName from body:', customerName);
-    console.log('🔍 ORDER CREATE - phoneNumber from body:', phoneNumber);
-    console.log('🔍 ORDER CREATE - customerPhone from body:', customerPhone);
+    console.log("🔍 ORDER CREATE - customerName from body:", customerName);
+    console.log("🔍 ORDER CREATE - phoneNumber from body:", phoneNumber);
+    console.log("🔍 ORDER CREATE - customerPhone from body:", customerPhone);
 
     // Kiểm tra user authentication
     if (!req.user || !req.user._id) {
@@ -69,7 +62,6 @@ class OrderController {
       });
     }
 
-    // === SỬA LỖI: Thêm lại validation cho thông tin khách hàng từ File 1 ===
     if (!customerName || !customerName.trim()) {
       return res.status(400).json({
         message: "Customer name is required",
@@ -84,19 +76,51 @@ class OrderController {
         code: "NO_CUSTOMER_PHONE",
       });
     }
-    // ===================================================================
 
-    // ✅ TÍNH SUBTOTAL TỪ ITEMS (Logic từ File 2)
-    let subtotal = 0; // Đổi tên để tránh nhầm lẫn
-    const orderItems = await Promise.all(
-      items.map(async (item) => {
-        const product = await Product.findById(item.product);
+    // ==========================================
+    // 🔥 FIX RACE CONDITION: MongoDB Transaction
+    // ==========================================
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      let subtotal = 0;
+      const orderItems = [];
+
+      // 🔒 THAY ĐỔI: Dùng for...of thay vì Promise.all để xử lý tuần tự
+      for (const item of items) {
+        // 🔒 ATOMIC UPDATE: findOneAndUpdate với điều kiện stock
+        const product = await Product.findOneAndUpdate(
+          {
+            _id: item.product,
+            stock: { $gte: item.quantity }, // Chỉ update nếu đủ hàng
+          },
+          {
+            $inc: {
+              stock: -item.quantity,
+              soldCount: item.quantity,
+            },
+          },
+          {
+            new: true,
+            session, // 🔑 QUAN TRỌNG: Phải có session
+            runValidators: true,
+          }
+        );
+
+        // Nếu product = null => hết hàng hoặc không tìm thấy
         if (!product) {
-          throw new Error(`Product ${item.product} not found`);
+          // Lấy thông tin product để hiển thị tên
+          const productInfo = await Product.findById(item.product).session(
+            session
+          );
+          const productName = productInfo ? productInfo.name : item.product;
+          throw new Error(`Insufficient stock for product ${productName}`);
         }
-        if (product.stock < item.quantity) {
-          throw new Error(`Insufficient stock for product ${product.name}`);
-        }
+
+        console.log(
+          `✅ Updated product ${product.name}: stock=${product.stock}`
+        );
 
         // Calculate discounted price
         const discountAmount =
@@ -105,219 +129,225 @@ class OrderController {
 
         // Calculate item price with discount and update subtotal
         const itemPrice = discountedPrice * item.quantity;
-        subtotal += itemPrice; // ← Cộng vào subtotal
+        subtotal += itemPrice;
 
-        // Reduce product stock
-        product.stock -= item.quantity;
-        product.soldCount += item.quantity;
-        await product.save();
-
-        return {
+        orderItems.push({
           product: item.product,
           quantity: item.quantity,
           originalPrice: product.price,
           discountPercentage: product.discountPercentage,
           discountedPrice: discountedPrice,
           price: discountedPrice,
+        });
+      }
+
+      console.log("💰 Subtotal from items:", subtotal);
+      console.log("🎟️ Voucher discount:", voucherDiscount);
+      console.log("⭐ Points deduction:", usedPointsAmount);
+
+      // Tính toán tổng tiền cuối cùng
+      const finalTotal =
+        subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
+      console.log("💵 Final total:", finalTotal);
+
+      // ✅ TRỪ ĐIỂM CỦA USER (cũng dùng atomic update)
+      if (usedPointsAmount > 0) {
+        const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
+
+        const user = await User.findOneAndUpdate(
+          {
+            _id: req.user._id,
+            "loyaltyPoints.balance": { $gte: pointsUsed },
+          },
+          {
+            $inc: { "loyaltyPoints.balance": -pointsUsed },
+          },
+          {
+            new: true,
+            session, // 🔑 QUAN TRỌNG: Phải có session
+          }
+        );
+
+        if (!user) {
+          throw new Error("Insufficient loyalty points");
+        }
+
+        console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
+      }
+
+      // Xử lý thanh toán online nếu cần
+      let onlinePaymentInfo = {};
+      let initialPaymentStatus = "unpaid";
+
+      if (paymentMethod === "MOMO" && momoOrderId) {
+        const requestIdForQuery = momoRequestId || momoOrderId;
+        const paymentResult = await momoService.queryTransaction(
+          momoOrderId,
+          requestIdForQuery
+        );
+
+        if (
+          !paymentResult.success ||
+          String(paymentResult.data.resultCode) !== "0" ||
+          paymentResult.data.amount !== finalTotal
+        ) {
+          throw new Error(
+            paymentResult.data?.message ||
+            "Payment amount mismatch or payment not completed"
+          );
+        }
+
+        onlinePaymentInfo = {
+          transactionId: paymentResult.data.transId,
+          gateway: "MOMO",
+          paidAt: new Date(),
+          amount: paymentResult.data.amount,
         };
-      })
-    );
 
-    console.log("💰 Subtotal from items:", subtotal);
-    console.log("🎟️ Voucher discount:", voucherDiscount);
-    console.log("⭐ Points deduction:", usedPointsAmount);
+        initialPaymentStatus = "paid";
+      }
 
-    // Tính toán tổng tiền cuối cùng (Logic từ File 2)
-    const finalTotal = subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
-    console.log("💵 Final total:", finalTotal);
+      // Create order
+      const order = new Order({
+        user: userId,
+        customerName: customerName.trim(),
+        customerPhone: finalCustomerPhone.trim(),
+        items: orderItems,
+        totalPrice: finalTotal,
+        voucher: voucher || null,
+        voucherDiscount: voucherDiscount || 0,
+        usedPointsAmount: usedPointsAmount || 0,
+        shippingAddress: shippingAddress.trim(),
+        paymentMethod,
+        paymentStatus: initialPaymentStatus,
+        codDetails: {
+          phoneNumberConfirmed: false,
+          additionalNotes: codDetails?.additionalNotes || "",
+        },
+        ...(Object.keys(onlinePaymentInfo).length > 0 && { onlinePaymentInfo }),
+      });
 
-    // ✅ TRỪ ĐIỂM CỦA USER (Logic từ File 2)
-    if (usedPointsAmount > 0) {
-      const user = await User.findById(req.user._id);
-      const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
+      // Save order với session
+      await order.save({ session });
 
-      if (user.loyaltyPoints.balance < pointsUsed) {
+      // 🎉 COMMIT TRANSACTION - Tất cả thay đổi được áp dụng
+      await session.commitTransaction();
+      console.log("✅ Transaction committed successfully");
+
+      // ==========================================
+      // Các xử lý sau khi commit (không cần rollback)
+      // ==========================================
+
+      // Schedule job with Agenda (if available)
+      try {
+        if (agenda) {
+          await agenda.schedule("in 1 minute", "process pending order", {
+            orderId: order._id,
+          });
+          console.log(`Job scheduled for order ${order._id} in 1 minute.`);
+        }
+      } catch (agendaError) {
+        console.warn(
+          "⚠️ Agenda scheduling failed (non-critical):",
+          agendaError.message
+        );
+      }
+
+      console.log("✅ ORDER - Order saved successfully:", order._id);
+
+      // Notification
+      const notificationMessage = `Đơn hàng #${order._id} của bạn đã được tạo thành công!`;
+      try {
+        const newNotification = new Notification({
+          user: userId,
+          message: notificationMessage,
+          link: `/orders/tracking/${order._id}`,
+        });
+        await newNotification.save();
+        sendNotificationToUser(io, userId, "new_notification", newNotification);
+      } catch (notifError) {
+        console.warn(
+          "⚠️ Notification failed (non-critical):",
+          notifError.message
+        );
+      }
+
+      // Clear user's cart after order creation
+      try {
+        const cart = await Cart.findOne({ user: userId });
+        if (cart && cart.items.length > 0) {
+          const orderedProductIds = orderItems.map((item) =>
+            item.product.toString()
+          );
+
+          const remainingItems = cart.items.filter(
+            (cartItem) =>
+              !orderedProductIds.includes(cartItem.product.toString())
+          );
+
+          cart.items = remainingItems;
+          await cart.save();
+
+          console.log(
+            "🛒 ORDER - Removed ordered items from cart, remaining items:",
+            remainingItems.length
+          );
+        }
+      } catch (cartError) {
+        console.warn(
+          "⚠️ ORDER - Cart update failed (not critical):",
+          cartError.message
+        );
+      }
+
+      // Populate order để trả về đầy đủ thông tin
+      const populatedOrder = await Order.findById(order._id)
+        .populate("items.product", "name price images")
+        .populate("user", "name email");
+
+      res.status(201).json({
+        message: "Order created successfully",
+        order: populatedOrder,
+        success: true,
+      });
+    } catch (error) {
+      // ❌ ROLLBACK nếu có lỗi - Tất cả thay đổi bị hủy
+      await session.abortTransaction();
+      console.error("❌ Transaction aborted:", error.message);
+
+      // Xử lý các lỗi cụ thể
+      if (error.message.includes("Insufficient stock")) {
+        return res.status(400).json({
+          message: error.message,
+          code: "OUT_OF_STOCK",
+        });
+      }
+
+      if (error.message.includes("loyalty points")) {
         return res.status(400).json({
           message: "Insufficient loyalty points",
           code: "INSUFFICIENT_POINTS",
         });
       }
 
-      user.loyaltyPoints.balance -= pointsUsed;
-      await user.save();
-
-      console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
-    }
-
-
-    // Xử lý thanh toán online nếu cần
-    let onlinePaymentInfo = {};
-    let initialPaymentStatus = "unpaid";
-
-    if (paymentMethod === "MOMO" && momoOrderId) {
-      // Kiểm tra trạng thái thanh toán MoMo
-      const requestIdForQuery = momoRequestId || momoOrderId;
-      const paymentResult = await momoService.queryTransaction(
-        momoOrderId,
-        requestIdForQuery
-      );
-
-      if (
-        !paymentResult.success ||
-        String(paymentResult.data.resultCode) !== "0"
-      ) {
+      if (error.message.includes("Payment")) {
         return res.status(400).json({
           message: "Payment verification failed",
           code: "PAYMENT_FAILED",
-          error: paymentResult.data?.message || "Payment not completed",
+          error: error.message,
         });
       }
 
-      onlinePaymentInfo = {
-        transactionId: paymentResult.data.transId,
-        gateway: "MOMO",
-        paidAt: new Date(),
-        amount: paymentResult.data.amount,
-      };
-
-      initialPaymentStatus = "paid";
+      // Lỗi chung
+      return res.status(500).json({
+        message: "Failed to create order",
+        code: "ORDER_CREATION_FAILED",
+        error: error.message,
+      });
+    } finally {
+      // 🔒 LUÔN LUÔN đóng session
+      session.endSession();
     }
-
-    // Create order
-    const order = new Order({
-      user: userId,
-      // === SỬA LỖI: Sử dụng biến đã validate từ File 1 ===
-      customerName: customerName.trim(),
-      customerPhone: finalCustomerPhone.trim(),
-      // =============================================
-      items: orderItems,
-      // Cập nhật thông tin thanh toán
-      totalPrice: finalTotal, // Sử dụng giá đã trừ voucher/điểm
-      // Thông tin voucher
-      voucher: voucher ? {
-        code: voucher.code,
-        description: voucher.description
-      } : null,
-      voucherDiscount: voucherDiscount || 0,
-      // Thông tin điểm tích lũy
-      usedPoints: usedPointsAmount ? Math.floor(usedPointsAmount / POINT_TO_VND) : 0,
-      usedPointsAmount: usedPointsAmount || 0,
-      // =============================================
-      shippingAddress: shippingAddress.trim(),
-      paymentMethod,
-      paymentStatus: initialPaymentStatus,
-      codDetails: {
-        phoneNumberConfirmed: false,
-        additionalNotes: codDetails?.additionalNotes || "",
-      },
-      ...(Object.keys(onlinePaymentInfo).length > 0 && { onlinePaymentInfo }),
-    });
-
-    // Save order
-    await order.save();
-
-    // Tính và cập nhật điểm cho user
-    try {
-      const user = await User.findById(userId);
-      if (user) {
-        // Trừ điểm đã sử dụng cho đơn hàng
-        const pointsUsed = order.usedPoints || 0;
-        user.loyaltyPoints.balance = Math.max(0, user.loyaltyPoints.balance - pointsUsed);
-
-        // Thêm điểm tích lũy từ đơn hàng mới (1% của giá trị đơn hàng)
-        const earnedPoints = Math.floor(finalTotal * 0.01); // 1% của tổng giá trị đơn hàng
-        user.loyaltyPoints.balance += earnedPoints;
-        user.loyaltyPoints.totalEarned += earnedPoints;
-
-        // Lưu lịch sử điểm
-        user.loyaltyPoints.history.push({
-          type: pointsUsed > 0 ? 'redeemed' : 'earned',
-          points: pointsUsed > 0 ? -pointsUsed : earnedPoints,
-          orderId: order._id,
-          description: pointsUsed > 0 
-            ? `Sử dụng ${pointsUsed} điểm cho đơn hàng #${order._id}`
-            : `Tích lũy ${earnedPoints} điểm từ đơn hàng #${order._id}`,
-        });
-
-        await user.save();
-        console.log(`⭐ Updated points for user ${userId}: -${pointsUsed} (used) +${earnedPoints} (earned)`);
-      }
-    } catch (pointsError) {
-      console.warn("⚠️ Points update failed (non-critical):", pointsError.message);
-    }
-
-    // Schedule job with Agenda (if available)
-    try {
-      const agenda = req.app.locals.agenda;
-      if (agenda) {
-        await agenda.schedule("in 1 minute", "process pending order", {
-          orderId: order._id,
-        });
-        console.log(`Job scheduled for order ${order._id} in 1 minute.`);
-      }
-    } catch (agendaError) {
-      console.warn(
-        "⚠️ Agenda scheduling failed (non-critical):",
-        agendaError.message
-      );
-    }
-
-    console.log("✅ ORDER - Order saved successfully:", order._id);
-
-    // Remove ordered items from user's cart
-    const notificationMessage = `Đơn hàng #${order._id} của bạn đã được tạo thành công!`;
-
-    // 1. Lưu thông báo vào database
-    const newNotification = new Notification({
-      user: userId,
-      message: notificationMessage,
-      link: `/orders/tracking/${order._id}`, // Link để người dùng xem chi tiết đơn hàng
-      orderId: order._id, // Thêm orderId để dễ dàng truy cập
-    });
-    await newNotification.save();
-
-    sendNotificationToUser(io, userId, "new_notification", newNotification);
-
-    // Clear user's cart after order creation
-    try {
-      const cart = await Cart.findOne({ user: userId });
-      if (cart && cart.items.length > 0) {
-        // Lấy danh sách product IDs đã đặt hàng
-        const orderedProductIds = orderItems.map((item) =>
-          item.product.toString()
-        );
-
-        // Lọc ra những sản phẩm chưa được đặt hàng
-        const remainingItems = cart.items.filter(
-          (cartItem) => !orderedProductIds.includes(cartItem.product.toString())
-        );
-
-        // Cập nhật giỏ hàng với những sản phẩm còn lại
-        cart.items = remainingItems;
-        await cart.save();
-
-        console.log(
-          "🛒 ORDER - Removed ordered items from cart, remaining items:",
-          remainingItems.length
-        );
-      }
-    } catch (cartError) {
-      console.log(
-        "⚠️ ORDER - Cart update failed (not critical):",
-        cartError.message
-      );
-    }
-
-    // Populate order để trả về đầy đủ thông tin
-    const populatedOrder = await Order.findById(order._id)
-      .populate("items.product", "name price image")
-      .populate("user", "name email");
-
-    res.status(201).json({
-      message: "Order created successfully",
-      order: populatedOrder,
-      success: true,
-    });
   });
 
   // Get user's orders
@@ -366,10 +396,10 @@ class OrderController {
 
     // Convert to object and ensure all fields are included
     const orderObject = order.toObject();
-    
+
     // Đảm bảo các trường voucher và điểm LUÔN có giá trị (xử lý đơn hàng cũ)
-    const voucherDiscount = (orderObject.voucherDiscount !== undefined && orderObject.voucherDiscount !== null) 
-      ? orderObject.voucherDiscount 
+    const voucherDiscount = (orderObject.voucherDiscount !== undefined && orderObject.voucherDiscount !== null)
+      ? orderObject.voucherDiscount
       : 0;
     const usedPoints = (orderObject.usedPoints !== undefined && orderObject.usedPoints !== null)
       ? orderObject.usedPoints
@@ -378,7 +408,7 @@ class OrderController {
       ? orderObject.usedPointsAmount
       : 0;
     const voucher = orderObject.voucher || null;
-    
+
     res.status(200).json({
       success: true,
       order: {
