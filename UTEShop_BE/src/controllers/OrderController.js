@@ -5,7 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import momoService from "../services/momoServices.js";
 import Notification from "../models/Notification.js";
 import User from "../models/user.js"; // Import User model
-
+import mongoose from "mongoose";
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
