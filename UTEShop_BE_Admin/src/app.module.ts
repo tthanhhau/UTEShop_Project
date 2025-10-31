@@ -35,7 +35,7 @@ import { MailerModule } from './config/mailer.module';
         console.log('🔗 Connecting to MongoDB:', uri);
         return {
           uri,
-          directConnection: true,
+          directConnection: false,
           family: 4, // Force IPv4
         };
       },

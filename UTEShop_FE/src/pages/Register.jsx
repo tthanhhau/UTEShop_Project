@@ -7,8 +7,10 @@ import {
   clearFeedback,
 } from "../features/auth/authSlice";
 import OtpInput from "../components/utils/OtpInput";
+import { useNavigate } from "react-router-dom";
 
 export default function Register() {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { loading, error, message } = useSelector((s) => s.auth);
 
@@ -143,7 +145,7 @@ export default function Register() {
                 </div>
               </div>
 
-             
+
 
               <div className="mt-2 text-center text-sm">
                 Đã có tài khoản?{" "}
