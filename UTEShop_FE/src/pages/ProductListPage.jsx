@@ -233,12 +233,12 @@ export default function ProductListPage() {
                 {/* Search and Filter Bar */}
                 <div className="mb-6 flex flex-col sm:flex-row gap-4">
                     {/* SearchAutocomplete Component - THÊM VÀO ĐÂY */}
-                    <div className="relative flex-1 max-w-md">
+                    {/* <div className="relative flex-1 max-w-md">
                         <SearchAutocomplete
                             onProductSelect={handleProductSelect}
                             placeholder="Tìm kiếm sản phẩm..."
                         />
-                    </div>
+                    </div> */}
 
                     {/* Category Filter */}
                     <select
