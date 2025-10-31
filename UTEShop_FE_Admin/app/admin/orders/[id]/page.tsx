@@ -4,9 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '../../../../lib/axios';
 
-export default function OrderDetailPage({ params }: { params: { id: string } }) {
+export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const orderId = params.id;
+  const [orderId, setOrderId] = useState<string>('');
+  
+  useEffect(() => {
+    params.then(p => setOrderId(p.id));
+  }, [params]);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +22,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchOrderDetail();
+    if (orderId) {
+      fetchOrderDetail();
+    }
   }, [orderId]);
 
   const fetchOrderDetail = async () => {
@@ -27,6 +33,10 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
       const response = await axios.get(`/admin/orders/${orderId}`);
       
       const orderData = response.data.order || response.data.data || response.data;
+      console.log('🔍 ADMIN ORDER DATA:', orderData);
+      console.log('🔍 usedPoints:', orderData.usedPoints);
+      console.log('🔍 usedPointsAmount:', orderData.usedPointsAmount);
+      console.log('🔍 voucherDiscount:', orderData.voucherDiscount);
       setOrder(orderData);
       
       setEditData({
@@ -45,22 +55,24 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     try {
       setSaving(true);
       
+      // Backend sẽ tự động update paymentStatus nếu cần (COD + delivered)
       await axios.put(`/admin/orders/${orderId}/status`, {
         status: editData.status
       });
 
+      // Nếu có thay đổi paymentStatus thủ công (không phải auto), vẫn cập nhật
       if (editData.paymentStatus !== order.paymentStatus) {
         await axios.put(`/admin/orders/${orderId}/payment-status`, {
           paymentStatus: editData.paymentStatus
         });
       }
 
-      alert('Cập nhật thành công!');
-      fetchOrderDetail();
+      // Reload trang ngay lập tức để đảm bảo hiển thị đúng trạng thái mới nhất
+      // Đặc biệt quan trọng khi chuyển sang "delivered" với COD (backend tự động set paymentStatus = 'paid')
+      window.location.reload();
     } catch (error) {
       console.error('Error updating order:', error);
       alert('Lỗi cập nhật!');
-    } finally {
       setSaving(false);
     }
   };
@@ -113,38 +125,15 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => router.push('/admin/orders')}
-            className="flex items-center text-gray-600 hover:text-purple-600"
-          >
-            <i className="fas fa-arrow-left mr-2"></i>
-            Quay lại
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Chi tiết đơn hàng</h1>
-            <p className="text-sm text-gray-500">#{order._id?.slice(-8).toUpperCase()}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setEditData({ status: order.status, paymentStatus: order.paymentStatus })}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center"
-          >
-            <i className="fas fa-cube mr-2"></i>
-            Đang xử lý
-          </button>
-          <button
-            onClick={handleSaveChanges}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center disabled:opacity-50"
-          >
-            <i className="fas fa-edit mr-2"></i>
-            {saving ? 'Đang lưu...' : 'Chỉnh sửa'}
-          </button>
-        </div>
+      <div className="mb-6 flex items-center gap-4">
+        <button
+          onClick={() => router.push('/admin/orders')}
+          className="flex items-center text-gray-600 hover:text-purple-600 transition-colors"
+        >
+          <i className="fas fa-arrow-left mr-2"></i>
+          Quay lại
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900">Chi tiết đơn hàng</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -159,85 +148,124 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái đơn hàng</label>
-                <button className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center">
-                  <i className="fas fa-cube mr-2"></i>
-                  Đang xử lý
-                </button>
+                {(() => {
+                  const getStatusInfo = (status: string) => {
+                    const statusMap: any = {
+                      pending: { text: 'Chờ xử lý', color: 'bg-yellow-100 text-yellow-800', icon: 'fa-clock' },
+                      processing: { text: 'Đang xử lý', color: 'bg-blue-100 text-blue-800', icon: 'fa-spinner' },
+                      prepared: { text: 'Đã chuẩn bị', color: 'bg-purple-100 text-purple-800', icon: 'fa-box' },
+                      shipped: { text: 'Đang giao', color: 'bg-indigo-100 text-indigo-800', icon: 'fa-truck' },
+                      delivered: { text: 'Đã giao', color: 'bg-green-100 text-green-800', icon: 'fa-check-circle' },
+                      cancelled: { text: 'Đã hủy', color: 'bg-red-100 text-red-800', icon: 'fa-times-circle' }
+                    };
+                    return statusMap[status] || { text: 'Không xác định', color: 'bg-gray-100 text-gray-800', icon: 'fa-question' };
+                  };
+                  
+                  const statusInfo = getStatusInfo(order.status);
+                  return (
+                    <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${statusInfo.color}`}>
+                      <i className={`fas ${statusInfo.icon} mr-2`}></i>
+                      {statusInfo.text}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
 
-          {/* Customer Info */}
+          {/* Customer Info - Gộp tất cả thông tin - Layout gọn */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <i className="fas fa-user text-blue-600 mr-2"></i>
-              Khách hàng
+              <i className="fas fa-info-circle text-blue-600 mr-2"></i>
+              Thông tin đơn hàng
             </h3>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tên khách hàng</label>
-                <div className="text-gray-900">{order.user?.name || 'N/A'}</div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                <div className="text-gray-900">{order.user?.phone || order.shippingAddress?.phone || 'N/A'}</div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <div className="text-gray-900">{order.user?.email || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Shipping Address */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <i className="fas fa-map-marker-alt text-red-600 mr-2"></i>
-              Địa chỉ giao hàng
-            </h3>
-            <div className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-              {order.shippingAddress?.fullAddress || order.shippingAddress || 'N/A'}
-            </div>
-          </div>
-
-          {/* Payment */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <i className="fas fa-credit-card text-purple-600 mr-2"></i>
-              Thanh toán
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phương thức</label>
-                <div className="text-gray-900">{order.paymentMethod || 'COD'}</div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái thanh toán</label>
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm inline-flex items-center">
-                  <i className="fas fa-check-circle mr-1"></i>
-                  Đã thanh toán
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Time */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-              <i className="fas fa-calendar text-indigo-600 mr-2"></i>
-              Thời gian
-            </h3>
-            <div className="space-y-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày đặt hàng</label>
-                <div className="text-gray-900">{order.createdAt ? formatDate(order.createdAt) : 'N/A'}</div>
-              </div>
-              {order.deliveredAt && (
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Cột trái */}
+              <div className="space-y-6">
+                {/* Thông tin khách hàng */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày giao hàng</label>
-                  <div className="text-gray-900">{formatDate(order.deliveredAt)}</div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <i className="fas fa-user text-blue-600 mr-2"></i>
+                    Khách hàng
+                  </h4>
+                  <div className="space-y-2 pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500">Tên:</label>
+                      <div className="text-sm text-gray-900">{order.user?.name || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">SĐT:</label>
+                      <div className="text-sm text-gray-900">{order.user?.phone || order.shippingAddress?.phone || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Email:</label>
+                      <div className="text-sm text-gray-900">{order.user?.email || 'N/A'}</div>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Thanh toán */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <i className="fas fa-credit-card text-purple-600 mr-2"></i>
+                    Thanh toán
+                  </h4>
+                  <div className="space-y-2 pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500">Phương thức:</label>
+                      <div className="text-sm text-gray-900">{order.paymentMethod || 'COD'}</div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Trạng thái:</label>
+                      <div>
+                        <span className={`px-2 py-1 rounded-full text-xs inline-flex items-center ${
+                          order.paymentStatus === 'paid' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          <i className={`fas ${order.paymentStatus === 'paid' ? 'fa-check-circle' : 'fa-clock'} mr-1`}></i>
+                          {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cột phải */}
+              <div className="space-y-6">
+                {/* Địa chỉ giao hàng */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <i className="fas fa-map-marker-alt text-red-600 mr-2"></i>
+                    Địa chỉ giao hàng
+                  </h4>
+                  <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg pl-6">
+                    {order.shippingAddress?.fullAddress || order.shippingAddress || 'N/A'}
+                  </div>
+                </div>
+
+                {/* Thời gian */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <i className="fas fa-calendar text-indigo-600 mr-2"></i>
+                    Thời gian
+                  </h4>
+                  <div className="space-y-2 pl-6">
+                    <div>
+                      <label className="text-xs text-gray-500">Ngày đặt:</label>
+                      <div className="text-sm text-gray-900">{order.createdAt ? formatDate(order.createdAt) : 'N/A'}</div>
+                    </div>
+                    {order.deliveredAt && (
+                      <div>
+                        <label className="text-xs text-gray-500">Ngày giao:</label>
+                        <div className="text-sm text-gray-900">{formatDate(order.deliveredAt)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -294,12 +322,49 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
           )}
 
           {/* Order Total */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-lg font-medium text-gray-700">Tổng tiền đơn hàng:</span>
-            </div>
-            <div className="text-3xl font-bold text-purple-600">
-              {formatCurrency(order.totalPrice || 0)}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Tổng tiền đơn hàng</h3>
+            
+            <div className="space-y-3">
+              {/* Subtotal */}
+              <div className="flex justify-between text-gray-600">
+                <span>Tạm tính:</span>
+                <span className="font-medium">{formatCurrency(
+                  (order.totalPrice || 0) + 
+                  (order.voucherDiscount || 0) + 
+                  (order.usedPointsAmount || 0)
+                )}</span>
+              </div>
+
+              {/* Voucher Discount */}
+              {order.voucherDiscount > 0 && (
+                <div className="flex justify-between text-orange-600">
+                  <span className="flex items-center">
+                    <i className="fas fa-ticket-alt mr-2"></i>
+                    Giảm giá voucher:
+                  </span>
+                  <span className="font-medium">-{formatCurrency(order.voucherDiscount)}</span>
+                </div>
+              )}
+
+              {/* Points Discount */}
+              {order.usedPoints > 0 && order.usedPointsAmount > 0 && (
+                <div className="flex justify-between text-blue-600">
+                  <span className="flex items-center">
+                    <i className="fas fa-coins mr-2"></i>
+                    Điểm tích lũy ({order.usedPoints} điểm):
+                  </span>
+                  <span className="font-medium">-{formatCurrency(order.usedPointsAmount)}</span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="flex justify-between items-center pt-3 border-t-2 border-gray-200">
+                <span className="text-lg font-semibold text-gray-800">Tổng cộng:</span>
+                <span className="text-2xl font-bold text-purple-600">
+                  {formatCurrency(order.totalPrice || 0)}
+                </span>
+              </div>
             </div>
           </div>
         </div>

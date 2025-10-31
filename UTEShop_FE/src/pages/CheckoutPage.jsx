@@ -288,6 +288,17 @@ const CheckoutPage = () => {
         pointsDeduction,
       } = calculateFinalTotal();
 
+      // Tìm voucher object từ selectedVoucherId
+      const selectedVoucher = vouchers.find(
+        (v) => v._id === selectedVoucherId || v.code === selectedVoucherId
+      );
+      
+      // Tạo voucher object để gửi đi (chỉ gửi code và description)
+      const voucherData = selectedVoucher ? {
+        code: selectedVoucher.code,
+        description: selectedVoucher.description || `Giảm ${selectedVoucher.type === 'PERCENT' ? selectedVoucher.value + '%' : selectedVoucher.value + 'đ'}`
+      } : null;
+
       let orderData;
       if (isFromCart && cartItems.length > 0) {
         // Tạo đơn hàng từ giỏ hàng
@@ -298,7 +309,7 @@ const CheckoutPage = () => {
             price: item.product.price,
           })),
           totalPrice,
-          voucher: selectedVoucherId || null,
+          voucher: voucherData,
           voucherDiscount: voucherAmount || 0,
           usedPointsAmount: pointsDeduction || 0,
           customerName,
@@ -321,7 +332,7 @@ const CheckoutPage = () => {
             },
           ],
           totalPrice,
-          voucher: selectedVoucherId || null,
+          voucher: voucherData,
           voucherDiscount: voucherAmount || 0,
           usedPointsAmount: pointsDeduction || 0,
           customerName,
@@ -690,6 +701,17 @@ const CheckoutPage = () => {
                     !phoneNumber.trim() ||
                     phoneError
                   }
+                  voucher={(() => {
+                    const selectedVoucher = vouchers.find(
+                      (v) => v._id === selectedVoucherId || v.code === selectedVoucherId
+                    );
+                    return selectedVoucher ? {
+                      code: selectedVoucher.code,
+                      description: selectedVoucher.description || `Giảm ${selectedVoucher.type === 'PERCENT' ? selectedVoucher.value + '%' : selectedVoucher.value + 'đ'}`
+                    } : null;
+                  })()}
+                  voucherDiscount={calculateFinalTotal().voucherAmount}
+                  usedPointsAmount={calculateFinalTotal().pointsDeduction}
                   productDetails={productDetails}
                   cartItems={cartItems}
                   isFromCart={isFromCart}
@@ -697,12 +719,6 @@ const CheckoutPage = () => {
                   customerName={customerName}
                   shippingAddress={shippingAddress}
                   phoneNumber={phoneNumber}
-
-                  // === THÊM 3 DÒNG SAU ===
-                  voucher={selectedVoucherId}
-                  voucherDiscount={calculateFinalTotal().voucherAmount}
-                  usedPointsAmount={calculateFinalTotal().pointsDeduction}
-
                 />
               </div>
             )}

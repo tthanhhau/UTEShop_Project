@@ -62,7 +62,10 @@ const MoMoPaymentForm = ({
                     quantity: quantity,
                     customerName: customerName,
                     shippingAddress: shippingAddress,
-                    phoneNumber: phoneNumber
+                    phoneNumber: phoneNumber,
+                    voucher: voucher,
+                    voucherDiscount: voucherDiscount,
+                    usedPointsAmount: usedPointsAmount
                 }));
 
                 // Mở popup MoMo
@@ -154,6 +157,9 @@ const MoMoPaymentForm = ({
                         quantity: item.quantity,
                         price: item.product.price
                     })),
+                    voucher,
+                    voucherDiscount,
+                    usedPointsAmount,
                     totalPrice,
                     customerName: customerName || 'Tên chưa cập nhật',
                     shippingAddress: shippingAddress || 'Địa chỉ chưa cập nhật',
@@ -176,6 +182,9 @@ const MoMoPaymentForm = ({
                         quantity: quantity,
                         price: productDetails.price
                     }],
+                    voucher,
+                    voucherDiscount,
+                    usedPointsAmount,
                     totalPrice,
                     customerName: customerName || 'Tên chưa cập nhật',
                     shippingAddress: shippingAddress || 'Địa chỉ chưa cập nhật',

@@ -7,7 +7,7 @@ dotenv.config();
 const syncProductVisibility = async () => {
     try {
         // Connect to MongoDB
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shop');
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_store');
         console.log('✅ Connected to MongoDB');
 
         // Find all products that don't have isVisible field
