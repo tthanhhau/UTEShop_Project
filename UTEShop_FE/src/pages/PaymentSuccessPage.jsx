@@ -146,7 +146,7 @@ const PaymentSuccessPage = () => {
 
     const handleViewDetails = () => {
         // Điều hướng đến trang theo dõi đơn hàng
-        //navigate('/orders-tracking');
+        //navigate(`/orders/${order._id}`);
     };
 
     const handleGoHome = () => {
