@@ -5,6 +5,10 @@ export const authApi = {
   login: (credentials: { email: string; password: string }) =>
     axios.post('/auth/admin/login', credentials),
   getProfile: () => axios.get('/auth/me'),
+  forgotPassword: (data: { email: string }) =>
+    axios.post('/auth/admin/forgot-password', data),
+  resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
+    axios.post('/auth/admin/reset-password', data),
 };
 
 // Analytics API

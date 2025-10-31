@@ -135,6 +135,16 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => router.push('/forgot-password')}
+            className="text-purple-600 hover:text-purple-800 text-sm font-medium mb-4"
+          >
+            Quên mật khẩu?
+          </button>
+        </div>
+
+        {/* <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Tài khoản mặc định:
           </p>
@@ -144,7 +154,7 @@ export default function LoginPage() {
           <p className="text-xs text-gray-500">
             Password: <span className="font-mono font-semibold">123456</span>
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
