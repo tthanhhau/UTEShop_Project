@@ -1,7 +1,7 @@
 // src/controllers/authController.js
 import User from '../models/user.js';
 import Otp from '../models/Otp.js';
-import { sendMail } from '../config/mailer.js';
+import { sendMail } from '../config/mailer_admin_based.js';
 import { otpHtml } from '../utils/emailTemplates.js';
 import generateOtp from '../utils/generateOtp.js';
 import { hash, compare } from '../utils/hash.js';
@@ -17,20 +17,34 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 const addMinutes = (d, mins) => new Date(d.getTime() + mins * 60000);
 
 async function createAndSendOtp(email, type, title) {
-  // clear OTP cũ cùng type
-  await Otp.deleteMany({ email, type });
+  try {
+    // clear OTP cũ cùng type
+    await Otp.deleteMany({ email, type });
 
-  const code = generateOtp(); // 6 chữ số
-  const codeHash = await hash(code);
-  const expiresAt = addMinutes(new Date(), 10); // 10 phút
+    const code = generateOtp(); // 6 chữ số
+    const codeHash = await hash(code);
+    const expiresAt = addMinutes(new Date(), 10); // 10 phút
 
-  await Otp.create({ email, codeHash, type, expiresAt, attempts: 0 });
+    await Otp.create({ email, codeHash, type, expiresAt, attempts: 0 });
 
-  await sendMail({
-    to: email,
-    subject: `${title} – Mã OTP`,
-    html: otpHtml({ title, code }),
-  });
+    try {
+      await sendMail({
+        to: email,
+        subject: `${title} – Mã OTP`,
+        html: otpHtml({ title, code }),
+      });
+      console.log(`✅ OTP email sent successfully to ${email} for ${type}`);
+      return { success: true, message: 'OTP đã được gửi' };
+    } catch (emailError) {
+      console.error(`❌ Failed to send OTP email to ${email}:`, emailError);
+      // Xóa OTP đã tạo nếu gửi email thất bại
+      await Otp.deleteMany({ email, type });
+      throw new Error(`Không thể gửi email OTP: ${emailError.message}`);
+    }
+  } catch (error) {
+    console.error(`❌ createAndSendOtp error for ${email}:`, error);
+    throw error;
+  }
 }
 
 /* ---------------------------- Controllers --------------------------- */
@@ -42,8 +56,16 @@ export const registerRequestOtp = asyncHandler(async (req, res) => {
   const exists = await User.findOne({ email }).lean();
   if (exists) return res.status(409).json({ message: 'Email đã tồn tại' });
 
-  await createAndSendOtp(email, 'register', 'Xác thực đăng ký');
-  return res.json({ message: 'OTP đã được gửi' });
+  try {
+    await createAndSendOtp(email, 'register', 'Xác thực đăng ký');
+    return res.json({ message: 'OTP đã được gửi' });
+  } catch (error) {
+    console.error('❌ Register OTP error:', error);
+    return res.status(500).json({
+      message: 'Không thể gửi OTP đăng ký',
+      error: error.message
+    });
+  }
 });
 
 // 2) Xác minh OTP & tạo tài khoản
@@ -87,8 +109,16 @@ export const resetRequestOtp = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email }).lean();
   if (!user) return res.status(404).json({ message: 'Email không tồn tại' });
 
-  await createAndSendOtp(email, 'reset', 'Đặt lại mật khẩu');
-  return res.json({ message: 'OTP đã được gửi' });
+  try {
+    await createAndSendOtp(email, 'reset', 'Đặt lại mật khẩu');
+    return res.json({ message: 'OTP đã được gửi' });
+  } catch (error) {
+    console.error('❌ Reset OTP error:', error);
+    return res.status(500).json({
+      message: 'Không thể gửi OTP đặt lại mật khẩu',
+      error: error.message
+    });
+  }
 });
 
 // 4) Xác minh OTP & đổi mật khẩu
