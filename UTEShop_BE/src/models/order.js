@@ -69,16 +69,36 @@ const orderSchema = new mongoose.Schema(
       paidAt: { type: Date },
       amount: { type: Number },
     },
+    // Thêm trường cho voucher và điểm tích lũy
+    voucher: {
+      code: { type: String },
+      description: { type: String },
+    },
+    voucherDiscount: { type: Number, default: 0 },
+    usedPoints: { type: Number, default: 0 },
+    usedPointsAmount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
 
 orderSchema.set("toJSON", {
   transform: function (doc, ret) {
-    // 'ret' là object sắp được gửi đi.
-    // Dòng này sẽ tìm giá trị chữ của status (ví dụ: "pending")
-    // và thay thế nó bằng giá trị số tương ứng (ví dụ: 1)
-    ret.status = statusToNumberMap[ret.status];
+    // CHỈ đảm bảo các trường voucher và điểm tồn tại
+    // KHÔNG transform status để tránh conflict với frontend
+    
+    if (ret.voucherDiscount === undefined || ret.voucherDiscount === null) {
+      ret.voucherDiscount = 0;
+    }
+    if (ret.usedPoints === undefined || ret.usedPoints === null) {
+      ret.usedPoints = 0;
+    }
+    if (ret.usedPointsAmount === undefined || ret.usedPointsAmount === null) {
+      ret.usedPointsAmount = 0;
+    }
+    if (!ret.voucher) {
+      ret.voucher = null;
+    }
+    
     return ret;
   },
 });

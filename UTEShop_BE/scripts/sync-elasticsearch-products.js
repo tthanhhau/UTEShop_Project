@@ -2,13 +2,15 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Product from '../src/models/product.js';
 import elasticsearchService from '../src/services/elasticsearchService.js';
+import Category from '../src/models/category.js';
+import Brand from '../src/models/brand.js';
 
 dotenv.config();
 
 const syncElasticsearchProducts = async () => {
     try {
         // Connect to MongoDB
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/shop');
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fashion_store');
         console.log('✅ Connected to MongoDB');
 
         // Check Elasticsearch connection

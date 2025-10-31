@@ -20,16 +20,16 @@ class OrderController {
       paymentMethod = "COD",
       codDetails,
       totalPrice: providedTotalPrice, // Giá này từ client, có thể không dùng
-      
+
       // Trường mới từ File 2
       voucher,
       voucherDiscount,
       usedPointsAmount,
-      
+
       // Trường thanh toán MoMo
-      momoOrderId, 
-      momoRequestId, 
-      
+      momoOrderId,
+      momoRequestId,
+
       // === SỬA LỖI: Thêm lại các trường từ File 1 ===
       customerName,
       phoneNumber,
@@ -135,17 +135,17 @@ class OrderController {
     if (usedPointsAmount > 0) {
       const user = await User.findById(req.user._id);
       const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
-      
+
       if (user.loyaltyPoints.balance < pointsUsed) {
         return res.status(400).json({
           message: "Insufficient loyalty points",
           code: "INSUFFICIENT_POINTS",
         });
       }
-      
+
       user.loyaltyPoints.balance -= pointsUsed;
       await user.save();
-      
+
       console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
     }
 
@@ -191,10 +191,16 @@ class OrderController {
       customerPhone: finalCustomerPhone.trim(),
       // =============================================
       items: orderItems,
-      // === SỬA LỖI: Sử dụng các trường mới từ File 2 ===
+      // Cập nhật thông tin thanh toán
       totalPrice: finalTotal, // Sử dụng giá đã trừ voucher/điểm
-      voucher: voucher || null,
+      // Thông tin voucher
+      voucher: voucher ? {
+        code: voucher.code,
+        description: voucher.description
+      } : null,
       voucherDiscount: voucherDiscount || 0,
+      // Thông tin điểm tích lũy
+      usedPoints: usedPointsAmount ? Math.floor(usedPointsAmount / POINT_TO_VND) : 0,
       usedPointsAmount: usedPointsAmount || 0,
       // =============================================
       shippingAddress: shippingAddress.trim(),
@@ -209,6 +215,36 @@ class OrderController {
 
     // Save order
     await order.save();
+
+    // Tính và cập nhật điểm cho user
+    try {
+      const user = await User.findById(userId);
+      if (user) {
+        // Trừ điểm đã sử dụng cho đơn hàng
+        const pointsUsed = order.usedPoints || 0;
+        user.loyaltyPoints.balance = Math.max(0, user.loyaltyPoints.balance - pointsUsed);
+
+        // Thêm điểm tích lũy từ đơn hàng mới (1% của giá trị đơn hàng)
+        const earnedPoints = Math.floor(finalTotal * 0.01); // 1% của tổng giá trị đơn hàng
+        user.loyaltyPoints.balance += earnedPoints;
+        user.loyaltyPoints.totalEarned += earnedPoints;
+
+        // Lưu lịch sử điểm
+        user.loyaltyPoints.history.push({
+          type: pointsUsed > 0 ? 'redeemed' : 'earned',
+          points: pointsUsed > 0 ? -pointsUsed : earnedPoints,
+          orderId: order._id,
+          description: pointsUsed > 0 
+            ? `Sử dụng ${pointsUsed} điểm cho đơn hàng #${order._id}`
+            : `Tích lũy ${earnedPoints} điểm từ đơn hàng #${order._id}`,
+        });
+
+        await user.save();
+        console.log(`⭐ Updated points for user ${userId}: -${pointsUsed} (used) +${earnedPoints} (earned)`);
+      }
+    } catch (pointsError) {
+      console.warn("⚠️ Points update failed (non-critical):", pointsError.message);
+    }
 
     // Schedule job with Agenda (if available)
     try {
@@ -236,6 +272,7 @@ class OrderController {
       user: userId,
       message: notificationMessage,
       link: `/orders/tracking/${order._id}`, // Link để người dùng xem chi tiết đơn hàng
+      orderId: order._id, // Thêm orderId để dễ dàng truy cập
     });
     await newNotification.save();
 
@@ -290,9 +327,71 @@ class OrderController {
       .populate("items.product")
       .sort({ createdAt: -1 });
 
+    // Đảm bảo các trường voucher và điểm được trả về đầy đủ
+    const ordersWithDetails = orders.map(order => {
+      const orderObj = order.toObject();
+      return {
+        ...orderObj,
+        voucher: orderObj.voucher || null,
+        voucherDiscount: orderObj.voucherDiscount || 0,
+        usedPoints: orderObj.usedPoints || 0,
+        usedPointsAmount: orderObj.usedPointsAmount || 0,
+      };
+    });
+
     res.status(200).json({
-      orders,
-      count: orders.length,
+      orders: ordersWithDetails,
+      count: ordersWithDetails.length,
+    });
+  });
+
+  // Get order by ID for user
+  getOrderById = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const userId = req.user._id;
+
+    const order = await Order.findOne({ _id: orderId, user: userId })
+      .populate({
+        path: "items.product",
+        select: "name price images description"
+      })
+      .populate("user", "name email");
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập đơn hàng này"
+      });
+    }
+
+    // Convert to object and ensure all fields are included
+    const orderObject = order.toObject();
+    
+    // Đảm bảo các trường voucher và điểm LUÔN có giá trị (xử lý đơn hàng cũ)
+    const voucherDiscount = (orderObject.voucherDiscount !== undefined && orderObject.voucherDiscount !== null) 
+      ? orderObject.voucherDiscount 
+      : 0;
+    const usedPoints = (orderObject.usedPoints !== undefined && orderObject.usedPoints !== null)
+      ? orderObject.usedPoints
+      : 0;
+    const usedPointsAmount = (orderObject.usedPointsAmount !== undefined && orderObject.usedPointsAmount !== null)
+      ? orderObject.usedPointsAmount
+      : 0;
+    const voucher = orderObject.voucher || null;
+    
+    res.status(200).json({
+      success: true,
+      order: {
+        ...orderObject,
+        voucher,
+        voucherDiscount,
+        usedPoints,
+        usedPointsAmount,
+        items: order.items.map(item => ({
+          ...item.toObject(),
+          product: item.product
+        }))
+      }
     });
   });
 

@@ -1,5 +1,7 @@
 // server.js
-import "dotenv/config"; // nạp .env sớm nhất
+import dotenv from "dotenv";
+dotenv.config();
+console.log("MONGODB_URI from server.js:", process.env.MONGODB_URI);
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
