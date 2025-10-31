@@ -13,6 +13,7 @@ import { initializeSocket, sendNotificationToUser } from './src/config/socket.js
 import connectDB from "./src/config/db.js";
 import rateLimiter from "./src/middlewares/rateLimiter.js";
 import authRoutes from "./src/routes/authRoutes.js";
+import adminAuthRoutes from "./src/routes/adminAuthRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 
 // tạo 4 khoi hien thi san pham
@@ -70,6 +71,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.get("/", (req, res) => res.send("UTEShop API running..."));
 
 app.use("/api/auth", rateLimiter, authRoutes);
+app.use("/api/auth/admin", rateLimiter, adminAuthRoutes);
 app.use("/api/user", userRoutes);
 
 // thêm 4 khối sản phẩm trang chủ

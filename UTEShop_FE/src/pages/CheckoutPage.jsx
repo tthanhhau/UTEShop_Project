@@ -348,8 +348,15 @@ const CheckoutPage = () => {
 
       const result = await dispatch(createOrder(orderData)).unwrap();
 
-      alert("Đặt hàng thành công!");
-      navigate("/orders");
+      // Lưu thông tin đơn hàng vào localStorage để hiển thị trên trang success
+      localStorage.setItem('momoPaymentSuccess', JSON.stringify({
+        orderId: result.order._id,
+        orderData: result.order,
+        timestamp: Date.now()
+      }));
+
+      // Chuyển đến trang thanh toán thành công
+      navigate("/payment/success");
     } catch (error) {
       console.error("Order Creation Error:", error);
 
