@@ -17,8 +17,6 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import UserProfile from "./pages/Profile/Profile";
 import CartPage from "./pages/CartPage";
-import NewArrivalsPage from "./pages/NewArrivalsPage";
-import OnSalePage from "./pages/OnSalePage";
 import CheckoutPage from "./pages/CheckoutPage";
 
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -67,8 +65,6 @@ function App() {
               <Route path="forgot" element={<ForgotPassword />} />
               <Route path="products" element={<ProductListPage />} />
               <Route path="products/:id" element={<ProductDetailPage />} />
-              <Route path="new-arrivals" element={<NewArrivalsPage />} />
-              <Route path="on-sale" element={<OnSalePage />} />
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
 
