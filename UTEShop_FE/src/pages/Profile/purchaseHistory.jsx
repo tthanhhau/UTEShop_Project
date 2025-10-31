@@ -37,7 +37,7 @@ export function PurchaseHistory() {
       try {
         const response = await api.get("/orders");
         const completedOrders = response.data.orders.filter(
-          (order) => order.status === 5
+          (order) => order.status === 'delivered'
         );
         setOrdersData(completedOrders);
 
