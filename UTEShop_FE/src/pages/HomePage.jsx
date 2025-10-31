@@ -147,7 +147,7 @@ const HomePage = () => {
                     title="Sản phẩm mới nhất"
                     products={blocks.newest}
                     maxCols={4}
-                    viewAllLink="/new-arrivals"
+                    viewAllLink="/products?sort=newest"
                     sectionStyle="newest"
                     totalCount={totals?.newest}
                     showViewAll={true}
@@ -189,7 +189,7 @@ const HomePage = () => {
                     title="Khuyến mãi cao nhất"
                     products={blocks.topDiscount}
                     maxCols={2}
-                    viewAllLink="/on-sale"
+                    viewAllLink="/products?sort=top-discount"
                     sectionStyle="discount"
                     totalCount={totals?.topDiscount}
                     showViewAll={true}
