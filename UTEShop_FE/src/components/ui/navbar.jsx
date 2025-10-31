@@ -60,8 +60,6 @@ const Navbar = () => {
 
   const handleLogoClick = () => navigate("/");
   const handleShopClick = () => navigate("/products");
-  const handleNewArrivalsClick = () => navigate("/new-arrivals");
-  const handleOnSaleClick = () => navigate("/on-sale");
   const handleBrandsClick = () => navigate("/products"); // hoặc /brands nếu có
   const handleProfileClick = () => navigate("/profile");
   const handleMyOrdersClick = () => navigate("/orders-tracking");
@@ -94,18 +92,6 @@ const Navbar = () => {
             className="text-gray-700 hover:text-blue-600 cursor-pointer transition-colors font-medium"
           >
             Shop
-          </span>
-          <span
-            onClick={handleOnSaleClick}
-            className="text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
-          >
-            On Sale
-          </span>
-          <span
-            onClick={handleNewArrivalsClick}
-            className="text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
-          >
-            New Arrivals
           </span>
         </div>
 
@@ -221,18 +207,6 @@ const Navbar = () => {
             className="text-sm text-gray-700 hover:text-blue-600 cursor-pointer transition-colors font-medium"
           >
             Shop
-          </span>
-          <span
-            onClick={handleOnSaleClick}
-            className="text-sm text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
-          >
-            On Sale
-          </span>
-          <span
-            onClick={handleNewArrivalsClick}
-            className="text-sm text-gray-700 hover:text-blue-600 cursor-pointer transition-colors"
-          >
-            New Arrivals
           </span>
         </div>
 
