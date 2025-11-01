@@ -248,7 +248,7 @@ const PaymentSuccessPage = () => {
 
                 <div className="space-y-3">
                     <Button
-                        onClick={handleViewDetails}
+                        onClick={handleViewDetails()}
                         className="w-full"
                     >
                         Xem chi tiết
