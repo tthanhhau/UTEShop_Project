@@ -33,7 +33,8 @@ class OrderController {
     // Debug log
     console.log("🔍 ORDER CREATE - customerName from body:", customerName);
     console.log("🔍 ORDER CREATE - phoneNumber from body:", phoneNumber);
-    console.log("🔍 ORDER CREATE - customerPhone from body:", customerPhone);
+
+    console.log("🔍 ORDER CREATE - items:", voucher);
 
     // Kiểm tra user authentication
     if (!req.user || !req.user._id) {
@@ -229,6 +230,68 @@ class OrderController {
 
       // Save order với session
       await order.save({ session });
+
+      // Xóa voucher đã sử dụng khỏi user's voucherClaims
+      if (voucher && voucher.code) {
+        console.log("🎟️ Removing used voucher from user:", {
+          userId,
+          voucherCode: voucher.code
+        });
+
+        // Tìm và cập nhật voucher trong user claims
+        const user = await User.findById(userId).session(session);
+        const userVoucher = user.voucherClaims.find(v => v.voucherCode === voucher.code);
+
+        if (!userVoucher) {
+          throw new Error("Voucher not found in user's claims");
+        }
+
+        if (userVoucher.claimCount > 1) {
+          // Giảm claimCount đi 1 nếu còn nhiều hơn 1 lần sử dụng
+          console.log("📊 Decreasing voucher claim count:", {
+            current: userVoucher.claimCount,
+            new: userVoucher.claimCount - 1
+          });
+
+          const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            {
+              $set: {
+                "voucherClaims.$[elem].claimCount": userVoucher.claimCount - 1,
+                "voucherClaims.$[elem].lastClaimed": new Date()
+              }
+            },
+            {
+              arrayFilters: [{ "elem.voucherCode": voucher.code }],
+              session,
+              new: true
+            }
+          );
+
+          if (!updatedUser) {
+            throw new Error("Failed to update voucher claim count");
+          }
+          console.log("✅ Voucher claim count updated successfully");
+        } else {
+          // Xóa voucher nếu đây là lần sử dụng cuối cùng
+          console.log("🗑️ Removing voucher (last claim used):", voucher.code);
+
+          const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            {
+              $pull: {
+                voucherClaims: { voucherCode: voucher.code }
+              }
+            },
+            { session, new: true }
+          );
+
+          if (!updatedUser) {
+            throw new Error("Failed to remove expired voucher from user");
+          }
+          console.log("✅ Voucher removed successfully (last claim used)");
+        }
+      }
 
       // 🎉 COMMIT TRANSACTION - Tất cả thay đổi được áp dụng
       await session.commitTransaction();

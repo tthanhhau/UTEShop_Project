@@ -127,7 +127,7 @@ export const createReview = async (req, res) => {
 
     // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và đang "HOẠT ĐỘNG"
     const now = new Date();
-    
+
     // 1. Tìm tất cả voucher REVIEW đang hoạt động
     const allReviewVouchers = await Voucher.find({
       startDate: { $lte: now },
@@ -139,32 +139,32 @@ export const createReview = async (req, res) => {
 
     // 2. ĐẾM SỐ LẦN user đã nhận mỗi voucher (dùng UserVoucher collection - đáng tin cậy)
     console.log('🔍 Counting voucher claims from UserVoucher collection...');
-    const userClaimedVouchers = await UserVoucher.find({ 
-      user: userId 
+    const userClaimedVouchers = await UserVoucher.find({
+      user: userId
     }).select('voucherCode').lean();
-    
+
     const userVoucherCounts = {};
     userClaimedVouchers.forEach(uv => {
       userVoucherCounts[uv.voucherCode] = (userVoucherCounts[uv.voucherCode] || 0) + 1;
     });
-    
+
     console.log('🔍 User voucher claim counts (from UserVoucher DB):', userVoucherCounts);
 
     // 3. Lọc voucher dựa trên SỐ LẦN ĐÃ NHẬN so với GIỚI HẠN
     const availableVouchers = allReviewVouchers.filter(voucher => {
       const userClaimCount = userVoucherCounts[voucher.code] || 0; // Số lần đã nhận
       const maxAllowed = voucher.maxUsesPerUser || 1; // Giới hạn cho phép
-      
+
       // Chỉ hiển thị nếu chưa đạt giới hạn
       const canClaimMore = userClaimCount < maxAllowed;
-      
+
       console.log(`📋 ${voucher.code}: claimed=${userClaimCount}/${maxAllowed}, canClaim=${canClaimMore}`);
-      
+
       return canClaimMore;
     });
 
     console.log('🎯 Available vouchers for user:', availableVouchers.length);
-    
+
     availableVouchers.forEach((voucher, index) => {
       console.log(`✅ Voucher ${index + 1}: ${voucher.code}`, {
         description: voucher.description,
@@ -177,9 +177,9 @@ export const createReview = async (req, res) => {
     const reviewVouchers = availableVouchers; // Rename để giữ tương thích code bên dưới
     let loyalPoints = 0;
 
-    if(orderId){
+    if (orderId) {
       const orderUser = await Order.findById(orderId);
-      loyalPoints = orderUser.totalPrice ? Math.floor(orderUser.totalPrice / 10) : 0;
+      loyalPoints = orderUser.totalPrice ? Math.floor(orderUser.totalPrice / 100) : 0;
     }
 
     // 2. Định nghĩa phần thưởng điểm tích lũy
@@ -191,7 +191,7 @@ export const createReview = async (req, res) => {
 
     // 3. Tạo danh sách phần thưởng
     const availableRewards = [pointsReward];
-    
+
     // THÊM TẤT CẢ voucher loại "ĐÁNH GIÁ" đang "HOẠT ĐỘNG"
     if (reviewVouchers && reviewVouchers.length > 0) {
       reviewVouchers.forEach((voucher, index) => {
@@ -200,8 +200,8 @@ export const createReview = async (req, res) => {
           description: `Nhận voucher: ${voucher.description}`,
           voucherCode: voucher.code,
           discountType: voucher.discountType,
-          discountValue: voucher.discountValue,
-          minOrderAmount: voucher.minOrderAmount,
+          value: voucher.discountValue,
+          minOrder: voucher.minOrderAmount,
           endDate: voucher.endDate
         };
         availableRewards.push(voucherReward);
@@ -214,7 +214,7 @@ export const createReview = async (req, res) => {
     } else {
       console.log('❌ Không có voucher ĐÁNH GIÁ nào hoạt động - chỉ tặng điểm thưởng');
     }
-    
+
     console.log('📝 Tổng số phần thưởng gửi về frontend:', availableRewards.length);
     console.log('🎯 Chi tiết tất cả phần thưởng:', availableRewards.map(r => ({
       type: r.type,
@@ -392,11 +392,11 @@ export const checkOrderReviewed = async (req, res) => {
       hasReview: !!review,
       review: review
         ? {
-            _id: review._id,
-            rating: review.rating,
-            comment: review.comment,
-            createdAt: review.createdAt,
-          }
+          _id: review._id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+        }
         : null,
     });
   } catch (error) {
