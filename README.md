@@ -17,35 +17,7 @@ UTEShop là một nền tảng thương mại điện tử chuyên về mỹ ph�
 ### Database
 - **MongoDB** - Cơ sở dữ liệu NoSQL
 
-## 📁 Cấu trúc dự án
 
-```
-UTEShop/
-├── client/                 # ReactJS - Giao diện người dùng
-│   ├── src/
-│   ├── public/
-│   └── package.json
-│
-├── admin/                  # NextJS - Giao diện quản trị
-│   ├── src/
-│   ├── pages/
-│   ├── public/
-│   └── package.json
-│
-├── server/                 # ExpressJS - API người dùng
-│   ├── src/
-│   ├── models/
-│   ├── routes/
-│   ├── controllers/
-│   └── package.json
-│
-├── admin-api/             # NestJS - API quản trị
-│   ├── src/
-│   ├── modules/
-│   └── package.json
-│
-└── README.md
-```
 
 ## 🚀 Cài đặt và Chạy dự án
 
