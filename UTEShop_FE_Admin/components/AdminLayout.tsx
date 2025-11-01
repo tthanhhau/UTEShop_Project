@@ -33,11 +33,9 @@ const menuStructure: MenuItem[] = [
     ],
   },
   { path: '/admin/orders', icon: FaShoppingCart, label: 'Quản lý đơn hàng' },
-  { path: '/admin/customers', icon: FaUsers, label: 'Khách hàng' },
-  { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Voucher' },
-  { path: '/admin/points', icon: FaStar, label: 'Điểm tích lũy' },
-  { path: '/admin/reports', icon: FaChartLine, label: 'Báo cáo' },
-  { path: '/admin/settings', icon: FaCog, label: 'Cài đặt' },
+  { path: '/admin/customers', icon: FaUsers, label: 'Quản lý khách hàng' },
+  { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Quản lý Voucher' },
+  { path: '/admin/points', icon: FaStar, label: 'Quản lý Điểm tích lũy' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
