@@ -1,97 +1,238 @@
-<h1 align="center">Welcome to UTEShop</h1>
+# UTEShop - Website Bán Mỹ Phẩm
 
-<p align="center">
-  <a href="http://localhost:5173/" target="_blank">
-    <img alt="Demo" src="https://img.shields.io/badge/Demo-Live%20Demo-blue?style=for-the-badge&logo=vercel" />
-  </a>
-  <img alt="React" src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react&logoColor=white" />
-  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-14-000000?logo=next.js&logoColor=white" />
-  <img alt="Express" src="https://img.shields.io/badge/Express-4.18.2-000000?logo=express&logoColor=white" />
-  <img alt="NestJS" src="https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/github/license/Nhom17/UTEShop" />
-</p>
+## 📋 Giới thiệu
 
-<p align="center">
-  <strong>UTEShop</strong> – Website bán mỹ phẩm cao cấp với trải nghiệm người dùng mượt mà và quản trị mạnh mẽ.
-</p>
+UTEShop là một nền tảng thương mại điện tử chuyên về mỹ phẩm, cung cấp trải nghiệm mua sắm trực tuyến hiện đại và tiện lợi cho khách hàng.
 
----
+## 🛠️ Công nghệ sử dụng
 
-## Demo
+### Frontend
+- **User Interface**: ReactJS - Giao diện người dùng
+- **Admin Interface**: NextJS - Trang quản trị
 
-> **User Site:** `http://localhost:5173`  
-> **Admin Dashboard:** `http://localhost:3000`  
-> **User API Docs:** `http://localhost:5000/api/docs`  
-> **Admin API Docs:** `http://localhost:4000/api/docs`
+### Backend
+- **User API**: ExpressJS - RESTful API cho người dùng
+- **Admin API**: NestJS - API cho hệ thống quản trị
 
----
+### Database
+- **MongoDB** - Cơ sở dữ liệu NoSQL
 
-## Tech Stack
+## 📁 Cấu trúc dự án
 
-| Phần | Công nghệ |
-|------|-----------|
-| **Frontend (User)** | React.js + Vite + TailwindCSS |
-| **Backend (User API)** | Express.js + JWT + MongoDB |
-| **Frontend (Admin)** | Next.js (App Router) + TypeScript + Shadcn/ui |
-| **Backend (Admin API)** | NestJS + TypeORM + PostgreSQL |
-| **Auth** | JWT + Refresh Token + Role-based |
-| **State Management** | Zustand / Redux Toolkit |
+```
+UTEShop/
+├── client/                 # ReactJS - Giao diện người dùng
+│   ├── src/
+│   ├── public/
+│   └── package.json
+│
+├── admin/                  # NextJS - Giao diện quản trị
+│   ├── src/
+│   ├── pages/
+│   ├── public/
+│   └── package.json
+│
+├── server/                 # ExpressJS - API người dùng
+│   ├── src/
+│   ├── models/
+│   ├── routes/
+│   ├── controllers/
+│   └── package.json
+│
+├── admin-api/             # NestJS - API quản trị
+│   ├── src/
+│   ├── modules/
+│   └── package.json
+│
+└── README.md
+```
 
----
+## 🚀 Cài đặt và Chạy dự án
 
----
+### Yêu cầu hệ thống
+- Node.js >= 16.x
+- MongoDB >= 5.x
+- npm hoặc yarn
 
-## Hướng dẫn cài đặt & chạy local
+### 1. Clone repository
 
 ```bash
-git clone https://github.com/Nhom17/UTEShop.git
-cd UTEShop
-1. User Frontend (React)
-bashcd client
-npm install
-npm run dev
-2. User API (Express)
-bashcd ../server-user
-npm install
-npm run start:dev
-3. Admin Dashboard (Next.js)
-bashcd ../admin
-npm install
-npm run dev
-4. Admin API (NestJS)
-bashcd ../server-admin
-npm install
-npm run start:dev
+git clone https://github.com/your-username/uteshop.git
+cd uteshop
+```
 
-Scripts có sẵn
+### 2. Cài đặt dependencies
 
-ProjectScriptMô tảclientnpm run devVite dev serverserver-usernpm run start:devExpress + nodemonadminnpm run devNext.js devserver-adminnpm run start:devNestJS dev
+#### Backend User API (ExpressJS)
+```bash
+cd server
+npm install
+```
 
-Biến môi trường (.env)
-server-user/.env
-envPORT=5000
-MONGODB_URI=mongodb://localhost:27017/uteshop_user
+#### Backend Admin API (NestJS)
+```bash
+cd admin-api
+npm install
+```
+
+#### Frontend User (ReactJS)
+```bash
+cd client
+npm install
+```
+
+#### Frontend Admin (NextJS)
+```bash
+cd admin
+npm install
+```
+
+### 3. Cấu hình môi trường
+
+#### Server (ExpressJS) - `.env`
+```env
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/uteshop
 JWT_SECRET=your_jwt_secret_key
-server-admin/.env
-envPORT=4000
-DATABASE_URL=postgresql://user:pass@localhost:5432/uteshop_admin
-JWT_ADMIN_SECRET=admin_jwt_secret
+NODE_ENV=development
+```
 
-Author
-Nhom17
+#### Admin API (NestJS) - `.env`
+```env
+PORT=5001
+MONGODB_URI=mongodb://localhost:27017/uteshop
+JWT_SECRET=your_jwt_secret_key
+NODE_ENV=development
+```
 
-GitHub: @Nhom17
+#### Client (ReactJS) - `.env`
+```env
+REACT_APP_API_URL=http://localhost:5000/api
+```
 
+#### Admin (NextJS) - `.env`
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
+```
 
-Đóng góp
+### 4. Chạy ứng dụng
 
-Fork repo
-Tạo branch: git checkout -b feature/ten-tinh-nang
-Commit: git commit -m 'Add: tính năng mới'
-Push & Pull Request
+#### Khởi động MongoDB
+```bash
+mongod
+```
 
+#### Chạy Backend User API (ExpressJS)
+```bash
+cd server
+npm run dev
+```
 
-Show your support
-Give a ⭐️ if this project helped you!
+#### Chạy Backend Admin API (NestJS)
+```bash
+cd admin-api
+npm run start:dev
+```
 
-This README was generated with ❤️ by readme-md-generator and customized by Nhom17
+#### Chạy Frontend User (ReactJS)
+```bash
+cd client
+npm start
+```
+
+#### Chạy Frontend Admin (NextJS)
+```bash
+cd admin
+npm run dev
+```
+
+## 🌐 Truy cập ứng dụng
+
+- **Website người dùng**: http://localhost:3000
+- **Trang quản trị**: http://localhost:3001
+- **API người dùng**: http://localhost:5000
+- **API quản trị**: http://localhost:5001
+
+## 📦 Tính năng chính
+
+### Người dùng
+- Đăng ký/Đăng nhập tài khoản
+- Xem danh sách sản phẩm mỹ phẩm
+- Tìm kiếm và lọc sản phẩm
+- Thêm sản phẩm vào giỏ hàng
+- Đặt hàng và thanh toán
+- Quản lý đơn hàng cá nhân
+- Đánh giá và nhận xét sản phẩm
+
+### Admin
+- Quản lý sản phẩm (CRUD)
+- Quản lý danh mục
+- Quản lý đơn hàng
+- Quản lý người dùng
+- Thống kê doanh thu
+- Quản lý khuyến mãi
+
+## 📚 Scripts
+
+### Server (ExpressJS)
+```bash
+npm run dev      # Chạy development mode
+npm start        # Chạy production mode
+npm test         # Chạy tests
+```
+
+### Admin API (NestJS)
+```bash
+npm run start:dev    # Chạy development mode
+npm run start:prod   # Chạy production mode
+npm run test         # Chạy tests
+```
+
+### Client (ReactJS)
+```bash
+npm start        # Chạy development mode
+npm run build    # Build production
+npm test         # Chạy tests
+```
+
+### Admin (NextJS)
+```bash
+npm run dev      # Chạy development mode
+npm run build    # Build production
+npm start        # Chạy production mode
+```
+
+## 🗄️ Database Schema
+
+### Collections chính
+- **users**: Thông tin người dùng
+- **products**: Sản phẩm mỹ phẩm
+- **categories**: Danh mục sản phẩm
+- **orders**: Đơn hàng
+- **reviews**: Đánh giá sản phẩm
+- **carts**: Giỏ hàng
+
+## 🔐 Authentication
+
+Hệ thống sử dụng JWT (JSON Web Token) cho xác thực người dùng và phân quyền.
+
+## 🤝 Đóng góp
+
+Mọi đóng góp đều được chào đón! Vui lòng tạo pull request hoặc mở issue để thảo luận.
+
+## 📄 License
+
+MIT License - Xem file LICENSE để biết thêm chi tiết.
+
+## 👥 Tác giả
+
+- **Team UTEShop** - Đại học Sư phạm Kỹ thuật TP.HCM
+
+## 📞 Liên hệ
+
+- Email: support@uteshop.com
+- Website: https://uteshop.com
+
+---
+
+**Made with ❤️ by UTEShop Team**
