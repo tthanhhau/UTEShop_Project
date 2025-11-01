@@ -192,11 +192,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="space-y-2 pl-6">
                     <div>
                       <label className="text-xs text-gray-500">Tên:</label>
-                      <div className="text-sm text-gray-900">{order.user?.name || 'N/A'}</div>
+                      <div className="text-sm text-gray-900">{order.customerName || order.user?.name || 'N/A'}</div>
                     </div>
                     <div>
                       <label className="text-xs text-gray-500">SĐT:</label>
-                      <div className="text-sm text-gray-900">{order.user?.phone || order.shippingAddress?.phone || 'N/A'}</div>
+                      <div className="text-sm text-gray-900">{order.customerPhone || order.user?.phone || order.shippingAddress?.phone || 'N/A'}</div>
                     </div>
                     <div>
                       <label className="text-xs text-gray-500">Email:</label>

@@ -225,119 +225,144 @@ export default function ProductListPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-4">
+        <div className="max-w-7xl mx-auto px-4 py-6">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-800 mb-4">Tất cả sản phẩm</h1>
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-gray-800 mb-3">Tất cả sản phẩm</h1>
+                    <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto rounded-full"></div>
+                </div>
 
-                {/* Search and Filter Bar */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                    {/* SearchAutocomplete Component - THÊM VÀO ĐÂY */}
-                    {/* <div className="relative flex-1 max-w-md">
-                        <SearchAutocomplete
-                            onProductSelect={handleProductSelect}
-                            placeholder="Tìm kiếm sản phẩm..."
-                        />
-                    </div> */}
+                {/* Filter Section */}
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 mb-6 shadow-sm">
+                    {/* Row 1: Dropdowns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        {/* Category Filter */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-tags mr-2 text-purple-600"></i>
+                                Danh mục
+                            </label>
+                            <select
+                                value={category}
+                                onChange={(e) => handleCategoryChange(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all cursor-pointer hover:border-purple-300"
+                            >
+                                <option value="">Tất cả danh mục</option>
+                                {categories.map(cat => (
+                                    <option key={cat._id} value={cat._id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                    {/* Category Filter */}
-                    <select
-                        value={category}
-                        onChange={(e) => handleCategoryChange(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                        <option value="">Tất cả danh mục</option>
-                        {categories.map(cat => (
-                            <option key={cat._id} value={cat._id}>
-                                {cat.name}
-                            </option>
-                        ))}
-                    </select>
+                        {/* Brand Filter */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-star mr-2 text-pink-600"></i>
+                                Thương hiệu
+                            </label>
+                            <select
+                                value={brand}
+                                onChange={(e) => handleBrandChange(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all cursor-pointer hover:border-purple-300"
+                            >
+                                <option value="">Tất cả thương hiệu</option>
+                                {brands.map(br => (
+                                    <option key={br._id} value={br._id}>
+                                        {br.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                    {/* Brand Filter */}
-                    <select
-                        value={brand}
-                        onChange={(e) => handleBrandChange(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                        <option value="">Tất cả thương hiệu</option>
-                        {brands.map(br => (
-                            <option key={br._id} value={br._id}>
-                                {br.name}
-                            </option>
-                        ))}
-                    </select>
+                        {/* Price Range */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-dollar-sign mr-2 text-green-600"></i>
+                                Khoảng giá
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="0"
+                                    step="1000"
+                                    value={priceMinInput}
+                                    onChange={(e) => setPriceMinInput(e.target.value)}
+                                    onBlur={() => commitPriceChange('minPrice', priceMinInput)}
+                                    placeholder="Giá từ"
+                                    className="w-full px-3 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+                                />
+                                <span className="text-gray-400">-</span>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="0"
+                                    step="1000"
+                                    value={priceMaxInput}
+                                    onChange={(e) => setPriceMaxInput(e.target.value)}
+                                    onBlur={() => commitPriceChange('maxPrice', priceMaxInput)}
+                                    placeholder="đến"
+                                    className="w-full px-3 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+                                />
+                            </div>
+                        </div>
 
-                    {/* Price Range */}
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="number"
-                            inputMode="numeric"
-                            min="0"
-                            step="1000"
-                            value={priceMinInput}
-                            onChange={(e) => setPriceMinInput(e.target.value)}
-                            onBlur={() => commitPriceChange('minPrice', priceMinInput)}
-                            placeholder="Giá từ"
-                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <span className="text-gray-500">-</span>
-                        <input
-                            type="number"
-                            inputMode="numeric"
-                            min="0"
-                            step="1000"
-                            value={priceMaxInput}
-                            onChange={(e) => setPriceMaxInput(e.target.value)}
-                            onBlur={() => commitPriceChange('maxPrice', priceMaxInput)}
-                            placeholder="đến"
-                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                        {/* Rating Filter */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-star mr-2 text-yellow-500"></i>
+                                Đánh giá
+                            </label>
+                            <select
+                                value={ratingInput}
+                                onChange={(e) => handleRatingChange(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all cursor-pointer hover:border-purple-300"
+                            >
+                                <option value="">Tất cả số sao</option>
+                                <option value="4.5">⭐ Từ 4.5 sao</option>
+                                <option value="4">⭐ Từ 4 sao</option>
+                                <option value="3.5">⭐ Từ 3.5 sao</option>
+                                <option value="3">⭐ Từ 3 sao</option>
+                            </select>
+                        </div>
                     </div>
-
-                    {/* Rating Filter */}
-                    <select
-                        value={ratingInput}
-                        onChange={(e) => handleRatingChange(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                        <option value="">Tất cả số sao</option>
-                        <option value="4.5">Từ 4.5 sao</option>
-                        <option value="4">Từ 4 sao</option>
-                        <option value="3.5">Từ 3.5 sao</option>
-                        <option value="3">Từ 3 sao</option>
-                    </select>
                 </div>
 
                 {/* Sort Options */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    {[
-                        { value: 'newest', label: 'Mới nhất' },
-                        { value: 'best-selling', label: 'Bán chạy' },
-                        { value: 'most-viewed', label: 'Xem nhiều' },
-                        { value: 'top-discount', label: 'Khuyến mãi' },
-                        { value: 'price-asc', label: 'Giá tăng dần' },
-                        { value: 'price-desc', label: 'Giá giảm dần' },
-                        { value: 'alpha-asc', label: 'A → Z' },
-                        { value: 'alpha-desc', label: 'Z → A' }
-                    ].map(option => (
-                        <button
-                            key={option.value}
-                            onClick={() => handleSortChange(option.value)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${sort === option.value
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
+                    <div className="flex flex-wrap gap-3">
+                        {[
+                            { value: 'newest', label: 'Mới nhất', icon: 'fa-sparkles' },
+                            { value: 'best-selling', label: 'Bán chạy', icon: 'fa-fire' },
+                            { value: 'most-viewed', label: 'Khuyến mãi', icon: 'fa-tags' },
+                            { value: 'price-asc', label: 'Giá tăng dần', icon: 'fa-arrow-up' },
+                            { value: 'price-desc', label: 'Giá giảm dần', icon: 'fa-arrow-down' },
+                            { value: 'alpha-asc', label: 'A → Z', icon: 'fa-sort-alpha-down' },
+                            { value: 'alpha-desc', label: 'Z → A', icon: 'fa-sort-alpha-up' }
+                        ].map(option => (
+                            <button
+                                key={option.value}
+                                onClick={() => handleSortChange(option.value)}
+                                className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:scale-105 flex items-center gap-2 ${
+                                    sort === option.value
+                                        ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
+                            >
+                                <i className={`fas ${option.icon} text-xs`}></i>
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Results Info */}
-                <div className="flex justify-between items-center mb-4">
-                    <p className="text-gray-600">
-                        Hiển thị {products.length} trong tổng số {pagination.total} sản phẩm
+                <div className="flex justify-between items-center mb-6 px-2">
+                    <p className="text-gray-700 font-medium">
+                        Hiển thị <span className="text-purple-600 font-bold">{products.length}</span> trong tổng số <span className="text-purple-600 font-bold">{pagination.total}</span> sản phẩm
                     </p>
                 </div>
             </div>

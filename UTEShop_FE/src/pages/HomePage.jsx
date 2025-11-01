@@ -1,198 +1,176 @@
 import React, { useEffect, useState } from "react";
 import axios from "../api/axiosConfig";
-import { useNavigate } from "react-router-dom";
-import ProductCard from "../components/ProductCard";
-
-
-const Section = ({ title, products, maxCols = 4, viewAllLink, sectionStyle, totalCount, showViewAll }) => {
-    const navigate = useNavigate();
-
-    const getGridCols = () => {
-        switch (maxCols) {
-            case 2: return 'grid-cols-1 md:grid-cols-2';
-            case 3: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
-            case 4: return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
-            default: return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
-        }
-    };
-
-    const getSectionBgColor = () => {
-        switch (sectionStyle) {
-            case 'newest': return 'bg-gradient-to-r from-blue-50 to-indigo-50';
-            case 'bestselling': return 'bg-gradient-to-r from-green-50 to-emerald-50';
-            case 'mostviewed': return 'bg-gradient-to-r from-purple-50 to-pink-50';
-            case 'discount': return 'bg-gradient-to-r from-red-50 to-orange-50';
-            default: return 'bg-gray-50';
-        }
-    };
-
-    const getSectionTitleColor = () => {
-        switch (sectionStyle) {
-            case 'newest': return 'text-blue-700';
-            case 'bestselling': return 'text-green-700';
-            case 'mostviewed': return 'text-purple-700';
-            case 'discount': return 'text-red-700';
-            default: return 'text-gray-700';
-        }
-    };
-
-    if (!products || products.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className={`rounded-xl p-6 ${getSectionBgColor()}`}>
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h2 className={`text-2xl font-bold ${getSectionTitleColor()}`}>
-                        {title}
-                    </h2>
-                    {totalCount && (
-                        <p className="text-sm text-gray-600 mt-1">
-                            {totalCount} sản phẩm có sẵn
-                        </p>
-                    )}
-                </div>
-                {showViewAll && viewAllLink && (
-                    <button
-                        onClick={() => navigate(viewAllLink)}
-                        className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors duration-200 text-sm font-medium"
-                    >
-                        Xem tất cả
-                    </button>
-                )}
-            </div>
-
-            <div className={`grid ${getGridCols()} gap-4`}>
-                {products.map((product) => (
-                    <ProductCard key={product._id} product={product} />
-                ))}
-            </div>
-        </div>
-    );
-};
+import { getAllBrands } from "../api/brandApi";
+import HeroBanner from "../components/HeroBanner";
+import BrandSection from "../components/BrandSection";
+import CategoryShowcase from "../components/CategoryShowcase";
+import FeatureSection from "../components/FeatureSection";
+import TestimonialSection from "../components/TestimonialSection";
 
 const HomePage = () => {
     const [blocks, setBlocks] = useState(null);
-    const [totals, setTotals] = useState(null);
+    const [brands, setBrands] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchBlocks = async () => {
+        const fetchData = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                const res = await axios.get("/products/home-blocks");
 
-                // Log để debug
-                console.log("API Response:", res.data);
-                console.log("Totals:", res.data.totals);
+                // Fetch products
+                const productsRes = await axios.get("/products/home-blocks");
+                setBlocks(productsRes.data);
 
-                setBlocks(res.data);
-                setTotals(res.data.totals);
+                // Fetch brands
+                const brandsData = await getAllBrands();
+                setBrands(brandsData);
+
             } catch (err) {
-                console.error("Lỗi khi lấy home blocks:", err);
-                // Log chi tiết lỗi
-                console.error("Error Details:", err.response?.data || err.message);
-                setError(err.response?.data?.message || "Không thể tải dữ liệu sản phẩm");
+                console.error("Lỗi khi lấy dữ liệu:", err);
+                setError(err.response?.data?.message || "Không thể tải dữ liệu");
             } finally {
                 setLoading(false);
             }
         };
-        fetchBlocks();
+        fetchData();
     }, []);
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-purple-50 to-pink-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 text-lg">Đang tải trang chủ...</p>
+                </div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="text-center py-8">
-                <p className="text-red-500 mb-4">{error}</p>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                    Thử lại
-                </button>
+            <div className="text-center py-16">
+                <div className="max-w-md mx-auto">
+                    <svg className="w-20 h-20 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Đã có lỗi xảy ra</h2>
+                    <p className="text-red-500 mb-6">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-3 rounded-full hover:shadow-xl transition-all duration-300"
+                    >
+                        Thử lại
+                    </button>
+                </div>
             </div>
         );
     }
 
-    // Hiển thị thông báo nếu không có sản phẩm
-    if (!blocks || Object.keys(blocks).length === 0) {
-        return (
-            <div className="text-center py-8">
-                <p className="text-gray-600">Không có sản phẩm để hiển thị</p>
-            </div>
-        );
-    }
+    // Hero banners - 5 banners về mỹ phẩm
+    const heroBanners = [
+        {
+            image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1920&h=800&fit=crop",
+            title: "Bảo vệ làn da hoàn hảo",
+            description: "Kem chống nắng SPF 50+ - Bảo vệ da tối ưu trước tia UV từ các thương hiệu hàng đầu",
+            buttonText: "Khám phá ngay",
+            link: "/products?sort=newest"
+        },
+        {
+            image: "https://images.unsplash.com/photo-1556228852-80de8a8b0e80?w=1920&h=800&fit=crop&q=80",
+            title: "Kem chống nắng cao cấp",
+            description: "Bảo vệ da khỏi tia UVA/UVB - Công thức nhẹ tênh, không gây bết dính",
+            buttonText: "Mua ngay",
+            link: "/products?category=kem-chong-nang"
+        },
+        {
+            image: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=1920&h=800&fit=crop",
+            title: "Làm sạch sâu & dịu nhẹ",
+            description: "Sữa rửa mặt cao cấp - Làm sạch sâu, dưỡng ẩm và làm dịu làn da mỗi ngày",
+            buttonText: "Xem sản phẩm",
+            link: "/products?sort=best-selling"
+        },
+        {
+            image: "https://images.unsplash.com/photo-1570554886111-e80fcca6a029?w=1920&h=800&fit=crop&q=80",
+            title: "Sữa rửa mặt cho mọi loại da",
+            description: "Làm sạch nhẹ nhàng - Cân bằng độ pH tự nhiên, phù hợp cho da nhạy cảm",
+            buttonText: "Khám phá",
+            link: "/products?category=sua-rua-mat"
+        },
+        {
+            image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=1920&h=800&fit=crop",
+            title: "Ưu đãi đặc biệt",
+            description: "Giảm giá lên đến 50% cho bộ sưu tập skincare và mỹ phẩm cao cấp",
+            buttonText: "Mua ngay",
+            link: "/products?sort=top-discount"
+        }
+    ];
 
     return (
-        <div className="max-w-7xl mx-auto p-4">
-            <div className="text-center mb-12">
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">Chào mừng đến với UTEShop</h1>
-                <p className="text-gray-600">Khám phá những sản phẩm chất lượng nhất</p>
+        <div className="min-h-screen bg-white">
+            {/* Hero Banner - Full Width */}
+            <div className="w-full">
+                <HeroBanner banners={heroBanners} />
             </div>
 
-            {/* Chỉ render section nếu có sản phẩm */}
-            {blocks.newest && blocks.newest.length > 0 && (
-                <Section
+            {/* Feature Section */}
+            <FeatureSection />
+
+            {/* Brand Section */}
+            {brands && brands.length > 0 && (
+                <BrandSection brands={brands} />
+            )}
+
+            {/* Category Showcases with different themes - Full Width Background */}
+            {blocks?.newest && blocks.newest.length > 0 && (
+                <CategoryShowcase
                     title="Sản phẩm mới nhất"
+                    subtitle="Khám phá những sản phẩm mới nhất từ các thương hiệu hàng đầu"
                     products={blocks.newest}
-                    maxCols={4}
+                    backgroundColor="bg-gradient-to-r from-blue-50 to-indigo-50"
+                    textColor="text-blue-900"
                     viewAllLink="/products?sort=newest"
-                    sectionStyle="newest"
-                    totalCount={totals?.newest}
-                    showViewAll={true}
+                    maxProducts={8}
                 />
             )}
 
-            <div className="my-16"></div>
-
-            {blocks.bestSelling && blocks.bestSelling.length > 0 && (
-                <Section
+            {blocks?.bestSelling && blocks.bestSelling.length > 0 && (
+                <CategoryShowcase
                     title="Sản phẩm bán chạy"
+                    subtitle="Những sản phẩm được yêu thích nhất bởi khách hàng"
                     products={blocks.bestSelling}
-                    maxCols={3}
+                    backgroundColor="bg-gradient-to-r from-green-50 to-emerald-50"
+                    textColor="text-green-900"
                     viewAllLink="/products?sort=best-selling"
-                    sectionStyle="bestselling"
-                    totalCount={totals?.bestSelling}
-                    showViewAll={true}
+                    maxProducts={6}
                 />
             )}
 
-            <div className="my-16"></div>
+            {/* Testimonial Section */}
+            <TestimonialSection />
 
-            {blocks.mostViewed && blocks.mostViewed.length > 0 && (
-                <Section
+            {blocks?.mostViewed && blocks.mostViewed.length > 0 && (
+                <CategoryShowcase
                     title="Sản phẩm xem nhiều"
+                    subtitle="Sản phẩm được quan tâm nhiều nhất trong tuần"
                     products={blocks.mostViewed}
-                    maxCols={4}
+                    backgroundColor="bg-gradient-to-r from-purple-50 to-pink-50"
+                    textColor="text-purple-900"
                     viewAllLink="/products?sort=most-viewed"
-                    sectionStyle="mostviewed"
-                    totalCount={totals?.mostViewed}
-                    showViewAll={true}
+                    maxProducts={8}
                 />
             )}
 
-            <div className="my-16"></div>
-
-            {blocks.topDiscount && blocks.topDiscount.length > 0 && (
-                <Section
-                    title="Khuyến mãi cao nhất"
+            {blocks?.topDiscount && blocks.topDiscount.length > 0 && (
+                <CategoryShowcase
+                    title="Khuyến mãi hot"
+                    subtitle="Đừng bỏ lỡ những ưu đãi hấp dẫn nhất"
                     products={blocks.topDiscount}
-                    maxCols={2}
+                    backgroundColor="bg-gradient-to-r from-red-50 to-orange-50"
+                    textColor="text-red-900"
                     viewAllLink="/products?sort=top-discount"
-                    sectionStyle="discount"
-                    totalCount={totals?.topDiscount}
-                    showViewAll={true}
+                    maxProducts={4}
                 />
             )}
         </div>

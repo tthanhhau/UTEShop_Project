@@ -8,6 +8,12 @@ export class Order {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   user: Types.ObjectId;
 
+  @Prop({ required: true })
+  customerName: string;
+
+  @Prop({ required: true })
+  customerPhone: string;
+
   @Prop({
     type: [
       {
