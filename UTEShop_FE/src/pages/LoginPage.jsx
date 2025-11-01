@@ -25,9 +25,8 @@ function LoginPage() {
   };
 
   const validatePassword = (password) => {
-    // Regex để kiểm tra ký tự đặc biệt: chỉ cho phép chữ cái, số và khoảng trắng
-    const specialCharsRegex = /[^a-zA-Z0-9\s]/;
-    return !specialCharsRegex.test(password);
+    // Chỉ kiểm tra độ dài tối thiểu
+    return password.length >= 6;
   };
 
   const handleEmailChange = (e) => {
@@ -44,7 +43,7 @@ function LoginPage() {
     const value = e.target.value;
     setPassword(value);
     if (value && !validatePassword(value)) {
-      setPasswordError("Mật khẩu không được chứa ký tự đặc biệt");
+      setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
     } else {
       setPasswordError("");
     }
@@ -96,7 +95,7 @@ function LoginPage() {
             error={emailError}
             type="email"
           />
-          
+
           {/* Password field with eye icon */}
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Mật khẩu</label>
@@ -106,9 +105,8 @@ function LoginPage() {
                 value={password}
                 onChange={handlePasswordChange}
                 placeholder="••••••••"
-                className={`w-full px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
-                  passwordError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${passwordError ? 'border-red-500' : 'border-gray-300'
+                  }`}
               />
               <button
                 type="button"
