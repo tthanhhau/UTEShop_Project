@@ -13,6 +13,7 @@ const PaymentSuccessPage = () => {
     const [orderInfo, setOrderInfo] = useState(null);
     const [isProcessingOrder, setIsProcessingOrder] = useState(false);
     const [orderError, setOrderError] = useState('');
+    const [createdOrderId, setCreatedOrderId] = useState(null);
     const { user } = useSelector((state) => state.auth);
 
     // Xử lý tạo order từ MoMo callback
@@ -67,6 +68,11 @@ const PaymentSuccessPage = () => {
             const result = await dispatch(createOrder(orderData)).unwrap();
             console.log('✅ Order created successfully:', result);
 
+            // Lưu orderId từ MongoDB để sử dụng cho navigation
+            if (result?.order?._id) {
+                setCreatedOrderId(result.order._id);
+            }
+
             // Xóa dữ liệu localStorage sau khi tạo order thành công
             localStorage.removeItem('momoPaymentSuccess');
             console.log('🗑️ Removed localStorage data');
@@ -98,6 +104,11 @@ const PaymentSuccessPage = () => {
                 const orderData = JSON.parse(savedOrderInfo);
                 setOrderInfo(orderData);
                 console.log('📦 Loaded order info from localStorage:', orderData);
+
+                // Lưu orderId nếu có
+                if (orderData?.orderId) {
+                    setCreatedOrderId(orderData.orderId);
+                }
 
                 // Xóa localStorage sau khi đã load
                 localStorage.removeItem('momoPaymentSuccess');
@@ -146,7 +157,13 @@ const PaymentSuccessPage = () => {
 
     const handleViewDetails = () => {
         // Điều hướng đến trang theo dõi đơn hàng
-        //navigate(`/orders/${order._id}`);
+        if (createdOrderId) {
+            // Nếu có orderId từ order vừa tạo, navigate với highlight
+            navigate(`/orders-tracking?highlight=${createdOrderId}`);
+        } else {
+            // Nếu không có orderId, chỉ navigate đến trang order tracking
+            navigate('/orders-tracking');
+        }
     };
 
     const handleGoHome = () => {
@@ -248,7 +265,7 @@ const PaymentSuccessPage = () => {
 
                 <div className="space-y-3">
                     <Button
-                        onClick={handleViewDetails()}
+                        onClick={handleViewDetails}
                         className="w-full"
                     >
                         Xem chi tiết
