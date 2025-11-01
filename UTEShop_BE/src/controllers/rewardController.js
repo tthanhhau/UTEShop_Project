@@ -8,7 +8,7 @@ export const claimReviewReward = async (req, res) => {
   const userId = req.user.id;
   // Frontend sẽ gửi lên: { rewardType: 'VOUCHER', voucherCode: '...' } hoặc { rewardType: 'POINTS', value: 100 }
   const { rewardType, voucherCode, value } = req.body;
-  
+
   console.log("🎯 claimReviewReward called with full details:");
   console.log("   - userId:", userId);
   console.log("   - rewardType:", rewardType);
@@ -28,7 +28,7 @@ export const claimReviewReward = async (req, res) => {
       // Tìm voucher
       const voucher = await Voucher.findOne({ code: voucherCode });
       console.log('🔍 Found voucher for claim:', voucher ? voucher.code : 'Not found');
-      
+
       if (!voucher) {
         return res.status(404).json({ message: "Voucher không tồn tại." });
       }
@@ -44,8 +44,8 @@ export const claimReviewReward = async (req, res) => {
       // Kiểm tra voucher có còn khả dụng để phát hành không
       const currentClaims = voucher.claimsCount || 0;
       if (currentClaims >= voucher.maxIssued) {
-        return res.status(400).json({ 
-          message: `Voucher ${voucherCode} đã hết lượt phát hành.` 
+        return res.status(400).json({
+          message: `Voucher ${voucherCode} đã hết lượt phát hành.`
         });
       }
 
@@ -54,15 +54,15 @@ export const claimReviewReward = async (req, res) => {
         user: userId,
         voucherCode: voucher.code
       });
-      
+
       const maxAllowed = voucher.maxUsesPerUser || 1;
-      
+
       console.log(`🔍 Claim validation: ${voucher.code}`);
       console.log(`   - User đã nhận (từ UserVoucher DB): ${userClaimCount}/${maxAllowed} lần`);
       console.log(`   - Có thể nhận thêm: ${userClaimCount < maxAllowed}`);
 
       if (userClaimCount >= maxAllowed) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: `Bạn đã nhận đủ ${maxAllowed} lần voucher ${voucher.code}. Không thể nhận thêm.`,
           userClaims: userClaimCount,
           maxAllowed: maxAllowed
@@ -79,10 +79,10 @@ export const claimReviewReward = async (req, res) => {
         voucher.usersUsed[userUsedIndex].claimCount = (voucher.usersUsed[userUsedIndex].claimCount || 0) + 1;
       } else {
         // User chưa từng nhận voucher này
-        voucher.usersUsed.push({ 
-          userId: userId, 
-          claimCount: 1, 
-          useCount: 0 
+        voucher.usersUsed.push({
+          userId: userId,
+          claimCount: 1,
+          useCount: 0
         });
       }
 
@@ -99,9 +99,9 @@ export const claimReviewReward = async (req, res) => {
         console.log("✅ UserVoucher created successfully:", userVoucher._id);
       } catch (userVoucherError) {
         console.error("❌ Error creating UserVoucher:", userVoucherError.message);
-        return res.status(500).json({ 
-          message: "Lỗi khi lưu voucher vào tài khoản", 
-          error: userVoucherError.message 
+        return res.status(500).json({
+          message: "Lỗi khi lưu voucher vào tài khoản",
+          error: userVoucherError.message
         });
       }
 
@@ -120,6 +120,9 @@ export const claimReviewReward = async (req, res) => {
           // Thêm voucher mới
           user.voucherClaims.push({
             voucherCode: voucher.code,
+            value: voucher.discountValue,
+            discountType: voucher.discountType,
+            minOrder: voucher.minOrderAmount,
             claimCount: 1,
             lastClaimed: new Date(),
             source: "REVIEW"
@@ -138,7 +141,7 @@ export const claimReviewReward = async (req, res) => {
       voucher.claimsCount = (voucher.claimsCount || 0) + 1;
       await voucher.save();
       console.log(`✅ After claim: ${voucher.code} claimsCount=${voucher.claimsCount}`);
-      
+
       // Verify the update worked
       const updatedVoucher = await Voucher.findById(voucher._id);
       console.log(`🔍 Verification: ${updatedVoucher.code} claimsCount=${updatedVoucher.claimsCount}`);
@@ -183,11 +186,11 @@ export const claimReviewReward = async (req, res) => {
     console.error("   - Message:", error.message);
     console.error("   - Stack:", error.stack);
     console.error("   - Full error:", error);
-    
+
     const errorMessage = error.message || "Server error";
-    res.status(500).json({ 
+    res.status(500).json({
       message: `Lỗi khi nhận thưởng: ${errorMessage}`,
-      error: errorMessage 
+      error: errorMessage
     });
   }
 };
@@ -198,7 +201,7 @@ export const claimReviewReward = async (req, res) => {
 export const getUserVouchers = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const userVouchers = await UserVoucher.find({ user: userId })
       .populate('voucher')
       .sort({ claimedAt: -1 });
