@@ -34,7 +34,7 @@ const CheckoutPage = () => {
   const [selectedVoucherId, setSelectedVoucherId] = useState("");
   const [usePoints, setUsePoints] = useState(false);
   // conversion: 1 point -> 1000 VND (assumption). Change if backend uses different conversion.
-  const POINT_TO_VND = 100;
+  const POINT_TO_VND = 1;
   // Fetch thông tin user mới nhất từ API
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -65,10 +65,13 @@ const CheckoutPage = () => {
     if (
       currentUser?.voucherClaims &&
       Array.isArray(currentUser.voucherClaims)
+
     ) {
       setVouchers(currentUser.voucherClaims);
+      console.log("🎫 CheckoutPage - Available vouchers:", vouchers);
     }
   }, [currentUser]);
+
 
   // useEffect để xử lý URL và navigation
   useEffect(() => {
@@ -211,13 +214,35 @@ const CheckoutPage = () => {
   // Assumptions about voucher shape: { _id, code, type: 'PERCENT'|'AMOUNT', value: number, minOrder?: number }
   const calculateVoucherAmount = (voucher, subtotal) => {
     if (!voucher) return 0;
+
+    // Debug logs
+    console.log("🏷️ Voucher Input:", {
+      voucher: voucher,
+      subtotal: subtotal,
+      minOrder: voucher.minOrder,
+      discountType: voucher.discountType,
+      value: voucher.value
+    });
+
     // minOrder check
-    if (voucher.minOrder && subtotal < voucher.minOrder) return 0;
-    if (voucher.type === "PERCENT") {
-      return Math.round(subtotal * (voucher.value / 100));
+    if (voucher.minOrder && subtotal < voucher.minOrder) {
+      console.log("❌ Order total does not meet minimum requirement");
+      return 0;
     }
-    // assume 'AMOUNT' or direct amount
-    return Math.round(voucher.value || 0);
+
+    if (voucher.discountType === "PERCENTAGE") {
+      const amount = Math.round(subtotal * (voucher.value / 100));
+      console.log("💰 Percentage discount calculation:", {
+        percentage: voucher.value,
+        calculation: `${subtotal} * (${voucher.value} / 100) = ${amount}`
+      });
+      return amount;
+    }
+
+    // Fixed amount discount
+    const amount = Math.round(voucher.value || 0);
+    console.log("💰 Fixed amount discount:", amount);
+    return amount;
   };
 
   const getAvailablePoints = () => {
@@ -237,9 +262,17 @@ const CheckoutPage = () => {
   // Final total after applying voucher and/or points
   const calculateFinalTotal = () => {
     const base = calculateTotalPrice();
-    const voucher = vouchers.find(
-      (v) => v._id === selectedVoucherId || v.code === selectedVoucherId
-    );
+    // Debug logs for voucher selection
+    console.log("🔍 Voucher Selection Debug:", {
+      selectedVoucherId,
+      availableVouchers: vouchers,
+      voucherCodes: vouchers.map(v => v.voucherCode)
+    });
+
+    const voucher = vouchers.find(v => v.voucherCode === selectedVoucherId);
+
+    console.log("� Selected Voucher:", voucher);
+
     const voucherAmount = calculateVoucherAmount(voucher, base);
     const pointsDeduction = calculatePointsDeduction(base - voucherAmount);
     const final = Math.max(0, base - voucherAmount - pointsDeduction);
@@ -290,14 +323,19 @@ const CheckoutPage = () => {
 
       // Tìm voucher object từ selectedVoucherId
       const selectedVoucher = vouchers.find(
-        (v) => v._id === selectedVoucherId || v.code === selectedVoucherId
+        (v) => v.voucherCode === selectedVoucherId
       );
 
-      // Tạo voucher object để gửi đi (chỉ gửi code và description)
+      // Tạo voucher object để gửi đi
       const voucherData = selectedVoucher ? {
-        code: selectedVoucher.code,
-        description: selectedVoucher.description || `Giảm ${selectedVoucher.type === 'PERCENT' ? selectedVoucher.value + '%' : selectedVoucher.value + 'đ'}`
+        code: selectedVoucher.voucherCode,
+        description: `Giảm ${selectedVoucher.discountType === 'PERCENTAGE' ? selectedVoucher.value + '%' : selectedVoucher.value + 'đ'}`,
+        value: selectedVoucher.value,
+        discountType: selectedVoucher.discountType,
+        minOrder: selectedVoucher.minOrder
       } : null;
+
+      console.log('🎫 Sending voucher data:', voucherData);
 
       let orderData;
       if (isFromCart && cartItems.length > 0) {
@@ -644,21 +682,35 @@ const CheckoutPage = () => {
               <label className="block mb-2 font-medium">Voucher</label>
               <select
                 value={selectedVoucherId}
-                onChange={(e) => setSelectedVoucherId(e.target.value)}
+                onChange={(e) => {
+                  console.log('Selected Voucher ID:', e.target.value);
+                  setSelectedVoucherId(e.target.value);
+                }}
                 className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">-- Chọn voucher (nếu có) --</option>
-                {vouchers.map((v) => (
-                  <option key={v._id || v.code} value={v._id || v.code}>
-                    {v.code}{" "}
-                    {v.type === "PERCENT"
-                      ? `– ${v.value}%`
-                      : `– ${v.value?.toLocaleString?.() || v.value}₫`}{" "}
-                    {v.minOrder
-                      ? `(min ${v.minOrder?.toLocaleString?.()}₫)`
-                      : ""}
-                  </option>
-                ))}
+                {vouchers
+                  .filter(v => {
+                    const currentTotal = calculateTotalPrice();
+                    const meetsMinOrder = !v.minOrder || currentTotal >= v.minOrder;
+                    console.log(`Voucher ${v.voucherCode}:`, {
+                      minOrder: v.minOrder,
+                      currentTotal,
+                      isEligible: meetsMinOrder
+                    });
+                    return meetsMinOrder;
+                  })
+                  .map((v) => (
+                    <option key={v.voucherCode} value={v.voucherCode}>
+                      {v.voucherCode}{" "}
+                      {v.discountType === "PERCENTAGE"
+                        ? `– ${v.value}%`
+                        : `– ${v.value?.toLocaleString?.() || v.value}₫`}{" "}
+                      {v.minOrder
+                        ? `(min ${v.minOrder?.toLocaleString?.()}₫)`
+                        : ""}
+                    </option>
+                  ))}
               </select>
             </div>
 
