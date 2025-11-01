@@ -147,7 +147,7 @@ export default function VouchersManagement() {
   const getVoucherStatus = (voucher: any) => {
     const now = new Date();
     const endDate = new Date(voucher.endDate);
-    const issued = voucher.issuedCount || 0;
+    const issued = voucher.claimsCount || 0;
     const maxIssued = voucher.maxIssued || 0;
 
     if (endDate < now) return 'Hết hạn';
@@ -239,7 +239,7 @@ export default function VouchersManagement() {
                 </tr>
               ) : (
                 vouchers.map((voucher: any) => {
-                  const issued = voucher.issuedCount || 0;
+                  const issued = voucher.claimsCount || 0;
                   const used = voucher.usesCount || 0;
                   const maxIssued = voucher.maxIssued || 0;
                   const issuedPercent = maxIssued > 0 ? (issued / maxIssued) * 100 : 0;

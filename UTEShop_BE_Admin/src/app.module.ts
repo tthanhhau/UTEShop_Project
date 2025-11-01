@@ -22,7 +22,7 @@ import { MailerModule } from './config/mailer.module';
     // Config Module
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'D:/Nam4HK1/cnpmm_nop/UTEShop_Project/UTEShop_BE_Admin/.env',
+      envFilePath: '.env',
     }),
 
     // MongoDB Connection

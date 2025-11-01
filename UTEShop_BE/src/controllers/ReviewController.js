@@ -125,17 +125,19 @@ export const createReview = async (req, res) => {
     await review.save();
     console.log("✅ Review saved successfully:", review);
 
-    // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và đang "HOẠT ĐỘNG"
+    // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và "CHUNG" đang "HOẠT ĐỘNG"
     const now = new Date();
 
-    // 1. Tìm tất cả voucher REVIEW đang hoạt động
+    // 1. Tìm tất cả voucher REVIEW và GENERAL đang hoạt động
     const allReviewVouchers = await Voucher.find({
+      isActive: true,
+      rewardType: { $in: ['REVIEW', 'GENERAL'] }, // Lấy cả voucher REVIEW và GENERAL
       startDate: { $lte: now },
       endDate: { $gt: now },
       $expr: { $lt: ["$claimsCount", "$maxIssued"] },
     }).sort({ createdAt: 1 });
 
-    console.log('🔍 Found all active REVIEW vouchers:', allReviewVouchers.length);
+    console.log('🔍 Found all active vouchers (REVIEW + GENERAL):', allReviewVouchers.length);
 
     // 2. ĐẾM SỐ LẦN user đã nhận mỗi voucher (dùng UserVoucher collection - đáng tin cậy)
     console.log('🔍 Counting voucher claims from UserVoucher collection...');
@@ -212,7 +214,7 @@ export const createReview = async (req, res) => {
         });
       });
     } else {
-      console.log('❌ Không có voucher ĐÁNH GIÁ nào hoạt động - chỉ tặng điểm thưởng');
+      console.log('❌ Không có voucher nào hoạt động - chỉ tặng điểm thưởng');
     }
 
     console.log('📝 Tổng số phần thưởng gửi về frontend:', availableRewards.length);
