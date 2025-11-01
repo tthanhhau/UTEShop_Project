@@ -5,8 +5,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import momoService from "../services/momoServices.js";
 import Notification from "../models/Notification.js";
 import User from "../models/user.js"; // Import User model
-import Voucher from "../models/voucher.js"; // Import Voucher model
-import UserVoucher from "../models/userVoucher.js"; // Import UserVoucher model
 import mongoose from "mongoose";
 class OrderController {
   // Create a new order
@@ -155,7 +153,7 @@ class OrderController {
 
       // ✅ TRỪ ĐIỂM CỦA USER (cũng dùng atomic update)
       if (usedPointsAmount > 0) {
-        const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
+        const pointsUsed = usedPointsAmount;
 
         const user = await User.findOneAndUpdate(
           {
@@ -233,143 +231,102 @@ class OrderController {
       // Save order với session
       await order.save({ session });
 
-      // ✅ TĂNG CỘT "SỬ DỤNG" KHI KHÁCH HÀNG DÙNG VOUCHER THANH TOÁN
+      // Xử lý voucher đã sử dụng
       if (voucher && voucher.code) {
-        console.log("🎟️ Processing voucher usage:", {
+        console.log("🎟️ Processing used voucher:", {
           userId,
           voucherCode: voucher.code
         });
 
-        // 1. Tăng usesCount của voucher (hiển thị ở cột "Sử dụng" trong admin)
-        // Tách riêng để đảm bảo luôn tăng usesCount ngay cả khi user chưa có trong usersUsed array
-        const voucherDoc = await Voucher.findOneAndUpdate(
-          { code: voucher.code },
+        // 1. Cập nhật UserVoucher để đánh dấu là đã sử dụng
+        const userVoucher = await UserVoucher.findOneAndUpdate(
           {
-            $inc: { usesCount: 1 } // Tăng cột "Sử dụng"
-          },
-          {
-            session,
-            new: true
-          }
-        );
-
-        if (voucherDoc) {
-          console.log(`✅ Voucher ${voucher.code} - Đã nhận: ${voucherDoc.claimsCount}/${voucherDoc.maxIssued}, Sử dụng: ${voucherDoc.usesCount}/${voucherDoc.maxIssued}`);
-          
-          // 2. Cập nhật hoặc tạo mới phần tử trong usersUsed array để track user usage
-          // Tìm xem user đã có trong array chưa
-          const userInArray = voucherDoc.usersUsed.find(u => u.userId.toString() === userId.toString());
-          
-          if (userInArray) {
-            // User đã có trong array, tăng useCount
-            await Voucher.updateOne(
-              { code: voucher.code, "usersUsed.userId": userId },
-              {
-                $inc: { "usersUsed.$.useCount": 1 }
-              },
-              { session }
-            );
-            console.log(`✅ Updated useCount for user ${userId} in voucher ${voucher.code}`);
-          } else {
-            // User chưa có trong array, thêm mới
-            await Voucher.updateOne(
-              { code: voucher.code },
-              {
-                $push: {
-                  usersUsed: {
-                    userId: userId,
-                    claimCount: 0,
-                    useCount: 1
-                  }
-                }
-              },
-              { session }
-            );
-            console.log(`✅ Added user ${userId} to usersUsed array for voucher ${voucher.code}`);
-          }
-        } else {
-          console.log(`⚠️ Warning: Voucher ${voucher.code} not found`);
-        }
-
-        // 1.5. Cập nhật UserVoucher để đánh dấu voucher đã được sử dụng
-        const userVoucherUpdate = await UserVoucher.findOneAndUpdate(
-          { 
-            user: userId, 
+            user: userId,
             voucherCode: voucher.code,
-            isUsed: false // Chỉ cập nhật voucher chưa sử dụng
+            isUsed: false
           },
           {
-            $set: {
-              isUsed: true,
-              usedAt: new Date(),
-              orderId: order._id
-            }
+            isUsed: true,
+            usedAt: new Date(),
+            orderId: order._id
           },
-          { 
+          {
             session,
-            sort: { claimedAt: 1 }, // Sử dụng voucher claim sớm nhất trước
             new: true
           }
         );
-
-        if (userVoucherUpdate) {
-          console.log(`✅ UserVoucher updated: ${userVoucherUpdate._id} marked as used`);
-        } else {
-          console.log(`⚠️ Warning: No UserVoucher found to mark as used for ${voucher.code}`);
-        }
-
-        // 2. Xóa voucher đã sử dụng khỏi user's voucherClaims
-        const user = await User.findById(userId).session(session);
-        const userVoucher = user.voucherClaims.find(v => v.voucherCode === voucher.code);
 
         if (!userVoucher) {
-          throw new Error("Voucher not found in user's claims");
+          console.warn("⚠️ UserVoucher not found or already used for:", voucher.code);
+        } else {
+          console.log("✅ UserVoucher marked as used:", userVoucher._id);
         }
 
-        if (userVoucher.claimCount > 1) {
-          // Giảm claimCount đi 1 nếu còn nhiều hơn 1 lần sử dụng
-          console.log("📊 Decreasing voucher claim count:", {
-            current: userVoucher.claimCount,
-            new: userVoucher.claimCount - 1
-          });
+        // 2. Tăng usesCount trong voucher
+        const voucherDoc = await Voucher.findById(voucher._id).session(session);
+        voucherDoc.usesCount = (voucherDoc.usesCount || 0) + 1;
+        await voucherDoc.save({ session });
+        console.log("✅ Voucher usesCount incremented");
 
-          const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            {
-              $set: {
-                "voucherClaims.$[elem].claimCount": userVoucher.claimCount - 1,
-                "voucherClaims.$[elem].lastClaimed": new Date()
-              }
-            },
-            {
-              arrayFilters: [{ "elem.voucherCode": voucher.code }],
-              session,
-              new: true
-            }
-          );
-
-          if (!updatedUser) {
-            throw new Error("Failed to update voucher claim count");
+        // 3. Tăng usedVouchersCount trong user
+        const updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            $inc: { "voucherStats.usedVouchersCount": 1 }
+          },
+          {
+            session,
+            new: true
           }
-          console.log("✅ Voucher claim count updated successfully");
-        } else {
-          // Xóa voucher nếu đây là lần sử dụng cuối cùng
-          console.log("🗑️ Removing voucher (last claim used):", voucher.code);
+        );
 
-          const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            {
-              $pull: {
-                voucherClaims: { voucherCode: voucher.code }
+        if (!updatedUser) {
+          throw new Error("Failed to update user voucher statistics");
+        }
+        console.log("✅ User usedVouchersCount incremented");
+
+        // 4. Xóa voucher khỏi user's voucherClaims (giữ logic cũ)
+        const user = await User.findById(userId).session(session);
+        const userVoucherClaim = user.voucherClaims.find(v => v.voucherCode === voucher.code);
+
+        if (userVoucherClaim) {
+          if (userVoucherClaim.claimCount > 1) {
+            // Giảm claimCount đi 1 nếu còn nhiều hơn 1 lần sử dụng
+            console.log("📊 Decreasing voucher claim count:", {
+              current: userVoucherClaim.claimCount,
+              new: userVoucherClaim.claimCount - 1
+            });
+
+            await User.findByIdAndUpdate(
+              userId,
+              {
+                $set: {
+                  "voucherClaims.$[elem].claimCount": userVoucherClaim.claimCount - 1,
+                  "voucherClaims.$[elem].lastClaimed": new Date()
+                }
+              },
+              {
+                arrayFilters: [{ "elem.voucherCode": voucher.code }],
+                session,
+                new: true
               }
-            },
-            { session, new: true }
-          );
+            );
+            console.log("✅ Voucher claim count updated successfully");
+          } else {
+            // Xóa voucher nếu đây là lần sử dụng cuối cùng
+            console.log("🗑️ Removing voucher (last claim used):", voucher.code);
 
-          if (!updatedUser) {
-            throw new Error("Failed to remove expired voucher from user");
+            await User.findByIdAndUpdate(
+              userId,
+              {
+                $pull: {
+                  voucherClaims: { voucherCode: voucher.code }
+                }
+              },
+              { session, new: true }
+            );
+            console.log("✅ Voucher removed successfully (last claim used)");
           }
-          console.log("✅ Voucher removed successfully (last claim used)");
         }
       }
 
