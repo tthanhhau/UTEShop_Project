@@ -29,7 +29,7 @@ UTEShop là một nền tảng thương mại điện tử chuyên về mỹ ph�
 ### 1. Clone repository
 
 ```bash
-git clone https://github.com/your-username/uteshop.git
+git clone https://github.com/tthanhhau/UTEShop_Project.git
 cd uteshop
 ```
 
@@ -37,25 +37,25 @@ cd uteshop
 
 #### Backend User API (ExpressJS)
 ```bash
-cd server
+cd UTEShop_BE
 npm install
 ```
 
 #### Backend Admin API (NestJS)
 ```bash
-cd admin-api
+cd UTEShop_BE_Admin
 npm install
 ```
 
 #### Frontend User (ReactJS)
 ```bash
-cd client
+cd UTEShop_FE
 npm install
 ```
 
 #### Frontend Admin (NextJS)
 ```bash
-cd admin
+cd UTEShop_FE_Admin
 npm install
 ```
 
@@ -120,7 +120,7 @@ npm run dev
 
 ## 🌐 Truy cập ứng dụng
 
-- **Website người dùng**: http://localhost:3000
+- **Website người dùng**: http://localhost:5137
 - **Trang quản trị**: http://localhost:3001
 - **API người dùng**: http://localhost:5000
 - **API quản trị**: http://localhost:5001
