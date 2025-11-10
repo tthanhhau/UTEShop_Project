@@ -6,6 +6,8 @@ import momoService from "../services/momoServices.js";
 import Notification from "../models/Notification.js";
 import User from "../models/user.js"; // Import User model
 import mongoose from "mongoose";
+import PointTransaction from "../models/PointTransaction.js";
+import Configuration from "../models/Configuration.js";
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
@@ -554,13 +556,91 @@ class OrderController {
       })
     );
 
-    // Cancel the order
+    // Default response data for points conversion
+    let pointsConversionPerformed = false;
+    let pointsAwarded = 0;
+    let convertedAmount = 0;
+    let newUserBalance;
+
+    try {
+      // Nếu đơn thanh toán MOMO, khi hủy sẽ quy đổi số tiền thành điểm
+      if (String(order.paymentMethod) === "MOMO" || String(order.onlinePaymentInfo?.gateway || "").toUpperCase() === "MOMO") {
+        // Tránh cộng trùng: kiểm tra đã có giao dịch quy đổi trước đó hay chưa
+        const existingConversion = await PointTransaction.findOne({
+          user: order.user,
+          order: order._id,
+          type: "EARNED",
+          description: { $regex: "^(ORDER_CANCEL_CONVERT|MOMO_CANCEL_CONVERT)", $options: "i" },
+        });
+
+        if (!existingConversion) {
+          // Lấy cấu hình điểm (mặc định 1 VND = 1 điểm)
+          const configDoc = await Configuration.findOne({ key: "points_config" });
+          const config = configDoc?.value || {
+            pointsValue: 1, // 1 VND = 1 điểm
+            silverThreshold: 1000,
+            goldThreshold: 5000,
+            pointsPerOrder: 1,
+          };
+
+          const calculateTier = (points) => {
+            if (points >= config.goldThreshold) return "GOLD";
+            if (points >= config.silverThreshold) return "SILVER";
+            return "BRONZE";
+          };
+
+          // Số tiền quy đổi: nếu đã trả qua MoMo thì ưu tiên onlinePaymentInfo.amount, ngược lại dùng totalPrice
+          convertedAmount =
+            (order.onlinePaymentInfo?.amount && Number(order.onlinePaymentInfo.amount)) ||
+            Number(order.totalPrice) ||
+            0;
+
+          pointsAwarded = Math.floor(convertedAmount / config.pointsValue);
+
+          if (pointsAwarded > 0) {
+            // Ghi lịch sử điểm
+            await PointTransaction.create({
+              user: order.user,
+              type: "EARNED",
+              points: pointsAwarded,
+              description: `ORDER_CANCEL_CONVERT: Chuyển ${convertedAmount} VND thành ${pointsAwarded} điểm (đơn ${order._id})`,
+              order: order._id,
+            });
+
+            // Cập nhật điểm cho user
+            const user = await User.findById(order.user);
+            if (user) {
+              const currentBalance = user.loyaltyPoints?.balance || 0;
+              newUserBalance = currentBalance + pointsAwarded;
+              user.loyaltyPoints.balance = newUserBalance;
+              user.loyaltyPoints.tier = calculateTier(newUserBalance);
+              await user.save();
+              pointsConversionPerformed = true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Points conversion on cancel failed:", e?.message);
+    }
+
+    // Cancel the order and set payment status accordingly
     order.status = "cancelled";
+    if (pointsConversionPerformed && order.paymentStatus === "paid") {
+      order.paymentStatus = "refunded";
+    } else if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "unpaid";
+    }
     await order.save();
 
-    res.status(200).json({
-      message: "Order cancelled successfully",
+    return res.status(200).json({
+      message: pointsConversionPerformed
+        ? "Order cancelled and converted amount to loyalty points"
+        : "Order cancelled successfully",
       order,
+      ...(pointsConversionPerformed
+        ? { pointsAwarded, convertedAmount, newUserBalance }
+        : {}),
     });
   });
 
