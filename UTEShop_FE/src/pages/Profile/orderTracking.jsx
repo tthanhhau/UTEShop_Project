@@ -82,7 +82,7 @@ export function OrderTracking() {
         // Check review status for delivered orders
         const deliveredOrders = response.data.orders.filter(
           (order) => {
-            const statusNum = typeof order.status === 'string' 
+            const statusNum = typeof order.status === 'string'
               ? statusToNumberMap[order.status] || 0
               : order.status || 0;
             return statusNum === 5;
@@ -121,16 +121,16 @@ export function OrderTracking() {
     const highlightOrderId = searchParams.get('highlight');
     if (highlightOrderId && orders.length > 0) {
       setHighlightedOrderId(highlightOrderId);
-      
+
       // Đợi DOM render xong rồi scroll
       setTimeout(() => {
         const orderElement = orderRefs.current[highlightOrderId];
         if (orderElement) {
-          orderElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
+          orderElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
           });
-          
+
           // Bỏ highlight sau 1 giây
           setTimeout(() => {
             setHighlightedOrderId(null);
@@ -179,14 +179,31 @@ export function OrderTracking() {
     }
     setLoading(true);
     try {
-      await api.put(`/orders/${orderId}`);
+      const resp = await api.put(`/orders/${orderId}`);
+      const data = resp?.data || {};
+
+      // Cập nhật UI đơn hàng -> chuyển trạng thái sang hủy
       setOrdersData((prevOrders) =>
         prevOrders.map((order) =>
           order._id === orderId ? { ...order, status: 6 } : order
         )
       );
+
+      // Nếu backend đã quy đổi tiền MOMO sang điểm, hiển thị thông báo và chuyển sang trang Profile
+      if (data?.pointsAwarded && data.pointsAwarded > 0) {
+        alert(
+          `Đã hủy đơn và hoàn ${data.convertedAmount?.toLocaleString("vi-VN")} VND thành ${data.pointsAwarded.toLocaleString("vi-VN")} điểm.\n` +
+          `Số dư điểm mới: ${data.newUserBalance?.toLocaleString("vi-VN")} điểm.`
+        );
+        // Điều hướng sang trang Profile để người dùng thấy điểm mới
+        navigate("/profile");
+      } else {
+        // Trường hợp không có quy đổi (ví dụ đơn không phải MOMO), thông báo chung
+        alert(data?.message || "Hủy đơn hàng thành công.");
+      }
     } catch (error) {
       console.error("Lỗi khi hủy đơn hàng:", error);
+      alert(error?.response?.data?.message || "Hủy đơn hàng thất bại.");
     } finally {
       setLoading(false);
     }
@@ -300,25 +317,24 @@ export function OrderTracking() {
         ) : (
           filteredOrders.map((order) => {
             // Convert status string to number
-            const statusNumber = typeof order.status === 'string' 
+            const statusNumber = typeof order.status === 'string'
               ? statusToNumberMap[order.status] || 1
               : order.status || 1;
-            
+
             // Kiểm tra an toàn: nếu status không hợp lệ, dùng mặc định
             const statusInfo = orderStatuses[statusNumber] || orderStatuses[1];
             const StatusIcon = statusInfo.icon;
 
             const isHighlighted = highlightedOrderId === order._id;
-            
+
             return (
-              <Card 
-                key={order._id} 
+              <Card
+                key={order._id}
                 ref={(el) => (orderRefs.current[order._id] = el)}
-                className={`overflow-hidden bg-white transition-all duration-300 ${
-                  isHighlighted 
-                    ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl scale-[1.02]' 
+                className={`overflow-hidden bg-white transition-all duration-300 ${isHighlighted
+                    ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl scale-[1.02]'
                     : ''
-                }`}
+                  }`}
               >
                 <CardHeader className="bg-white border-b">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
