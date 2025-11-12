@@ -8,6 +8,7 @@ import {
 } from "../redux/notificationSlice";
 import { Link, useNavigate } from "react-router-dom";
 import api from "@/api/axiosConfig";
+import orderApi from "@/api/orderApi";
 
 export function NotificationBell() {
   const dispatch = useDispatch();
@@ -20,7 +21,14 @@ export function NotificationBell() {
 
   // Tải thông báo lần đầu khi component được mount
   useEffect(() => {
-    dispatch(fetchNotificationsAsync());
+    console.log('🔔 [NotificationBell] Component mounted, fetching notifications...');
+    dispatch(fetchNotificationsAsync())
+      .then((result) => {
+        console.log('🔔 [NotificationBell] Fetch result:', result);
+      })
+      .catch((error) => {
+        console.error('❌ [NotificationBell] Fetch error:', error);
+      });
   }, [dispatch]);
 
   // Click outside để đóng dropdown
@@ -51,10 +59,10 @@ export function NotificationBell() {
     setSelectedNotif(notif);
     setOrderPreview(null);
     setIsDropdownOpen(false);
-    
+
     // Extract orderId từ nhiều nguồn (notification mới/cũ)
     let orderId = notif?.orderId || notif?.meta?.orderId;
-    
+
     // Nếu không có orderId trực tiếp, thử extract từ message hoặc link
     if (!orderId) {
       const messageMatch = notif?.message?.match(/#([a-f0-9]{24})/i);
@@ -64,17 +72,17 @@ export function NotificationBell() {
         if (linkMatch) orderId = linkMatch[1];
       }
     }
-    
+
     console.log('Extracted orderId:', orderId); // Debug
-    
+
     if (orderId) {
       try {
         const response = await api.get(`/orders/${orderId}`);
         console.log('Order API response:', response.data); // Debug
-        
+
         // API có thể trả về data.order hoặc data trực tiếp
         const orderData = response.data.order || response.data;
-        
+
         setOrderPreview({
           _id: orderData._id || orderId,
           items: orderData.items || [],
@@ -103,33 +111,33 @@ export function NotificationBell() {
     // 1. Thử lấy orderId trực tiếp (notification mới)
     if (notif?.orderId) return notif.orderId;
     if (notif?.meta?.orderId) return notif.meta.orderId;
-    
+
     // 2. Thử extract từ message: "Đơn hàng #690xxxxx của bạn..."
     const messageMatch = notif?.message?.match(/#([a-f0-9]{24})/i);
     if (messageMatch) return messageMatch[1];
-    
+
     // 3. Thử extract từ link: "/orders/tracking/690xxxxx"
     const linkMatch = notif?.link?.match(/\/orders\/tracking\/([a-f0-9]{24})/i);
     if (linkMatch) return linkMatch[1];
-    
+
     // 4. Thử từ orderPreview
     if (orderPreview?._id) return orderPreview._id;
-    
+
     return null;
   };
 
   const handleViewOrderDetail = () => {
     const orderId = extractOrderIdFromNotification(selectedNotif);
-    
+
     console.log('🔍 Full notification object:', selectedNotif);
     console.log('🔍 OrderPreview:', orderPreview);
     console.log('🔍 Extracted orderId:', orderId);
-    
+
     // Đánh dấu thông báo là đã đọc khi click "Chi tiết"
     dispatch(markNotificationsAsReadAsync());
-    
+
     closeModal();
-    
+
     if (orderId) {
       // Navigate đến trang order tracking với orderId để highlight
       console.log('🔍 Will navigate to: /orders-tracking?highlight=' + orderId);
@@ -137,6 +145,37 @@ export function NotificationBell() {
     } else {
       // Nếu không có orderId, vẫn đến trang tracking
       navigate('/orders-tracking');
+    }
+  };
+
+  const handleDeliveryAction = async (action) => {
+    const orderId = extractOrderIdFromNotification(selectedNotif);
+
+    if (!orderId) {
+      console.error('Cannot find orderId for delivery confirmation');
+      return;
+    }
+
+    try {
+      // Gọi API để xử lý action
+      await orderApi.handleDeliveryConfirmation(orderId, action);
+
+      // Đánh dấu notification là đã đọc
+      dispatch(markNotificationsAsReadAsync());
+
+      // Reload notifications để cập nhật
+      dispatch(fetchNotificationsAsync());
+
+      // Đóng modal
+      closeModal();
+
+      // Nếu là confirm, có thể navigate đến trang tracking
+      if (action === 'confirm') {
+        navigate(`/orders-tracking?highlight=${orderId}`);
+      }
+    } catch (error) {
+      console.error('Error handling delivery confirmation:', error);
+      alert('Có lỗi xảy ra khi xử lý yêu cầu. Vui lòng thử lại.');
     }
   };
 
@@ -213,11 +252,35 @@ export function NotificationBell() {
               </div>
             )}
 
+            {/* Hiển thị action buttons nếu notification có type = "order_delivery_confirmation" */}
+            {selectedNotif.type === "order_delivery_confirmation" && selectedNotif.actions && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm font-medium mb-3 text-gray-700">Vui lòng xác nhận:</p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleDeliveryAction('confirm')}
+                    className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                  >
+                    {selectedNotif.actions.confirm || "Xác nhận"}
+                  </Button>
+                  <Button
+                    onClick={() => handleDeliveryAction('not_received')}
+                    variant="outline"
+                    className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50"
+                  >
+                    {selectedNotif.actions.cancel || "Chưa nhận hàng"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={closeModal}>Đóng</Button>
-              <Button onClick={handleViewOrderDetail} className="bg-primary text-white hover:bg-primary/90">
-                Chi tiết
-              </Button>
+              {selectedNotif.type !== "order_delivery_confirmation" && (
+                <Button onClick={handleViewOrderDetail} className="bg-primary text-white hover:bg-primary/90">
+                  Chi tiết
+                </Button>
+              )}
             </div>
           </div>
         </div>
