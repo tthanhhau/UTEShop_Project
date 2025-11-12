@@ -459,6 +459,60 @@ class OrderController {
       .populate("items.product")
       .sort({ createdAt: -1 });
 
+    // Kiểm tra và tạo notification cho các đơn hàng "shipped" chưa có notification
+    try {
+      const shippedOrders = orders.filter(order => order.status === "shipped");
+      if (shippedOrders.length > 0) {
+        const io = req.app.locals.io;
+        const sendNotificationToUser = req.app.locals.sendNotificationToUser;
+
+        for (const order of shippedOrders) {
+          const existingNotification = await Notification.findOne({
+            user: userId,
+            orderId: order._id,
+            type: "order_delivery_confirmation",
+          });
+
+          if (!existingNotification) {
+            console.log(`📦 Creating notification for shipped order ${order._id}`);
+
+            const notificationMessage = "Bạn đã nhận đơn hàng chưa?";
+            const newNotification = new Notification({
+              user: userId,
+              message: notificationMessage,
+              link: `/orders/tracking/${order._id}`,
+              orderId: order._id,
+              type: "order_delivery_confirmation",
+              actions: {
+                confirm: "Xác nhận",
+                cancel: "Chưa nhận hàng",
+              },
+            });
+
+            await newNotification.save();
+            console.log(`✅ Notification created: ${newNotification._id}`);
+
+            // Gửi notification qua WebSocket nếu có
+            if (io && sendNotificationToUser) {
+              try {
+                const notificationData = {
+                  ...newNotification.toObject(),
+                  orderId: order._id,
+                };
+                await sendNotificationToUser(io, userId, "new_notification", notificationData);
+                console.log(`✅ Notification sent via WebSocket for order ${order._id}`);
+              } catch (wsError) {
+                console.warn(`⚠️ Could not send WebSocket notification:`, wsError.message);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking shipped notifications:", error);
+      // Không throw error, chỉ log để không ảnh hưởng đến việc lấy orders
+    }
+
     // Đảm bảo các trường voucher và điểm được trả về đầy đủ
     const ordersWithDetails = orders.map(order => {
       const orderObj = order.toObject();
@@ -768,6 +822,106 @@ class OrderController {
     });
   });
 
+  // Handle delivery confirmation from user
+  handleDeliveryConfirmation = asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const { action } = req.body; // "confirm" hoặc "not_received"
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Kiểm tra user có quyền truy cập đơn hàng này không
+    if (req.user && String(order.user) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to access this order",
+      });
+    }
+
+    // Kiểm tra order phải ở trạng thái "shipped"
+    if (order.status !== "shipped") {
+      return res.status(400).json({
+        success: false,
+        message: "Order is not in shipped status",
+      });
+    }
+
+    const io = req.app.locals.io;
+    const sendNotificationToUser = req.app.locals.sendNotificationToUser;
+    const agenda = req.app.locals.agenda;
+
+    if (action === "confirm") {
+      // User xác nhận đã nhận hàng -> chuyển sang "delivered"
+      order.status = "delivered";
+      await order.save();
+
+      // Nếu thanh toán COD thì tự động chuyển sang "đã thanh toán"
+      if (order.paymentMethod === "COD") {
+        order.paymentStatus = "paid";
+        await order.save();
+      }
+
+      // Đánh dấu notification là đã đọc
+      await Notification.updateMany(
+        {
+          user: order.user,
+          orderId: order._id,
+          type: "order_delivery_confirmation",
+          read: false,
+        },
+        { read: true }
+      );
+
+      // Gửi notification xác nhận
+      const confirmNotification = new Notification({
+        user: order.user,
+        message: `Đơn hàng #${order._id} đã được xác nhận giao thành công!`,
+        link: `/orders/tracking/${order._id}`,
+        orderId: order._id,
+      });
+      await confirmNotification.save();
+
+      if (io && sendNotificationToUser) {
+        sendNotificationToUser(io, order.user, "new_notification", {
+          ...confirmNotification.toObject(),
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Order confirmed as delivered",
+        order,
+      });
+    } else if (action === "not_received") {
+      // User chưa nhận hàng -> schedule notification sau 2 phút
+      if (agenda) {
+        await agenda.schedule("in 2 minutes", "resend delivery notification", {
+          orderId: order._id,
+          userId: order.user.toString(),
+        });
+        console.log(
+          `📅 Scheduled reminder notification for order ${order._id} in 2 minutes`
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Reminder notification will be sent in 2 minutes",
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid action. Use 'confirm' or 'not_received'",
+      });
+    }
+  });
+
   // Update order status
   updateOrderStatus = asyncHandler(async (req, res) => {
     const { orderId } = req.params;
@@ -798,19 +952,66 @@ class OrderController {
     try {
       const io = req.app.locals.io;
       const sendNotificationToUser = req.app.locals.sendNotificationToUser;
+      const agenda = req.app.locals.agenda;
+
+      console.log("🔔 Notification Debug - Order Status Update:");
+      console.log("  - Order ID:", order._id);
+      console.log("  - New Status:", status);
+      console.log("  - User ID:", order.user);
+      console.log("  - IO available:", !!io);
+      console.log("  - sendNotificationToUser available:", !!sendNotificationToUser);
 
       if (io && sendNotificationToUser && status) {
-        sendNotificationToUser(io, order.user, "order_status_update", {
-          orderId: order._id,
-          newStatus: status,
-          message: `Đơn hàng #${order._id} của bạn đã được cập nhật sang trạng thái: ${status}`,
-        });
+        // Nếu status = "shipped", gửi notification đặc biệt với action buttons
+        if (status === "shipped") {
+          console.log("📦 Status is 'shipped', creating delivery confirmation notification...");
+
+          const notificationMessage = "Bạn đã nhận đơn hàng chưa?";
+          const newNotification = new Notification({
+            user: order.user,
+            message: notificationMessage,
+            link: `/orders/tracking/${order._id}`,
+            orderId: order._id,
+            type: "order_delivery_confirmation",
+            actions: {
+              confirm: "Xác nhận",
+              cancel: "Chưa nhận hàng",
+            },
+          });
+
+          await newNotification.save();
+          console.log("✅ Notification saved to database:", newNotification._id);
+
+          // Gửi notification qua WebSocket với đầy đủ thông tin
+          const notificationData = {
+            ...newNotification.toObject(),
+            orderId: order._id,
+          };
+
+          console.log("📤 Sending notification via WebSocket:", notificationData);
+          await sendNotificationToUser(io, order.user, "new_notification", notificationData);
+          console.log("✅ Notification sent via WebSocket");
+        } else {
+          // Notification thông thường cho các status khác
+          console.log("📨 Sending normal notification for status:", status);
+          await sendNotificationToUser(io, order.user, "order_status_update", {
+            orderId: order._id,
+            newStatus: status,
+            message: `Đơn hàng #${order._id} của bạn đã được cập nhật sang trạng thái: ${status}`,
+          });
+        }
+      } else {
+        console.warn("⚠️ Cannot send notification - missing dependencies:");
+        console.warn("  - IO:", !!io);
+        console.warn("  - sendNotificationToUser:", !!sendNotificationToUser);
+        console.warn("  - Status:", status);
       }
     } catch (notificationError) {
-      console.warn(
-        "⚠️ Notification failed (non-critical):",
+      console.error(
+        "❌ Notification failed:",
         notificationError.message
       );
+      console.error("❌ Stack trace:", notificationError.stack);
     }
 
     const updatedOrder = await Order.findById(orderId)

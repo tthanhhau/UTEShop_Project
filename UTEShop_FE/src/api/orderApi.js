@@ -40,6 +40,12 @@ export const orderApi = {
   cancelOrder: async (orderId) => {
     const response = await api.delete(`/orders/${orderId}`);
     return response.data;
+  },
+
+  // Handle delivery confirmation
+  handleDeliveryConfirmation: async (orderId, action) => {
+    const response = await api.post(`/orders/${orderId}/delivery-confirmation`, { action });
+    return response.data;
   }
 };
 

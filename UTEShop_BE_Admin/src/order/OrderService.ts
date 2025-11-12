@@ -3,12 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from '../schemas/OrderSchema';
 import { User, UserDocument } from '../schemas/UserSchema';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class OrderService {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private configService: ConfigService,
   ) { }
 
   async findAll(page = 1, limit = 10, status = '', paymentStatus = '', paymentMethod = '', search = '') {
@@ -176,7 +178,112 @@ export class OrderService {
     console.log('🔍 AFTER UPDATE - Order status:', updatedOrder.status);
     console.log('🔍 AFTER UPDATE - Payment status:', updatedOrder.paymentStatus);
     
+    // Gửi notification nếu status = "shipped"
+    if (status === 'shipped') {
+      console.log('📦 [ADMIN] Status is "shipped", calling sendDeliveryConfirmationNotification...');
+      try {
+        await this.sendDeliveryConfirmationNotification(updatedOrder);
+        console.log('✅ [ADMIN] Notification sent successfully');
+      } catch (error: any) {
+        console.error('❌ [ADMIN] Failed to send notification:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
+        // Không throw error để không ảnh hưởng đến việc update order
+      }
+    } else {
+      console.log(`ℹ️ [ADMIN] Status is "${status}", skipping notification`);
+    }
+    
     return updatedOrder;
+  }
+
+  private async sendDeliveryConfirmationNotification(order: any) {
+    console.log('📦 [ADMIN] sendDeliveryConfirmationNotification called');
+    console.log('📦 [ADMIN] Order ID:', order._id);
+    console.log('📦 [ADMIN] Order user:', order.user);
+    
+    try {
+      // Lấy Notification model từ database (dùng cùng schema với UTEShop_BE)
+      const mongoose = require('mongoose');
+      const NotificationSchema = new mongoose.Schema({
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        message: { type: String, required: true },
+        link: { type: String },
+        orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+        read: { type: Boolean, default: false },
+        type: { type: String, enum: ['normal', 'order_delivery_confirmation'], default: 'normal' },
+        actions: {
+          confirm: { type: String },
+          cancel: { type: String },
+        },
+      }, { timestamps: true });
+      
+      // Lấy model hoặc tạo mới nếu chưa có
+      let NotificationModel;
+      try {
+        NotificationModel = mongoose.model('Notification');
+        console.log('✅ [ADMIN] Notification model found');
+      } catch {
+        NotificationModel = mongoose.model('Notification', NotificationSchema);
+        console.log('✅ [ADMIN] Notification model created');
+      }
+
+      const notificationMessage = "Bạn đã nhận đơn hàng chưa?";
+      console.log('📦 [ADMIN] Creating notification with message:', notificationMessage);
+      
+      const newNotification = new NotificationModel({
+        user: order.user,
+        message: notificationMessage,
+        link: `/orders/tracking/${order._id}`,
+        orderId: order._id,
+        type: "order_delivery_confirmation",
+        actions: {
+          confirm: "Xác nhận",
+          cancel: "Chưa nhận hàng",
+        },
+      });
+      
+      await newNotification.save();
+      console.log('✅ [ADMIN] Notification saved to database:', newNotification._id);
+      console.log('✅ [ADMIN] Notification data:', JSON.stringify(newNotification.toObject(), null, 2));
+
+      // Gửi HTTP request đến UTEShop_BE để trigger WebSocket notification
+      const backendUrl = this.configService.get<string>('BACKEND_URL') || 'http://localhost:5000';
+      console.log('📤 [ADMIN] Sending HTTP request to:', `${backendUrl}/api/internal/notifications/send`);
+      
+      try {
+        const axios = require('axios');
+        const notificationData = {
+          ...newNotification.toObject(),
+          orderId: order._id.toString(),
+        };
+        
+        console.log('📤 [ADMIN] Notification data to send:', JSON.stringify(notificationData, null, 2));
+        console.log('📤 [ADMIN] User ID to send:', order.user.toString());
+        
+        const response = await axios.post(`${backendUrl}/api/internal/notifications/send`, {
+          userId: order.user.toString(),
+          notification: notificationData,
+        }, {
+          timeout: 5000, // 5 seconds timeout
+        });
+        
+        console.log('✅ [ADMIN] HTTP response:', response.data);
+        console.log('✅ [ADMIN] Notification sent via HTTP to backend for WebSocket delivery');
+      } catch (httpError: any) {
+        console.error('❌ [ADMIN] HTTP Error details:', {
+          message: httpError.message,
+          response: httpError.response?.data,
+          status: httpError.response?.status,
+          url: httpError.config?.url,
+        });
+        console.warn('⚠️ [ADMIN] Could not send notification via HTTP (non-critical):', httpError.message);
+        // Notification đã được lưu vào DB, user sẽ thấy khi refresh hoặc khi connect WebSocket
+      }
+    } catch (error: any) {
+      console.error('❌ [ADMIN] Error sending delivery confirmation notification:', error);
+      console.error('❌ [ADMIN] Error stack:', error.stack);
+      throw error;
+    }
   }
 
   async updatePaymentStatus(id: string, paymentStatus: string) {
