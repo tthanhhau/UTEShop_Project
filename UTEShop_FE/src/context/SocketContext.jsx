@@ -52,13 +52,23 @@ export const SocketProvider = ({ children }) => {
                 console.log('📬 Received new notification:', notificationData);
                 
                 // Hiển thị một pop-up thông báo đẹp mắt cho người dùng
-                toast.info(notificationData.message, {
-                    onClick: () => {
-                        // (Tùy chọn) Điều hướng đến link của thông báo khi người dùng click
-                        // Cần có `navigate` từ `useNavigate` nếu muốn dùng tính năng này
-                        // navigate(notificationData.link);
-                    }
-                });
+                // Nếu là delivery confirmation, hiển thị với style đặc biệt
+                if (notificationData.type === 'order_delivery_confirmation') {
+                    toast.warning(notificationData.message, {
+                        autoClose: 10000, // Hiển thị lâu hơn (10 giây)
+                        onClick: () => {
+                            // User có thể click vào toast để xem chi tiết
+                        }
+                    });
+                } else {
+                    toast.info(notificationData.message, {
+                        onClick: () => {
+                            // (Tùy chọn) Điều hướng đến link của thông báo khi người dùng click
+                            // Cần có `navigate` từ `useNavigate` nếu muốn dùng tính năng này
+                            // navigate(notificationData.link);
+                        }
+                    });
+                }
                 
                 // Dispatch action `addNotification` để cập nhật Redux store
                 // Giúp icon chuông và danh sách thông báo được cập nhật real-time

@@ -24,4 +24,7 @@ router.get('/:orderId', requireAuth, OrderController.getOrderById);
 router.delete('/:orderId', requireAuth, OrderController.cancelOrder);
 router.put('/:orderId', requireAuth, OrderController.cancelOrder);
 
+// Handle delivery confirmation (requires authentication)
+router.post('/:orderId/delivery-confirmation', requireAuth, OrderController.handleDeliveryConfirmation);
+
 export default router;

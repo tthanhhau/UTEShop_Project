@@ -4,8 +4,15 @@ import api from '../api/axiosConfig';
 export const fetchNotificationsAsync = createAsyncThunk(
   'notifications/fetchNotifications',
   async () => {
-    const response = await api.get('/user/notifications');
-    return response.data;
+    console.log('🔔 [FRONTEND] Fetching notifications...');
+    try {
+      const response = await api.get('/user/notifications');
+      console.log('🔔 [FRONTEND] Notifications response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [FRONTEND] Error fetching notifications:', error);
+      throw error;
+    }
   }
 );
 
