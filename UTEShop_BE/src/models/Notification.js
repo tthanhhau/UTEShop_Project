@@ -25,6 +25,15 @@ const notificationSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    type: {
+      type: String,
+      enum: ['normal', 'order_delivery_confirmation'],
+      default: 'normal',
+    },
+    actions: {
+      confirm: { type: String },
+      cancel: { type: String },
+    },
   },
   {
     timestamps: true,

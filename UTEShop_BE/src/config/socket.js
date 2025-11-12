@@ -62,33 +62,43 @@ export const sendNotificationToUser = async (io, userId, eventName, data) => {
     console.log(`🤷 User ${userId} is not connected.`);
   }
 
-  // Gửi email thông báo nếu có email trong data
-  try {
-    // Lấy thông tin người dùng để có email
-    const user = await User.findById(userId).select("email name");
-    if (!user) {
-      console.error(`Email not sent: User with ID ${userId} not found.`);
-      return;
+  // Gửi email thông báo nếu có email trong data (non-blocking)
+  // Lưu ý: Email notification là optional, nếu fail thì không ảnh hưởng đến WebSocket notification
+  (async () => {
+    try {
+      // Lấy thông tin người dùng để có email
+      const user = await User.findById(userId).select("email name");
+      if (!user || !user.email) {
+        console.log(`📧 Email notification skipped: User ${userId} has no email`);
+        return;
+      }
+
+      // Kiểm tra xem có cấu hình email không
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.log(`📧 Email notification skipped: Email credentials not configured`);
+        return;
+      }
+
+      console.log(`📧 Preparing to send email notification to ${user.email}`);
+      await sendMail({
+        to: user.email,
+        subject: `🔔 Thông báo mới từ UTE SHOP`,
+        html: `
+                  <h1>Xin chào ${user.name},</h1>
+                  <p>Bạn có một thông báo mới:</p>
+                  <blockquote>${data.message || 'Thông báo mới'}</blockquote>
+                  <br><br>
+                  <p>Trân trọng,<br>Đội ngũ UTE SHOP</p>
+              `,
+      });
+
+      console.log(`✅ Email notification sent successfully to ${user.email}`);
+    } catch (error) {
+      // Chỉ log warning, không throw error để không ảnh hưởng đến WebSocket notification
+      console.warn(
+        `⚠️ Email notification failed (non-critical) for user ${userId}:`,
+        error.message
+      );
     }
-
-    console.log(`📧 Preparing to send email notification to ${user.email}`);
-    await sendMail({
-      to: user.email,
-      subject: `🔔 Thông báo mới từ UTE SHOP`,
-      html: `
-                <h1>Xin chào ${user.name},</h1>
-                <p>Bạn có một thông báo mới:</p>
-                <blockquote>${data.message}</blockquote>
-                <br><br>
-                <p>Trân trọng,<br>Đội ngũ UTE SHOP</p>
-            `,
-    });
-
-    console.log(`✅ Email notification sent successfully to ${user.email}`);
-  } catch (error) {
-    console.error(
-      `❌ Failed to send email notification to user ${userId}:`,
-      error
-    );
-  }
+  })();
 };

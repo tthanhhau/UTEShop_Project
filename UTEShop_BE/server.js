@@ -84,6 +84,10 @@ app.use('/api/cart', cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payment", paymentRoutes);
 
+// Internal routes (for communication between backends)
+import internalRoutes from "./src/routes/internalRoutes.js";
+app.use("/api/internal", internalRoutes);
+
 // Routes mới
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/viewed-products", viewedProductRoutes);
