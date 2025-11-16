@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "../api/axiosConfig";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import SearchAutocomplete from '../components/SearchAutocomplete';
 
@@ -13,7 +13,9 @@ export default function ProductListPage() {
     const [pagination, setPagination] = useState({});
     const [searchParams, setSearchParams] = useSearchParams();
     const [showBackToTop, setShowBackToTop] = useState(false);
+    const [isImageSearch, setIsImageSearch] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Get current filters from URL
     const page = searchParams.get('page') || '1';
@@ -62,11 +64,34 @@ export default function ProductListPage() {
         navigate(`/product/${product._id}`);
     };
 
+    // Handle image search results from navigation state
     useEffect(() => {
+        if (location.state?.isImageSearch && location.state?.imageSearchResults) {
+            setProducts(location.state.imageSearchResults);
+            setPagination({
+                page: 1,
+                totalPages: 1,
+                total: location.state.imageSearchResults.length,
+                limit: location.state.imageSearchResults.length
+            });
+            setIsImageSearch(true);
+            setLoading(false);
+            // Clear the state to prevent reusing on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
+
+    useEffect(() => {
+        // Skip if we're showing image search results
+        if (location.state?.isImageSearch && location.state?.imageSearchResults) {
+            return;
+        }
+
         const fetchProducts = async () => {
             try {
                 setLoading(true);
                 setError(null);
+                setIsImageSearch(false);
 
                 // Kiểm tra nếu có search query, sử dụng Elasticsearch
                 if (search) {
@@ -229,9 +254,43 @@ export default function ProductListPage() {
             {/* Header */}
             <div className="mb-8">
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-3">Tất cả sản phẩm</h1>
+                    <h1 className="text-4xl font-bold text-gray-800 mb-3">
+                        {isImageSearch ? 'Kết quả tìm kiếm bằng hình ảnh' : 'Tất cả sản phẩm'}
+                    </h1>
                     <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto rounded-full"></div>
                 </div>
+                
+                {/* Image Search Banner */}
+                {isImageSearch && products.length > 0 && (
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                <div>
+                                    <p className="text-blue-700 text-sm font-medium">
+                                        Sản phẩm tìm thấy từ hình ảnh của bạn
+                                    </p>
+                                    {products[0]?.similarity && (
+                                        <p className="text-blue-600 text-xs mt-1">
+                                            Độ tương đồng: {(products[0].similarity * 100).toFixed(1)}%
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            {products[0]?.stock > 0 ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                                    Còn hàng
+                                </span>
+                            ) : (
+                                <span className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-medium">
+                                    Hết hàng
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Filter Section */}
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 mb-6 shadow-sm">

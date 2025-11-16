@@ -31,6 +31,7 @@ import viewedProductRoutes from "./src/routes/viewedProductRoutes.js";
 import similarProductRoutes from "./src/routes/similarProductRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
 import elasticsearchRoutes from "./src/routes/elasticsearchRoutes.js";
+import imageSearchRoutes from "./src/routes/imageSearchRoutes.js";
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -94,6 +95,7 @@ app.use("/api/viewed-products", viewedProductRoutes);
 app.use("/api/similar-products", similarProductRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/elasticsearch", elasticsearchRoutes);
+app.use("/api/image-search", imageSearchRoutes);
 
 // Admin routes
 import voucherRoutes from "./src/routes/voucherRoutes.js";
