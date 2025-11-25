@@ -2,6 +2,16 @@ import Cart from "../models/cart.js";
 import Product from "../models/product.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
+// Helper function to transform cart items and ensure size is included
+const transformCartItems = (items) => {
+  return items.map(item => ({
+    product: item.product,
+    quantity: item.quantity,
+    size: item.size, // Explicitly include size
+    _id: item._id
+  }));
+};
+
 // @desc    Lấy giỏ hàng của user
 // @route   GET /api/cart
 // @access  Private
@@ -25,6 +35,17 @@ export const getCart = asyncHandler(async (req, res) => {
   // Lọc ra những sản phẩm không tồn tại (đã bị xóa)
   const validItems = cart.items.filter(item => item.product !== null);
 
+  // Transform items để đảm bảo size được trả về
+  const itemsWithSize = transformCartItems(validItems);
+
+  // Debug log để kiểm tra size
+  console.log('🛒 Cart items with size:', itemsWithSize.map(item => ({
+    productId: item.product._id,
+    productName: item.product.name,
+    size: item.size,
+    quantity: item.quantity
+  })));
+
   // Nếu có sản phẩm không tồn tại, cập nhật lại giỏ hàng
   if (validItems.length !== cart.items.length) {
     cart.items = validItems;
@@ -45,7 +66,7 @@ export const getCart = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
-      items: validItems,
+      items: itemsWithSize, // Use transformed items
       totalItems,
       totalAmount,
       distinctItemCount, // Số loại sản phẩm khác nhau cho badge
@@ -57,7 +78,7 @@ export const getCart = asyncHandler(async (req, res) => {
 // @route   POST /api/cart/add
 // @access  Private
 export const addToCart = asyncHandler(async (req, res) => {
-  const { productId, quantity = 1 } = req.body;
+  const { productId, quantity = 1, size } = req.body;
 
   // Kiểm tra sản phẩm có tồn tại không
   const product = await Product.findById(productId);
@@ -68,11 +89,31 @@ export const addToCart = asyncHandler(async (req, res) => {
     });
   }
 
-  // Kiểm tra số lượng trong kho
-  if (product.stock < quantity) {
+  // Kiểm tra size nếu sản phẩm có size
+  if (product.sizes && product.sizes.length > 0 && !size) {
     return res.status(400).json({
       success: false,
-      message: `Chỉ còn ${product.stock} sản phẩm trong kho`,
+      message: "Vui lòng chọn size",
+    });
+  }
+
+  // Kiểm tra số lượng trong kho (theo size nếu có)
+  let availableStock = product.stock;
+  if (size && product.variants && product.variants.length > 0) {
+    const variant = product.variants.find(v => v.size === size);
+    if (!variant) {
+      return res.status(400).json({
+        success: false,
+        message: "Size không hợp lệ",
+      });
+    }
+    availableStock = variant.stock;
+  }
+
+  if (availableStock < quantity) {
+    return res.status(400).json({
+      success: false,
+      message: `Chỉ còn ${availableStock} sản phẩm trong kho`,
     });
   }
 
@@ -84,23 +125,23 @@ export const addToCart = asyncHandler(async (req, res) => {
     // Tạo giỏ hàng mới nếu chưa có
     cart = new Cart({
       user: req.user._id,
-      items: [{ product: productId, quantity }],
+      items: [{ product: productId, quantity, size }],
     });
     isNewProduct = true; // Giỏ hàng mới = sản phẩm mới
   } else {
-    // Kiểm tra sản phẩm đã có trong giỏ hàng chưa
+    // Kiểm tra sản phẩm (và size) đã có trong giỏ hàng chưa
     const existingItemIndex = cart.items.findIndex(
-      (item) => item.product.toString() === productId
+      (item) => item.product.toString() === productId && item.size === size
     );
 
     if (existingItemIndex > -1) {
       // Cập nhật số lượng nếu sản phẩm đã có
       const newQuantity = cart.items[existingItemIndex].quantity + quantity;
 
-      if (product.stock < newQuantity) {
+      if (availableStock < newQuantity) {
         return res.status(400).json({
           success: false,
-          message: `Chỉ còn ${product.stock} sản phẩm trong kho`,
+          message: `Chỉ còn ${availableStock} sản phẩm trong kho`,
         });
       }
 
@@ -108,7 +149,7 @@ export const addToCart = asyncHandler(async (req, res) => {
       isNewProduct = false; // Sản phẩm đã có, chỉ tăng số lượng
     } else {
       // Thêm sản phẩm mới vào giỏ hàng
-      cart.items.push({ product: productId, quantity });
+      cart.items.push({ product: productId, quantity, size });
       isNewProduct = true; // Sản phẩm mới được thêm vào
     }
   }
@@ -123,6 +164,7 @@ export const addToCart = asyncHandler(async (req, res) => {
 
   // Lọc ra những sản phẩm không tồn tại (đã bị xóa)
   const validItems = updatedCart.items.filter(item => item.product !== null);
+  const itemsWithSize = transformCartItems(validItems);
 
   const totalItems = validItems.reduce((total, item) => total + item.quantity, 0);
   const totalAmount = validItems.reduce((total, item) => {
@@ -134,8 +176,9 @@ export const addToCart = asyncHandler(async (req, res) => {
     isNewProduct,
     totalItems,
     distinctItemCount,
-    cartItems: validItems.map(item => ({
+    cartItems: itemsWithSize.map(item => ({
       productId: item.product._id,
+      size: item.size,
       quantity: item.quantity
     }))
   });
@@ -144,7 +187,7 @@ export const addToCart = asyncHandler(async (req, res) => {
     success: true,
     message: "Đã thêm sản phẩm vào giỏ hàng",
     data: {
-      items: validItems,
+      items: itemsWithSize,
       totalItems,
       totalAmount,
       distinctItemCount, // Số loại sản phẩm khác nhau cho badge
@@ -157,7 +200,7 @@ export const addToCart = asyncHandler(async (req, res) => {
 // @route   PUT /api/cart/update
 // @access  Private
 export const updateCartItem = asyncHandler(async (req, res) => {
-  const { productId, quantity } = req.body;
+  const { productId, quantity, size } = req.body;
 
   // Kiểm tra sản phẩm có tồn tại không
   const product = await Product.findById(productId);
@@ -185,9 +228,9 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     });
   }
 
-  // Tìm index của sản phẩm trong giỏ hàng
+  // Tìm index của sản phẩm (và size) trong giỏ hàng
   const itemIndex = cart.items.findIndex(
-    (item) => item.product.toString() === productId
+    (item) => item.product.toString() === productId && item.size === size
   );
 
   if (itemIndex === -1) {
@@ -213,6 +256,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
 
   // Lọc ra những sản phẩm không tồn tại (đã bị xóa)
   const validItems = updatedCart.items.filter(item => item.product !== null);
+  const itemsWithSize = transformCartItems(validItems);
 
   const totalItems = validItems.reduce((total, item) => total + item.quantity, 0);
   const totalAmount = validItems.reduce((total, item) => {
@@ -222,6 +266,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
 
   console.log('🛒 UpdateCartItem Debug:', {
     productId,
+    size,
     oldQuantity,
     newQuantity: quantity,
     totalItems,
@@ -234,7 +279,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     success: true,
     message: "Đã cập nhật số lượng sản phẩm",
     data: {
-      items: validItems,
+      items: itemsWithSize,
       totalItems,
       totalAmount,
       distinctItemCount, // Số loại sản phẩm khác nhau cho badge
@@ -249,6 +294,7 @@ export const updateCartItem = asyncHandler(async (req, res) => {
 // @access  Private
 export const removeFromCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
+  const { size } = req.query; // Lấy size từ query params
 
   const cart = await Cart.findOne({ user: req.user._id });
   if (!cart) {
@@ -258,8 +304,14 @@ export const removeFromCart = asyncHandler(async (req, res) => {
     });
   }
 
+  // Nếu có size, chỉ xóa item với size đó, nếu không xóa tất cả item của product
   cart.items = cart.items.filter(
-    (item) => item.product.toString() !== productId
+    (item) => {
+      if (size) {
+        return !(item.product.toString() === productId && item.size === size);
+      }
+      return item.product.toString() !== productId;
+    }
   );
 
   await cart.save();
@@ -272,6 +324,7 @@ export const removeFromCart = asyncHandler(async (req, res) => {
 
   // Lọc ra những sản phẩm không tồn tại (đã bị xóa)
   const validItems = updatedCart.items.filter(item => item.product !== null);
+  const itemsWithSize = transformCartItems(validItems);
 
   const totalItems = validItems.reduce((total, item) => total + item.quantity, 0);
   const totalAmount = validItems.reduce((total, item) => {
@@ -283,7 +336,7 @@ export const removeFromCart = asyncHandler(async (req, res) => {
     success: true,
     message: "Đã xóa sản phẩm khỏi giỏ hàng",
     data: {
-      items: validItems,
+      items: itemsWithSize,
       totalItems,
       totalAmount,
       distinctItemCount, // Số loại sản phẩm khác nhau cho badge

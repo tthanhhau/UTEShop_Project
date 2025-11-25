@@ -11,6 +11,8 @@ const ProductCard = ({ product }) => {
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
     const { addingToCart } = useSelector((state) => state.cart);
+    const [selectedSize, setSelectedSize] = React.useState(null);
+    const [hoveredSize, setHoveredSize] = React.useState(null);
 
     const originalPrice = product.price;
     const discountedPrice = product.discountPercentage > 0
@@ -35,11 +37,18 @@ const ProductCard = ({ product }) => {
             return;
         }
 
-        // Chuyển đến trang checkout với thông tin sản phẩm
+        // Nếu sản phẩm có size nhưng chưa chọn, hiển thị thông báo
+        if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+            alert("Vui lòng chọn size trước khi mua hàng");
+            return;
+        }
+
+        // Nếu đã chọn size hoặc không có size, chuyển thẳng đến checkout
         navigate('/checkout', {
             state: {
                 product: product,
-                quantity: 1
+                quantity: 1,
+                size: selectedSize
             }
         });
     };
@@ -53,17 +62,28 @@ const ProductCard = ({ product }) => {
             return;
         }
 
+        // Nếu sản phẩm có size nhưng chưa chọn, hiển thị thông báo
+        if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+            alert("Vui lòng chọn size trước khi thêm vào giỏ hàng");
+            return;
+        }
+
+        // Nếu đã chọn size hoặc không có size, thêm trực tiếp vào giỏ
         try {
             await dispatch(addToCart({
                 productId: product._id,
-                quantity: 1
+                quantity: 1,
+                size: selectedSize
             })).unwrap();
 
-            alert(`Đã thêm sản phẩm vào giỏ hàng!`);
+            alert(`Đã thêm sản phẩm${selectedSize ? ` (Size ${selectedSize})` : ''} vào giỏ hàng!`);
+            setSelectedSize(null); // Reset size sau khi thêm
         } catch (error) {
             alert(error || "Không thể thêm sản phẩm vào giỏ hàng");
         }
     };
+
+
 
     return (
         <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
@@ -115,6 +135,47 @@ const ProductCard = ({ product }) => {
                     <span>Lượt xem: {product.viewCount || 0}</span>
                 </div>
 
+                {/* Sizes - Display all sizes with hover and selection effects */}
+                {product.sizes && product.sizes.length > 0 && (
+                    <div className="mb-2">
+                        <div className="text-xs text-gray-600 mb-1.5 font-medium">Size:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {product.sizes.map((size, index) => {
+                                const variant = product.variants?.find(v => v.size === size);
+                                const isOutOfStock = variant && variant.stock === 0;
+                                const isSelected = selectedSize === size;
+                                const isHovered = hoveredSize === size;
+                                
+                                return (
+                                    <button
+                                        key={index}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isOutOfStock) {
+                                                setSelectedSize(isSelected ? null : size);
+                                            }
+                                        }}
+                                        onMouseEnter={() => !isOutOfStock && setHoveredSize(size)}
+                                        onMouseLeave={() => setHoveredSize(null)}
+                                        disabled={isOutOfStock}
+                                        className={`text-xs px-2.5 py-1 rounded border-2 font-medium transition-all duration-200 ${
+                                            isOutOfStock
+                                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+                                                : isSelected
+                                                ? 'border-blue-500 bg-blue-500 text-white shadow-md transform scale-105'
+                                                : isHovered
+                                                ? 'border-blue-400 bg-blue-50 text-blue-700 transform scale-105'
+                                                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                                        }`}
+                                    >
+                                        {size}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 {/* Stock Status and Favorite */}
                 <div className="mb-3 flex items-center justify-between">
                     {product.stock > 0 ? (
@@ -151,6 +212,7 @@ const ProductCard = ({ product }) => {
                     )}
                 </div>
             </div>
+
         </div>
     );
 };

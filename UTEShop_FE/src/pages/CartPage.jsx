@@ -32,6 +32,18 @@ const CartPage = () => {
     }
   }, [dispatch, user]);
 
+  // Debug log để kiểm tra items
+  useEffect(() => {
+    if (items && items.length > 0) {
+      console.log('🛒 CartPage - Items:', items.map(item => ({
+        productId: item.product._id,
+        productName: item.product.name,
+        size: item.size,
+        quantity: item.quantity
+      })));
+    }
+  }, [items]);
+
   // Loại bỏ việc tự động chọn tất cả sản phẩm khi load giỏ hàng
   useEffect(() => {
     if (items && items.length > 0) {
@@ -42,19 +54,20 @@ const CartPage = () => {
     }
   }, [items]);
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (productId, newQuantity, size) => {
     if (newQuantity < 1) return;
 
     // Nếu sản phẩm đã được chọn, giữ nguyên trạng thái chọn
-    dispatch(updateCartItem({ productId, quantity: newQuantity }));
+    dispatch(updateCartItem({ productId, quantity: newQuantity, size }));
   };
 
-  const handleRemoveItem = (productId) => {
+  const handleRemoveItem = (item) => {
     // Xóa khỏi selected items khi xóa sản phẩm
+    const itemKey = getItemKey(item);
     const newSelected = new Set(selectedItems);
-    newSelected.delete(productId);
+    newSelected.delete(itemKey);
     setSelectedItems(newSelected);
-    dispatch(removeFromCart(productId));
+    dispatch(removeFromCart({ productId: item.product._id, size: item.size }));
   };
 
   const handleClearCart = () => {
@@ -71,8 +84,8 @@ const CartPage = () => {
       return;
     }
 
-    // Lấy thông tin các sản phẩm được chọn
-    const selectedProducts = items.filter(item => selectedItems.has(item.product._id));
+    // Lấy thông tin các sản phẩm được chọn (sử dụng getItemKey)
+    const selectedProducts = items.filter(item => selectedItems.has(getItemKey(item)));
 
     // Chuyển đến trang checkout với thông tin sản phẩm từ giỏ hàng
     navigate('/checkout', {
@@ -84,13 +97,16 @@ const CartPage = () => {
   };
 
 
-  // Xử lý chọn/bỏ chọn sản phẩm
-  const handleSelectItem = (productId, checked) => {
+  // Xử lý chọn/bỏ chọn sản phẩm (sử dụng unique key bao gồm cả size)
+  const getItemKey = (item) => `${item.product._id}-${item.size || 'no-size'}`;
+
+  const handleSelectItem = (item, checked) => {
+    const itemKey = getItemKey(item);
     const newSelected = new Set(selectedItems);
     if (checked) {
-      newSelected.add(productId);
+      newSelected.add(itemKey);
     } else {
-      newSelected.delete(productId);
+      newSelected.delete(itemKey);
     }
     setSelectedItems(newSelected);
     setSelectAll(newSelected.size === items.length);
@@ -99,8 +115,8 @@ const CartPage = () => {
   // Xử lý chọn/bỏ chọn tất cả
   const handleSelectAll = (checked) => {
     if (checked) {
-      const allItemIds = new Set(items.map(item => item.product._id));
-      setSelectedItems(allItemIds);
+      const allItemKeys = new Set(items.map(item => getItemKey(item)));
+      setSelectedItems(allItemKeys);
     } else {
       setSelectedItems(new Set());
     }
@@ -108,7 +124,7 @@ const CartPage = () => {
   };
 
   // Tính toán cho các sản phẩm được chọn
-  const selectedItemsData = items.filter(item => selectedItems.has(item.product._id));
+  const selectedItemsData = items.filter(item => selectedItems.has(getItemKey(item)));
   const selectedTotalItems = selectedItemsData.reduce((total, item) => total + item.quantity, 0);
   const selectedTotalAmount = selectedItemsData.reduce((total, item) => {
     const itemPrice = item.product.price * item.quantity;
@@ -229,17 +245,17 @@ const CartPage = () => {
 
             {/* Product List */}
             <div className="space-y-3">
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <div
-                  key={item.product._id}
+                  key={`${item.product._id}-${item.size || 'no-size'}-${index}`}
                   className="bg-white rounded-lg p-4 shadow-sm"
                 >
                   <div className="flex gap-4">
                     {/* Checkbox */}
                     <div className="flex-shrink-0 pt-2">
                       <Checkbox
-                        checked={selectedItems.has(item.product._id)}
-                        onCheckedChange={(checked) => handleSelectItem(item.product._id, checked)}
+                        checked={selectedItems.has(getItemKey(item))}
+                        onCheckedChange={(checked) => handleSelectItem(item, checked)}
                       />
                     </div>
 
@@ -254,9 +270,18 @@ const CartPage = () => {
 
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-800 mb-2 line-clamp-2 leading-5">
-                        {item.product.name}
-                      </h3>
+                      {/* Product Name and Size */}
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-medium text-gray-800 line-clamp-2 leading-5 flex-1 pr-2">
+                          {item.product.name}
+                        </h3>
+                        {/* Size Badge */}
+                        {item.size && (
+                          <span className="flex-shrink-0 px-3 py-1 bg-blue-50 text-blue-700 text-sm font-semibold rounded-full border border-blue-200">
+                            Size: {item.size}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center justify-between mt-3">
                         {/* Price */}
@@ -281,7 +306,7 @@ const CartPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleQuantityChange(item.product._id, item.quantity - 1)}
+                              onClick={() => handleQuantityChange(item.product._id, item.quantity - 1, item.size)}
                               disabled={item.quantity <= 1}
                               className="h-8 w-8 p-0 hover:bg-gray-100 disabled:opacity-30"
                             >
@@ -293,7 +318,7 @@ const CartPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleQuantityChange(item.product._id, item.quantity + 1)}
+                              onClick={() => handleQuantityChange(item.product._id, item.quantity + 1, item.size)}
                               disabled={item.quantity >= item.product.stock}
                               className="h-8 w-8 p-0 hover:bg-gray-100 disabled:opacity-30"
                             >
@@ -316,7 +341,7 @@ const CartPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleRemoveItem(item.product._id)}
+                              onClick={() => handleRemoveItem(item)}
                               className="text-gray-500 hover:text-red-500 p-1"
                             >
                               <Trash2 className="h-4 w-4" />

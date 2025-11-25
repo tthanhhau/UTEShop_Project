@@ -105,6 +105,9 @@ const OrderDetail = () => {
                                     />
                                     <div className="flex-1">
                                         <h3 className="font-medium text-lg mb-1 hover:text-primary transition-colors">{item.product.name}</h3>
+                                        {item.size && (
+                                            <p className="text-sm text-blue-600 font-medium mb-1">Size: {item.size}</p>
+                                        )}
                                         <p className="text-gray-600 mb-2">Số lượng: {item.quantity}</p>
                                         <div className="flex justify-between items-center">
                                             <p className="text-gray-500">Đơn giá: {formatPrice(item.price)}</p>
