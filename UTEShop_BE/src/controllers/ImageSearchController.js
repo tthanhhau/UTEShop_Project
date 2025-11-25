@@ -1,8 +1,16 @@
 import axios from 'axios';
 import FormData from 'form-data';
+import http from 'http';
 import asyncHandler from '../middlewares/asyncHandler.js';
 
-const IMAGE_SEARCH_SERVICE_URL = process.env.IMAGE_SEARCH_SERVICE_URL || 'http://localhost:5002';
+// Force IPv4 to avoid ECONNREFUSED ::1 error on Windows
+const IMAGE_SEARCH_SERVICE_URL = (process.env.IMAGE_SEARCH_SERVICE_URL || 'http://127.0.0.1:5002')
+    .replace('localhost', '127.0.0.1');
+
+// Create HTTP agent that forces IPv4
+const httpAgent = new http.Agent({
+    family: 4 // Force IPv4
+});
 
 /**
  * Search products by image
@@ -56,7 +64,8 @@ export const searchByImage = asyncHandler(async (req, res) => {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    timeout: 30000 // 30 seconds timeout
+                    timeout: 30000, // 30 seconds timeout
+                    httpAgent: httpAgent // Force IPv4
                 }
             );
         } else {
@@ -75,7 +84,8 @@ export const searchByImage = asyncHandler(async (req, res) => {
                     headers: {
                         ...formData.getHeaders()
                     },
-                    timeout: 30000
+                    timeout: 30000,
+                    httpAgent: httpAgent // Force IPv4
                 }
             );
         }
@@ -138,7 +148,8 @@ export const updateEmbeddings = asyncHandler(async (req, res) => {
             `${IMAGE_SEARCH_SERVICE_URL}/update-embeddings`,
             {},
             {
-                timeout: 300000 // 5 minutes timeout for large datasets
+                timeout: 300000, // 5 minutes timeout for large datasets
+                httpAgent: httpAgent // Force IPv4
             }
         );
 
@@ -184,7 +195,8 @@ export const updateEmbeddings = asyncHandler(async (req, res) => {
 export const healthCheck = asyncHandler(async (req, res) => {
     try {
         const response = await axios.get(`${IMAGE_SEARCH_SERVICE_URL}/health`, {
-            timeout: 5000
+            timeout: 5000,
+            httpAgent: httpAgent // Force IPv4
         });
         
         return res.json({
