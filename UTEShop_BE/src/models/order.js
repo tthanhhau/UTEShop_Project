@@ -22,6 +22,7 @@ const orderSchema = new mongoose.Schema(
           required: true,
         },
         quantity: { type: Number, required: true },
+        size: { type: String }, // Size được chọn (nếu có)
         originalPrice: { type: Number, required: true }, // Giá gốc tại thời điểm đặt hàng
         discountPercentage: { type: Number, default: 0 }, // % giảm giá tại thời điểm đặt hàng
         discountedPrice: { type: Number, required: true }, // Giá đã giảm tại thời điểm đặt hàng

@@ -373,6 +373,11 @@ export function OrderTracking() {
                           <h4 className="font-medium text-foreground truncate">
                             {item.product?.name}
                           </h4>
+                          {item.size && (
+                            <div className="text-sm text-blue-600 font-medium">
+                              Size: {item.size}
+                            </div>
+                          )}
                           <div className="text-sm text-muted-foreground">
                             Số lượng: {item.quantity} ×{" "}
                             {formatPrice(item.price)}

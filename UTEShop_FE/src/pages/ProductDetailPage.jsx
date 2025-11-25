@@ -36,6 +36,7 @@ export default function ProductDetailPage() {
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState(null);
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState(null);
@@ -127,11 +128,18 @@ export default function ProductDetailPage() {
       return;
     }
 
+    // Kiểm tra size nếu sản phẩm có size
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      alert("Vui lòng chọn size");
+      return;
+    }
+
     try {
       const result = await dispatch(
         addToCart({
           productId: product._id,
           quantity: quantity,
+          size: selectedSize,
         })
       ).unwrap();
 
@@ -168,11 +176,18 @@ export default function ProductDetailPage() {
       return;
     }
 
+    // Kiểm tra size nếu sản phẩm có size
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      alert("Vui lòng chọn size");
+      return;
+    }
+
     // Chuyển sang trang thanh toán với thông tin sản phẩm
     navigate("/checkout", {
       state: {
         product: product,
         quantity: quantity,
+        size: selectedSize,
       },
     });
   };
@@ -323,6 +338,41 @@ export default function ProductDetailPage() {
           {/* Quantity and Add to Cart */}
           {product.stock > 0 ? (
             <div className="space-y-4">
+              {/* Size Selection */}
+              {product.sizes && product.sizes.length > 0 && (
+                <div>
+                  <label className="font-medium block mb-2">
+                    Chọn size: {selectedSize && <span className="text-blue-600">({selectedSize})</span>}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.sizes.map((size, index) => {
+                      const variant = product.variants?.find(v => v.size === size);
+                      const isOutOfStock = variant && variant.stock === 0;
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => !isOutOfStock && setSelectedSize(size)}
+                          disabled={isOutOfStock}
+                          className={`px-4 py-2 border-2 rounded-lg font-medium transition-all ${
+                            selectedSize === size
+                              ? 'border-blue-600 bg-blue-50 text-blue-600'
+                              : isOutOfStock
+                              ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+                              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                          }`}
+                        >
+                          {size}
+                          {variant && variant.stock > 0 && variant.stock <= 5 && (
+                            <span className="text-xs text-red-500 ml-1">({variant.stock})</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-4">
                 <label className="font-medium">Số lượng:</label>
                 <div className="flex items-center border border-gray-300 rounded-lg">

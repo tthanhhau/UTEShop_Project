@@ -137,6 +137,7 @@ class OrderController {
         orderItems.push({
           product: item.product,
           quantity: item.quantity,
+          size: item.size, // Thêm size
           originalPrice: product.price,
           discountPercentage: product.discountPercentage,
           discountedPrice: discountedPrice,
@@ -376,25 +377,9 @@ class OrderController {
 
       // Clear user's cart after order creation
       try {
-        const cart = await Cart.findOne({ user: userId });
-        if (cart && cart.items.length > 0) {
-          const orderedProductIds = orderItems.map((item) =>
-            item.product.toString()
-          );
-
-          const remainingItems = cart.items.filter(
-            (cartItem) =>
-              !orderedProductIds.includes(cartItem.product.toString())
-          );
-
-          cart.items = remainingItems;
-          await cart.save();
-
-          console.log(
-            "🛒 ORDER - Removed ordered items from cart, remaining items:",
-            remainingItems.length
-          );
-        }
+        // Không xóa items khỏi cart sau khi đặt hàng
+        // User có thể muốn mua lại hoặc giữ items trong giỏ
+        console.log("🛒 ORDER - Keeping items in cart after order creation");
       } catch (cartError) {
         console.warn(
           "⚠️ ORDER - Cart update failed (not critical):",
