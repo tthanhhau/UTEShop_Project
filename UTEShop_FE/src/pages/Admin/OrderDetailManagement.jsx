@@ -277,6 +277,9 @@ const OrderDetailManagement = () => {
                   {/* Product Info */}
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 text-lg">{item.product?.name || 'Sản phẩm không xác định'}</h3>
+                    {item.size && (
+                      <p className="text-sm text-blue-600 font-medium mt-1">Size: {item.size}</p>
+                    )}
                     <div className="flex items-center justify-between mt-2 text-sm">
                       <div className="flex space-x-8">
                         <div>

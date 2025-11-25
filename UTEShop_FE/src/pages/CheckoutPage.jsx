@@ -19,6 +19,7 @@ const CheckoutPage = () => {
   const [productDetails, setProductDetails] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState(null);
   const [customerName, setCustomerName] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -35,15 +36,14 @@ const CheckoutPage = () => {
   const [usePoints, setUsePoints] = useState(false);
   // conversion: 1 point -> 1000 VND (assumption). Change if backend uses different conversion.
   const POINT_TO_VND = 1;
-  // Fetch thông tin user mới nhất từ API
+  // Fetch thông tin user mới nhất từ API (chỉ 1 lần khi mount)
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (user) {
+      if (user && !currentUser) {
         try {
           const response = await api.get("/user/profile");
-          // Cập nhật Redux store với thông tin mới nhất
+          // Chỉ set state, không dispatch để tránh vòng lặp
           setCurrentUser(response.data);
-          dispatch(updateUserProfile(response.data));
           // Try to initialize vouchers from response if present
           if (
             response.data?.voucherClaims &&
@@ -58,17 +58,16 @@ const CheckoutPage = () => {
     };
 
     fetchUserProfile();
-  }, [dispatch, user]);
+  }, [user, currentUser]);
 
   // also update vouchers when currentUser changes (in case of later updates)
   useEffect(() => {
     if (
       currentUser?.voucherClaims &&
       Array.isArray(currentUser.voucherClaims)
-
     ) {
       setVouchers(currentUser.voucherClaims);
-      console.log("🎫 CheckoutPage - Available vouchers:", vouchers);
+      console.log("🎫 CheckoutPage - Available vouchers:", currentUser.voucherClaims.length);
     }
   }, [currentUser]);
 
@@ -122,6 +121,7 @@ const CheckoutPage = () => {
       // Xử lý trường hợp mua trực tiếp
       setProductDetails(state.product);
       setQuantity(state.quantity || 1);
+      setSelectedSize(state.size || null);
       setIsFromCart(false);
     }
   }, [location, user, navigate, dispatch]);
@@ -345,6 +345,7 @@ const CheckoutPage = () => {
             product: item.product._id,
             quantity: item.quantity,
             price: item.product.price,
+            size: item.size, // Thêm size
           })),
           totalPrice,
           voucher: voucherData,
@@ -367,6 +368,7 @@ const CheckoutPage = () => {
               product: productDetails._id,
               quantity: quantity,
               price: productDetails.price,
+              size: selectedSize, // Thêm size
             },
           ],
           totalPrice,
@@ -459,12 +461,11 @@ const CheckoutPage = () => {
                       <h3 className="font-semibold text-gray-800">
                         {item.product.name}
                       </h3>
-                      <p className="text-sm text-gray-500">
-                        Size: {item.product.size || "Standard"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Color: {item.product.color || "Default"}
-                      </p>
+                      {item.size && (
+                        <p className="text-sm text-gray-600 font-medium">
+                          Size: <span className="text-blue-600">{item.size}</span>
+                        </p>
+                      )}
                       <p className="font-bold text-lg">
                         {item.product.price?.toLocaleString()}₫
                       </p>
@@ -492,12 +493,11 @@ const CheckoutPage = () => {
                   <h3 className="font-semibold text-gray-800">
                     {productDetails.name}
                   </h3>
-                  <p className="text-sm text-gray-500">
-                    Size: {productDetails.size || "Standard"}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Color: {productDetails.color || "Default"}
-                  </p>
+                  {selectedSize && (
+                    <p className="text-sm text-gray-600 font-medium">
+                      Size: <span className="text-blue-600">{selectedSize}</span>
+                    </p>
+                  )}
                   <p className="font-bold text-lg">
                     {productDetails.price?.toLocaleString()}₫
                   </p>
@@ -513,11 +513,14 @@ const CheckoutPage = () => {
                   // Hiển thị summary cho giỏ hàng
                   <>
                     {cartItems.map((item, index) => (
-                      <div key={index} className="flex justify-between">
-                        <span>
-                          {item.product.name} x{item.quantity}
-                        </span>
-                        <span>
+                      <div key={index} className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div>{item.product.name} x{item.quantity}</div>
+                          {item.size && (
+                            <div className="text-sm text-blue-600 font-medium">Size: {item.size}</div>
+                          )}
+                        </div>
+                        <span className="ml-2">
                           {(
                             item.product.price * item.quantity
                           ).toLocaleString()}
@@ -552,9 +555,14 @@ const CheckoutPage = () => {
                 ) : (
                   // Hiển thị summary cho sản phẩm đơn lẻ
                   <>
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div>{productDetails.name} x{quantity}</div>
+                        {selectedSize && (
+                          <div className="text-sm text-blue-600 font-medium">Size: {selectedSize}</div>
+                        )}
+                      </div>
+                      <span className="ml-2">
                         {(productDetails.price * quantity).toLocaleString()}₫
                       </span>
                     </div>
