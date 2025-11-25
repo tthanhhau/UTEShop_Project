@@ -12,10 +12,12 @@ export const useCartNotifications = () => {
   const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
-    // Đếm số lượng sản phẩm khác nhau
+    // Đếm số lượng items (cùng product khác size = 2 items)
     if (user) {
-      const distinctProductCount = new Set(items.map(item => item.product._id)).size;
-      setBadgeCount(distinctProductCount);
+      // Mỗi item trong giỏ là 1 item riêng biệt (bao gồm cả size)
+      setBadgeCount(items.length);
+    } else {
+      setBadgeCount(0);
     }
   }, [items, user]);
 

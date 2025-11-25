@@ -246,10 +246,11 @@ export function PurchaseHistory() {
                     </div>
                   ))}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
+                <div className="flex justify-end mt-6 pt-4 border-t">
                   <Button
                     variant="outline"
-                    className="flex-1 bg-blue-500 text-white hover:bg-blue-600"
+                    size="sm"
+                    className="bg-blue-500 text-white hover:bg-blue-600 px-4"
                     onClick={() => handleRepurchase(order)}
                     disabled={isAdding}
                   >
