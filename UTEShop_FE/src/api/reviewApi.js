@@ -63,3 +63,13 @@ export const checkOrderReviewed = async (orderId) => {
         throw error.response?.data || error;
     }
 };
+
+// Lấy các đánh giá mới nhất cho trang chủ
+export const getLatestReviews = async (limit = 6) => {
+    try {
+        const response = await api.get(`/reviews/latest/home?limit=${limit}`);
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+};

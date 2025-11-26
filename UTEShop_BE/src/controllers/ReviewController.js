@@ -424,3 +424,47 @@ export const getUserReview = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Lấy các đánh giá mới nhất cho trang chủ
+export const getLatestReviews = async (req, res) => {
+  try {
+    const { limit = 6 } = req.query;
+    const reviewLimit = parseInt(limit);
+
+    console.log("🔍 Getting latest reviews for homepage, limit:", reviewLimit);
+
+    // Lấy các đánh giá mới nhất, populate thông tin user và product
+    const reviews = await Review.find({})
+      .populate("user", "name avatarUrl")
+      .populate("product", "name images")
+      .sort({ createdAt: -1 })
+      .limit(reviewLimit)
+      .lean();
+
+    // Format dữ liệu để phù hợp với frontend
+    const formattedReviews = reviews.map(review => ({
+      _id: review._id,
+      name: review.user?.name || "Khách hàng",
+      image: review.user?.avatarUrl || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
+      rating: review.rating,
+      comment: review.comment,
+      product: review.product?.name || "Sản phẩm",
+      productId: review.product?._id,
+      createdAt: review.createdAt
+    }));
+
+    console.log("✅ Returning latest reviews:", formattedReviews.length);
+
+    res.json({
+      success: true,
+      reviews: formattedReviews
+    });
+  } catch (error) {
+    console.error("Error in getLatestReviews:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
