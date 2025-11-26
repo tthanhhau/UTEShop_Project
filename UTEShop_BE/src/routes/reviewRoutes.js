@@ -5,7 +5,8 @@ import {
     updateReview,
     deleteReview,
     getUserReview,
-    checkOrderReviewed
+    checkOrderReviewed,
+    getLatestReviews
 } from "../controllers/ReviewController.js";
 import { requireAuth } from "../middlewares/auth.js";
 
@@ -28,5 +29,8 @@ router.delete("/:reviewId", requireAuth, deleteReview);
 
 // Check if order has been reviewed (cần authentication)
 router.get("/order/:orderId/check", requireAuth, checkOrderReviewed);
+
+// Lấy các đánh giá mới nhất cho trang chủ (không cần authentication) - Đặt cuối cùng để tránh conflict
+router.get("/latest/home", getLatestReviews);
 
 export default router;
