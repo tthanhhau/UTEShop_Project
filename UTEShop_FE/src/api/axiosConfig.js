@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Tạo một instance của Axios
 const api = axios.create({
-  baseURL: "http://localhost:5000/api", // Thay bằng baseURL của API
+  baseURL: `${import.meta.env.VITE_API_URL}/api`, // Thay bằng baseURL của API
 });
 
 // Thêm một request interceptor
@@ -35,19 +35,19 @@ api.interceptors.response.use(
   (error) => {
     // Log lỗi ra console để dễ debug
     console.log('🔍 Response interceptor - Error:', error.response?.data);
-    
+
     // Nếu nhận được lỗi 401 (Unauthorized)
     if (error.response?.status === 401) {
       const errorCode = error.response?.data?.code;
 
       // Kiểm tra xem mã lỗi có phải là lỗi liên quan đến token hay không
       if (['TOKEN_EXPIRED', 'INVALID_TOKEN', 'NO_TOKEN'].includes(errorCode)) {
-        
+
         // Xóa toàn bộ thông tin người dùng khỏi sessionStorage
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
-        
+
         // Chuyển hướng người dùng về trang đăng nhập
         // Chỉ chuyển hướng nếu họ không ở sẵn trang đăng nhập để tránh vòng lặp
         if (window.location.pathname !== '/login') {
@@ -55,7 +55,7 @@ api.interceptors.response.use(
         }
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
