@@ -19,6 +19,11 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off", // <-- tắt lỗi any
+      "@next/next/no-img-element": "off",         // nếu muốn dùng <img>
+      "react-hooks/exhaustive-deps": "warn",      // cảnh báo chứ không lỗi
+    },
   },
 ];
 
