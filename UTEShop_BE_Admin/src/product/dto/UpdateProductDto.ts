@@ -38,4 +38,8 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   discountPercentage?: number;
+
+  @IsOptional()
+  @IsArray()
+  sizes?: Array<{ size: string; stock: number }>;
 }
