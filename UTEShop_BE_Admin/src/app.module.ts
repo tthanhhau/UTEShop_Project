@@ -15,6 +15,7 @@ import { CustomerModule } from './customer/CustomerModule';
 import { VoucherModule } from './voucher/VoucherModule';
 import { PointsModule } from './points/PointsModule';
 import { AnalyticsModule } from './analytics/AnalyticsModule';
+import { ReviewModule } from './review/ReviewModule';
 import { MailerModule } from './config/mailer.module';
 
 @Module({
@@ -63,6 +64,7 @@ import { MailerModule } from './config/mailer.module';
     VoucherModule,
     PointsModule,
     AnalyticsModule,
+    ReviewModule,
     MailerModule,
   ],
 })

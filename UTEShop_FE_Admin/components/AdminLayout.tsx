@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt, 
+import {
+  FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt,
   FaStar, FaChartLine, FaCog, FaBars, FaBell, FaSignOutAlt,
-  FaChevronLeft, FaChevronRight, FaAngleRight
+  FaChevronLeft, FaChevronRight, FaAngleRight, FaComments
 } from 'react-icons/fa';
 
 interface MenuItem {
@@ -34,6 +34,7 @@ const menuStructure: MenuItem[] = [
   },
   { path: '/admin/orders', icon: FaShoppingCart, label: 'Quản lý đơn hàng' },
   { path: '/admin/customers', icon: FaUsers, label: 'Quản lý khách hàng' },
+  { path: '/admin/comments', icon: FaComments, label: 'Quản lý Đánh giá' },
   { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Quản lý Voucher' },
   { path: '/admin/points', icon: FaStar, label: 'Quản lý Điểm tích lũy' },
 ];
@@ -118,9 +119,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="bg-gray-50 min-h-screen">
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? 'w-16' : 'w-64'
-        } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'w-16' : 'w-64'
+          } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex items-center justify-center h-16 bg-gradient-to-r from-purple-600 to-indigo-600 relative">
           {/* Logo area: Chỉ hiện icon logo khi thu gọn, hiện cả chữ khi mở rộng */}
@@ -189,11 +189,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <Link
                         key={subItem.path}
                         href={subItem.path}
-                        className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${
-                          isActive(subItem.path)
+                        className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${isActive(subItem.path)
                             ? 'bg-purple-100 text-purple-700 font-medium'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
+                          }`}
                       >
                         <FaAngleRight className="mr-2 text-xs text-gray-400" />
                         <span className="text-sm">{subItem.label}</span>
@@ -209,9 +208,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <div
-        className={`min-h-screen transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-        }`}
+        className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          }`}
       >
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">

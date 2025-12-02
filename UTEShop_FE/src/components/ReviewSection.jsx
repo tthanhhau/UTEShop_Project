@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Star, MessageCircle, ThumbsUp, Edit, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
+import { FaReply } from "react-icons/fa";
 import {
   getProductReviewsAsync,
   getUserReviewAsync,
@@ -514,6 +515,23 @@ const ReviewSection = ({
 
             {review.comment && (
               <p className="text-gray-700">{review.comment}</p>
+            )}
+
+            {/* Admin Reply */}
+            {review.adminReply && (
+              <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FaReply className="text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Phản hồi từ quản trị viên</span>
+                  <span className="text-xs text-blue-600">
+                    ({new Date(review.adminReply.repliedAt).toLocaleDateString("vi-VN")})
+                  </span>
+                </div>
+                <p className="text-gray-700">{review.adminReply.comment}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  bởi {review.adminReply.admin?.name || 'Admin'}
+                </p>
+              </div>
             )}
           </div>
         ))}

@@ -98,6 +98,16 @@ export const pointsApi = {
   getUserPoints: (userId: string) => axios.get(`/admin/points/user/${userId}`),
 };
 
+// Review API
+export const reviewApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string; rating?: number; productId?: string }) =>
+    axios.get('/admin/reviews', { params }),
+  getById: (id: string) => axios.get(`/admin/reviews/${id}`),
+  getStats: () => axios.get('/admin/reviews/stats'),
+  reply: (id: string, comment: string) => axios.post(`/admin/reviews/${id}/reply`, { comment }),
+  delete: (id: string) => axios.delete(`/admin/reviews/${id}`),
+};
+
 export default {
   auth: authApi,
   analytics: analyticsApi,
@@ -108,4 +118,5 @@ export default {
   customer: customerApi,
   voucher: voucherApi,
   points: pointsApi,
+  review: reviewApi,
 };
