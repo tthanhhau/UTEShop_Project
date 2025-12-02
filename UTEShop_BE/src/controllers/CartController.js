@@ -99,15 +99,15 @@ export const addToCart = asyncHandler(async (req, res) => {
 
   // Kiểm tra số lượng trong kho (theo size nếu có)
   let availableStock = product.stock;
-  if (size && product.variants && product.variants.length > 0) {
-    const variant = product.variants.find(v => v.size === size);
-    if (!variant) {
+  if (size && product.sizes && product.sizes.length > 0) {
+    const sizeItem = product.sizes.find(s => s.size === size);
+    if (!sizeItem) {
       return res.status(400).json({
         success: false,
         message: "Size không hợp lệ",
       });
     }
-    availableStock = variant.stock;
+    availableStock = sizeItem.stock;
   }
 
   if (availableStock < quantity) {

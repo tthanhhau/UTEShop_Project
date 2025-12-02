@@ -24,12 +24,10 @@ const productSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true, index: true },      // trạng thái hiển thị sản phẩm
     isVisible: { type: Boolean, default: true, index: true },     // trạng thái hiển thị sản phẩm (dùng cho admin)
     
-    // Size và variants
-    sizes: [{ type: String }], // Danh sách size có sẵn: ['S', 'M', 'L', 'XL', 'XXL'] hoặc ['39', '40', '41', '42', '43', '44']
-    variants: [{
+    // Size và stock theo size
+    sizes: [{
       size: { type: String, required: true },
-      stock: { type: Number, required: true, default: 0 },
-      sku: { type: String } // Mã SKU riêng cho từng size
+      stock: { type: Number, required: true, default: 0 }
     }]
   },
   { timestamps: true }

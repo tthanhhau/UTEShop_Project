@@ -140,11 +140,10 @@ const ProductCard = ({ product }) => {
                     <div className="mb-2">
                         <div className="text-xs text-gray-600 mb-1.5 font-medium">Size:</div>
                         <div className="flex flex-wrap gap-1.5">
-                            {product.sizes.map((size, index) => {
-                                const variant = product.variants?.find(v => v.size === size);
-                                const isOutOfStock = variant && variant.stock === 0;
-                                const isSelected = selectedSize === size;
-                                const isHovered = hoveredSize === size;
+                            {product.sizes.map((sizeItem, index) => {
+                                const isOutOfStock = sizeItem.stock === 0;
+                                const isSelected = selectedSize === sizeItem.size;
+                                const isHovered = hoveredSize === sizeItem.size;
                                 
                                 return (
                                     <button
@@ -152,10 +151,10 @@ const ProductCard = ({ product }) => {
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (!isOutOfStock) {
-                                                setSelectedSize(isSelected ? null : size);
+                                                setSelectedSize(isSelected ? null : sizeItem.size);
                                             }
                                         }}
-                                        onMouseEnter={() => !isOutOfStock && setHoveredSize(size)}
+                                        onMouseEnter={() => !isOutOfStock && setHoveredSize(sizeItem.size)}
                                         onMouseLeave={() => setHoveredSize(null)}
                                         disabled={isOutOfStock}
                                         className={`text-xs px-2.5 py-1 rounded border-2 font-medium transition-all duration-200 ${
@@ -168,7 +167,7 @@ const ProductCard = ({ product }) => {
                                                 : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                                         }`}
                                     >
-                                        {size}
+                                        {sizeItem.size}
                                     </button>
                                 );
                             })}
