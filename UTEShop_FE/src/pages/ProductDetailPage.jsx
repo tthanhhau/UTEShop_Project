@@ -345,26 +345,25 @@ export default function ProductDetailPage() {
                     Chọn size: {selectedSize && <span className="text-blue-600">({selectedSize})</span>}
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size, index) => {
-                      const variant = product.variants?.find(v => v.size === size);
-                      const isOutOfStock = variant && variant.stock === 0;
+                    {product.sizes.map((sizeItem, index) => {
+                      const isOutOfStock = sizeItem.stock === 0;
                       
                       return (
                         <button
                           key={index}
-                          onClick={() => !isOutOfStock && setSelectedSize(size)}
+                          onClick={() => !isOutOfStock && setSelectedSize(sizeItem.size)}
                           disabled={isOutOfStock}
                           className={`px-4 py-2 border-2 rounded-lg font-medium transition-all ${
-                            selectedSize === size
+                            selectedSize === sizeItem.size
                               ? 'border-blue-600 bg-blue-50 text-blue-600'
                               : isOutOfStock
                               ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
                               : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
                           }`}
                         >
-                          {size}
-                          {variant && variant.stock > 0 && variant.stock <= 5 && (
-                            <span className="text-xs text-red-500 ml-1">({variant.stock})</span>
+                          {sizeItem.size}
+                          {sizeItem.stock > 0 && sizeItem.stock <= 5 && (
+                            <span className="text-xs text-red-500 ml-1">({sizeItem.stock})</span>
                           )}
                         </button>
                       );
