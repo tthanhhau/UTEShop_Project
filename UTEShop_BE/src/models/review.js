@@ -14,6 +14,14 @@ const reviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order"
     }, // Tham chiếu đến đơn hàng để xác minh đã mua
+    adminReply: {
+      comment: { type: String, maxlength: 1000 },
+      admin: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      repliedAt: { type: Date }
+    },
+    isDeleted: { type: Boolean, default: false },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    deletedAt: { type: Date }
   },
   { timestamps: true }
 );

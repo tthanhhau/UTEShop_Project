@@ -265,6 +265,7 @@ export const getProductReviews = async (req, res) => {
     const [reviews, total, stats] = await Promise.all([
       Review.find(filter)
         .populate("user", "name avatarUrl")
+        .populate("adminReply.admin", "name email") // Populate admin reply info
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize)
