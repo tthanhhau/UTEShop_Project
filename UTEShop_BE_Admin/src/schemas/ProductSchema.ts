@@ -32,6 +32,11 @@ export class Product {
   @Prop({ default: 0 })
   discountPercentage: number;
 
+  @Prop({
+    type: [{ size: String, stock: Number }],
+    default: []
+  })
+  sizes: Array<{ size: string; stock: number }>;
 
   @Prop({ default: true })
   isActive: boolean;
