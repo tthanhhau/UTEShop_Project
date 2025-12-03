@@ -300,6 +300,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                           {item.product?.name || 'Sản phẩm không xác định'}
                         </h4>
                         <div className="space-y-1 text-sm">
+                          {item.size && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Size</span>
+                              <span className="font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{item.size}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-600">Đơn giá</span>
                             <span className="font-semibold text-blue-600">{formatCurrency(item.price || 0)}</span>

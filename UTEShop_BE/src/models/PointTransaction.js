@@ -18,7 +18,6 @@ const pointTransactionSchema = new mongoose.Schema(
     points: {
       type: Number,
       required: true,
-      min: 0,
     },
 
     description: {
