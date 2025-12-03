@@ -351,7 +351,7 @@ const CartPage = () => {
                           {/* Size Badge */}
                           {item.size && (
                             <span className="flex-shrink-0 px-3 py-1 bg-blue-50 text-blue-700 text-sm font-semibold rounded-full border border-blue-200">
-                              Size: {item.size}
+                              Size: {typeof item.size === 'object' ? item.size.size || item.size : item.size}
                             </span>
                           )}
                         </div>

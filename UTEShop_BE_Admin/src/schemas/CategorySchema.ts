@@ -22,3 +22,6 @@ export class Category {
 }
 
 export const CategorySchema = SchemaFactory.createForClass(Category);
+
+// Set the collection name to match the existing categories collection
+CategorySchema.set('collection', 'categories');

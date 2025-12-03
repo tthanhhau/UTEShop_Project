@@ -94,6 +94,7 @@ export function OrderTracking() {
           deliveredOrders.map(async (order) => {
             try {
               const reviewCheck = await checkOrderReviewed(order._id);
+              // Kiểm tra hasReview từ backend (đã bao gồm cả review bị xóa)
               reviewStatusMap[order._id] = reviewCheck.hasReview;
             } catch (error) {
               console.error(
@@ -332,8 +333,8 @@ export function OrderTracking() {
                 key={order._id}
                 ref={(el) => (orderRefs.current[order._id] = el)}
                 className={`overflow-hidden bg-white transition-all duration-300 ${isHighlighted
-                    ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl scale-[1.02]'
-                    : ''
+                  ? 'ring-4 ring-blue-500 ring-opacity-50 shadow-2xl scale-[1.02]'
+                  : ''
                   }`}
               >
                 <CardHeader className="bg-white border-b">
@@ -375,7 +376,7 @@ export function OrderTracking() {
                           </h4>
                           {item.size && (
                             <div className="text-sm text-blue-600 font-medium">
-                              Size: {item.size}
+                              Size: {typeof item.size === 'object' ? item.size.size || item.size : item.size}
                             </div>
                           )}
                           <div className="text-sm text-muted-foreground">

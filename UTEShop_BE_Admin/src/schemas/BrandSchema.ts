@@ -22,3 +22,6 @@ export class Brand {
 }
 
 export const BrandSchema = SchemaFactory.createForClass(Brand);
+
+// Set the collection name to match the existing brands collection
+BrandSchema.set('collection', 'brands');
