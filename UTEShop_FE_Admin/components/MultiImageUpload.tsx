@@ -95,10 +95,6 @@ const MultiImageUpload: React.FC<MultiImageUploadProps> = ({ onImagesChange, ini
 
             setImages(newImages);
             onImagesChange(newImages);
-
-            if (newImages.length > images.length) {
-                alert(`✅ Upload thành công ${newImages.length - images.length} ảnh!`);
-            }
         } catch (error: any) {
             alert(`❌ Lỗi upload: ${error.message}`);
         } finally {

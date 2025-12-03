@@ -33,26 +33,35 @@ export class ProductService {
     }
     // Convert string to ObjectId for category and brand
     if (category) {
-      query.category = Types.ObjectId.isValid(category)
-        ? new Types.ObjectId(category)
-        : category;
+      if (Types.ObjectId.isValid(category)) {
+        query.category = new Types.ObjectId(category);
+      }
     }
     if (brand) {
-      query.brand = Types.ObjectId.isValid(brand)
-        ? new Types.ObjectId(brand)
-        : brand;
+      if (Types.ObjectId.isValid(brand)) {
+        query.brand = new Types.ObjectId(brand);
+      }
     }
+
+    console.log('🔍 Query:', {
+      category: query.category?.toString(),
+      brand: query.brand?.toString(),
+      search: search
+    });
 
     const [products, total] = await Promise.all([
       this.productModel
         .find(query)
         .populate('category')
         .populate('brand')
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
       this.productModel.countDocuments(query),
     ]);
+    
+    console.log(`📊 Found ${total} products, returning ${products.length}`);
 
     return {
       data: products,
@@ -74,13 +83,29 @@ export class ProductService {
   }
 
   async create(createProductDto: CreateProductDto) {
-    const product = new this.productModel(createProductDto);
+    // Ensure category and brand are ObjectId
+    const productData: any = {
+      ...createProductDto,
+      category: new Types.ObjectId(createProductDto.category),
+      brand: new Types.ObjectId(createProductDto.brand)
+    };
+    
+    const product = new this.productModel(productData);
     return product.save();
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
+    // Ensure category and brand are ObjectId if provided
+    const updateData: any = { ...updateProductDto };
+    if (updateData.category) {
+      updateData.category = new Types.ObjectId(updateData.category);
+    }
+    if (updateData.brand) {
+      updateData.brand = new Types.ObjectId(updateData.brand);
+    }
+    
     return this.productModel
-      .findByIdAndUpdate(id, updateProductDto, { new: true })
+      .findByIdAndUpdate(id, updateData, { new: true })
       .populate('category')
       .populate('brand')
       .exec();
