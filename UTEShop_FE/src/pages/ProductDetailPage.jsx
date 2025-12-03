@@ -97,7 +97,7 @@ export default function ProductDetailPage() {
           totalReviews: stats.totalReviews,
           ratingDistribution: stats.ratingDistribution,
         });
-        console.log('✅ State updated successfully'); 
+        console.log('✅ State updated successfully');
 
         // Optional: Set pagination info if you need it
         // setPaginationInfo({
@@ -242,11 +242,10 @@ export default function ProductDetailPage() {
                 <button
                   key={index}
                   onClick={() => setSelectedImage(index)}
-                  className={`aspect-square overflow-hidden rounded-lg border-2 ${
-                    selectedImage === index
+                  className={`aspect-square overflow-hidden rounded-lg border-2 ${selectedImage === index
                       ? "border-blue-500"
                       : "border-gray-200"
-                  }`}
+                    }`}
                 >
                   <img
                     src={image}
@@ -345,24 +344,25 @@ export default function ProductDetailPage() {
                     Chọn size: {selectedSize && <span className="text-blue-600">({selectedSize})</span>}
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size, index) => {
-                      const variant = product.variants?.find(v => v.size === size);
+                    {product.sizes.map((sizeObj, index) => {
+                      // Handle both string sizes and object sizes
+                      const sizeValue = typeof sizeObj === 'object' ? sizeObj.size : sizeObj;
+                      const variant = product.variants?.find(v => v.size === sizeValue);
                       const isOutOfStock = variant && variant.stock === 0;
-                      
+
                       return (
                         <button
-                          key={index}
-                          onClick={() => !isOutOfStock && setSelectedSize(size)}
+                          key={typeof sizeObj === 'object' ? sizeObj._id || index : index}
+                          onClick={() => !isOutOfStock && setSelectedSize(sizeValue)}
                           disabled={isOutOfStock}
-                          className={`px-4 py-2 border-2 rounded-lg font-medium transition-all ${
-                            selectedSize === size
+                          className={`px-4 py-2 border-2 rounded-lg font-medium transition-all ${selectedSize === sizeValue
                               ? 'border-blue-600 bg-blue-50 text-blue-600'
                               : isOutOfStock
-                              ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
-                              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-                          }`}
+                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+                                : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                            }`}
                         >
-                          {size}
+                          {sizeValue}
                           {variant && variant.stock > 0 && variant.stock <= 5 && (
                             <span className="text-xs text-red-500 ml-1">({variant.stock})</span>
                           )}

@@ -5,6 +5,9 @@ export type UserDocument = User & Document;
 
 @Schema({ timestamps: true })
 export class User {
+  @Prop({ default: '' })
+  avatarUrl?: string;
+
   @Prop({ required: true })
   name: string;
 
@@ -16,6 +19,12 @@ export class User {
 
   @Prop()
   phone?: string;
+
+  @Prop()
+  address?: string;
+
+  @Prop()
+  birthDate?: Date;
 
   @Prop({ default: 'customer' })
   role: string;
@@ -43,3 +52,6 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Set the collection name to match the existing users collection
+UserSchema.set('collection', 'users');

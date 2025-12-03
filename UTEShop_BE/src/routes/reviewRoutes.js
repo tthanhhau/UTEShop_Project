@@ -4,33 +4,25 @@ import {
     getProductReviews,
     updateReview,
     deleteReview,
+    adminDeleteReview,
     getUserReview,
     checkOrderReviewed,
     getLatestReviews
 } from "../controllers/ReviewController.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, admin } from "../middlewares/auth.js";
 
 const router = Router();
 
-// Tạo review mới (cần authentication)
+// Public / authenticated routes
 router.post("/:productId", requireAuth, createReview);
-
-// Lấy danh sách review của sản phẩm (không cần authentication)
 router.get("/:productId", getProductReviews);
-
-// Lấy review của user cho sản phẩm (cần authentication)
 router.get("/:productId/user", requireAuth, getUserReview);
-
-// Cập nhật review (cần authentication)
 router.put("/:reviewId", requireAuth, updateReview);
-
-// Xóa review (cần authentication)
 router.delete("/:reviewId", requireAuth, deleteReview);
-
-// Check if order has been reviewed (cần authentication)
 router.get("/order/:orderId/check", requireAuth, checkOrderReviewed);
-
-// Lấy các đánh giá mới nhất cho trang chủ (không cần authentication) - Đặt cuối cùng để tránh conflict
 router.get("/latest/home", getLatestReviews);
+
+// Admin route
+router.delete("/admin/:reviewId", requireAuth, admin, adminDeleteReview);
 
 export default router;

@@ -8,8 +8,8 @@ export class Product {
   @Prop({ required: true })
   name: string;
 
-  @Prop()
-  description?: string;
+  @Prop({ required: true })
+  description: string;
 
   @Prop({ required: true })
   price: number;
@@ -23,18 +23,36 @@ export class Product {
   @Prop({ type: [String], default: [] })
   images: string[];
 
-  @Prop({ default: 0 })
+  @Prop({ required: true })
   stock: number;
 
   @Prop({ default: 0 })
   soldCount: number;
 
   @Prop({ default: 0 })
-  discountPercentage: number;
+  viewCount: number;
 
+  @Prop({ default: 0, min: 0, max: 100 })
+  discountPercentage: number;
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({ default: true })
+  isVisible: boolean;
+
+  @Prop({ type: [String] })
+  sizes?: string[];
+
+  @Prop({ type: Array })
+  variants?: Array<{
+    size: string;
+    stock: number;
+    sku?: string;
+  }>;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
+
+// Set the collection name to match the existing products collection
+ProductSchema.set('collection', 'products');
