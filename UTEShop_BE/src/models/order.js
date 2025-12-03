@@ -78,6 +78,14 @@ const orderSchema = new mongoose.Schema(
     voucherDiscount: { type: Number, default: 0 },
     usedPoints: { type: Number, default: 0 },
     usedPointsAmount: { type: Number, default: 0 },
+    // Thêm trường để theo dõi trạng thái đánh giá
+    reviewStatus: {
+      type: String,
+      enum: ["pending", "reviewed", "review_deleted"],
+      default: "pending"
+    },
+    reviewedAt: { type: Date },
+    reviewDeletedAt: { type: Date },
   },
   { timestamps: true }
 );
@@ -86,7 +94,7 @@ orderSchema.set("toJSON", {
   transform: function (doc, ret) {
     // CHỈ đảm bảo các trường voucher và điểm tồn tại
     // KHÔNG transform status để tránh conflict với frontend
-    
+
     if (ret.voucherDiscount === undefined || ret.voucherDiscount === null) {
       ret.voucherDiscount = 0;
     }
@@ -99,7 +107,7 @@ orderSchema.set("toJSON", {
     if (!ret.voucher) {
       ret.voucher = null;
     }
-    
+
     return ret;
   },
 });

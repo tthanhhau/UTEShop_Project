@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  User, 
-  Package, 
-  CreditCard, 
+import {
+  ArrowLeft,
+  User,
+  Package,
+  CreditCard,
   MapPin,
   Calendar,
   Clock,
@@ -23,7 +23,7 @@ const OrderDetailManagement = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Edit state for status updates
   const [editData, setEditData] = useState({
     status: '',
@@ -39,11 +39,11 @@ const OrderDetailManagement = () => {
     try {
       setLoading(true);
       const response = await orderApi.getOrderById(orderId);
-      
+
       // Backend trả về { order: {...} }, cần extract order
       const orderData = response.order || response;
       setOrder(orderData);
-      
+
       // Set initial edit data
       setEditData({
         status: orderData.status || '',
@@ -60,7 +60,7 @@ const OrderDetailManagement = () => {
   const handleSaveChanges = async () => {
     try {
       setSaving(true);
-      
+
       const updates = {};
       if (editData.status !== order.status) {
         updates.status = editData.status;
@@ -76,13 +76,13 @@ const OrderDetailManagement = () => {
 
       const response = await orderApi.updateOrderStatus(orderId, updates);
       const updatedOrder = response.order || response;
-      
+
       setOrder(updatedOrder);
       setEditData({
         status: updatedOrder.status || '',
         paymentStatus: updatedOrder.paymentStatus || ''
       });
-      
+
       // Show success notification
       alert('Cập nhật thành công!');
     } catch (error) {
@@ -96,7 +96,7 @@ const OrderDetailManagement = () => {
   // Status options
   const orderStatuses = [
     { value: 'pending', label: 'Chờ xử lý' },
-    { value: 'processing', label: 'Đang xử lý' }, 
+    { value: 'processing', label: 'Đang xử lý' },
     { value: 'confirmed', label: 'Đã xác nhận' },
     { value: 'shipped', label: 'Đang giao' },
     { value: 'delivered', label: 'Đã giao' }
@@ -212,7 +212,7 @@ const OrderDetailManagement = () => {
                 <p className="text-sm text-gray-500">#{order?._id?.slice(-8).toUpperCase() || 'Loading...'}</p>
               </div>
             </div>
-            
+
             {/* Save Button */}
             <div className="flex items-center space-x-4">
               <button
@@ -231,7 +231,7 @@ const OrderDetailManagement = () => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
-          
+
           {/* Hàng 1 - Sản phẩm đặt hàng */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
@@ -240,20 +240,20 @@ const OrderDetailManagement = () => {
                 Sản phẩm đặt hàng ({(order.items || []).length} món)
               </h2>
             </div>
-            
+
             <div className="p-6 space-y-4">
               {(order.items || []).map((item, index) => {
                 // Sử dụng images[0] nếu có (từ backend đã fix populate)
                 const imageUrl = item.product?.images?.[0] || item.product?.image;
-                
+
                 return (
                   <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                     {/* Product Image - Fixed Logic */}
                     <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                       {imageUrl ? (
-                        <img 
-                          src={imageUrl} 
-                          alt={item.product?.name || 'Product'} 
+                        <img
+                          src={imageUrl}
+                          alt={item.product?.name || 'Product'}
                           className="w-full h-full object-cover rounded-lg"
                           onError={(e) => {
                             e.target.style.display = 'none';
@@ -273,31 +273,31 @@ const OrderDetailManagement = () => {
                         </div>
                       )}
                     </div>
-                  
-                  {/* Product Info */}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">{item.product?.name || 'Sản phẩm không xác định'}</h3>
-                    {item.size && (
-                      <p className="text-sm text-blue-600 font-medium mt-1">Size: {item.size}</p>
-                    )}
-                    <div className="flex items-center justify-between mt-2 text-sm">
-                      <div className="flex space-x-8">
-                        <div>
-                          <p className="text-gray-600">Đơn giá</p>
-                          <p className="font-semibold text-blue-600">{formatCurrency(item.price || 0)}</p>
+
+                    {/* Product Info */}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-lg">{item.product?.name || 'Sản phẩm không xác định'}</h3>
+                      {item.size && (
+                        <p className="text-sm text-blue-600 font-medium mt-1">Size: {typeof item.size === 'object' ? item.size.size || item.size : item.size}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-2 text-sm">
+                        <div className="flex space-x-8">
+                          <div>
+                            <p className="text-gray-600">Đơn giá</p>
+                            <p className="font-semibold text-blue-600">{formatCurrency(item.price || 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Số lượng</p>
+                            <p className="font-semibold">x{item.quantity || 0}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-gray-600">Số lượng</p>
-                          <p className="font-semibold">x{item.quantity || 0}</p>
+                        <div className="text-right">
+                          <p className="text-gray-600">Thành tiền</p>
+                          <p className="font-bold text-green-600 text-lg">{formatCurrency((item.price || 0) * (item.quantity || 0))}</p>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-gray-600">Thành tiền</p>
-                        <p className="font-bold text-green-600 text-lg">{formatCurrency((item.price || 0) * (item.quantity || 0))}</p>
                       </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -323,7 +323,7 @@ const OrderDetailManagement = () => {
                   Thông tin đơn hàng
                 </h2>
               </div>
-              
+
               <div className="p-6 space-y-6">
                 {/* Mã đơn hàng & Trạng thái thanh toán */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

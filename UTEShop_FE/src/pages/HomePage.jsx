@@ -123,7 +123,7 @@ const HomePage = () => {
             )}
 
             {/* Category Showcases with different themes - Full Width Background */}
-            {blocks?.newest && blocks.newest.length > 0 && (
+            {blocks?.newest && Array.isArray(blocks.newest) && blocks.newest.length > 0 && (
                 <CategoryShowcase
                     title="Sản phẩm mới nhất"
                     subtitle="Khám phá những sản phẩm mới nhất từ các thương hiệu hàng đầu"
@@ -135,7 +135,7 @@ const HomePage = () => {
                 />
             )}
 
-            {blocks?.bestSelling && blocks.bestSelling.length > 0 && (
+            {blocks?.bestSelling && Array.isArray(blocks.bestSelling) && blocks.bestSelling.length > 0 && (
                 <CategoryShowcase
                     title="Sản phẩm bán chạy"
                     subtitle="Những sản phẩm được yêu thích nhất bởi khách hàng"
@@ -150,7 +150,7 @@ const HomePage = () => {
             {/* Testimonial Section */}
             <TestimonialSection />
 
-            {blocks?.mostViewed && blocks.mostViewed.length > 0 && (
+            {blocks?.mostViewed && Array.isArray(blocks.mostViewed) && blocks.mostViewed.length > 0 && (
                 <CategoryShowcase
                     title="Sản phẩm xem nhiều"
                     subtitle="Sản phẩm được quan tâm nhiều nhất trong tuần"
@@ -162,7 +162,7 @@ const HomePage = () => {
                 />
             )}
 
-            {blocks?.topDiscount && blocks.topDiscount.length > 0 && (
+            {blocks?.topDiscount && Array.isArray(blocks.topDiscount) && blocks.topDiscount.length > 0 && (
                 <CategoryShowcase
                     title="Khuyến mãi hot"
                     subtitle="Đừng bỏ lỡ những ưu đãi hấp dẫn nhất"

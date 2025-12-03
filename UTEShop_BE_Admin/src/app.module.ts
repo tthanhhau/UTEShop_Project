@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { HttpModule } from '@nestjs/axios';
 import { join } from 'path';
 
 // Modules
@@ -16,6 +17,7 @@ import { VoucherModule } from './voucher/VoucherModule';
 import { PointsModule } from './points/PointsModule';
 import { AnalyticsModule } from './analytics/AnalyticsModule';
 import { ReviewModule } from './review/ReviewModule';
+import { PublicModule } from './public/PublicModule';
 import { MailerModule } from './config/mailer.module';
 
 @Module({
@@ -54,6 +56,12 @@ import { MailerModule } from './config/mailer.module';
       inject: [ConfigService],
     }),
 
+    // HTTP Module for internal API calls
+    HttpModule.register({
+      timeout: 5000,
+      maxRedirects: 5,
+    }),
+
     // Feature Modules
     AuthModule,
     BrandModule,
@@ -65,6 +73,7 @@ import { MailerModule } from './config/mailer.module';
     PointsModule,
     AnalyticsModule,
     ReviewModule,
+    PublicModule,
     MailerModule,
   ],
 })

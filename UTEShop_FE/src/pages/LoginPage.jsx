@@ -6,7 +6,7 @@ import TextField from "../components/ui/TextField";
 import { Button } from "../components/ui/button";
 import { FcGoogle } from "react-icons/fc";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
-//import bgImage from "/public/biaLogin.jpg"; // 📌 import ảnh từ assets
+//import bgImage from "/Logo HCMUTE-Corel-white background.jpg"; // 📌 import ảnh từ assets
 
 function LoginPage() {
   const dispatch = useDispatch();
@@ -77,7 +77,7 @@ function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center bg-cover bg-center relative"
-      style={{ backgroundImage: "url('/biaLogin.jpg')" }}
+      style={{ backgroundImage: "url('/Logo HCMUTE-Corel-white background.jpg')" }}
     >
       {/* Overlay mờ đen phủ nền */}
       <div className="absolute inset-0 bg-black/50"></div>

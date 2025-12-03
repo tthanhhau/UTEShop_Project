@@ -24,16 +24,15 @@ export const createReview = async (req, res) => {
       return res.status(404).json({ message: "Sản phẩm không tồn tại" });
     }
 
-    // Kiểm tra đơn hàng này đã được review chưa (nếu có orderId)
+    // LOGIC MỚI: Kiểm tra đơn hàng đã được review chưa (kể cả đã xóa)
     if (orderId) {
-      const existingOrderReview = await Review.findOne({
-        order: orderId,
-      });
+      // Tìm BẤT KỲ review nào của order này (kể cả isDeleted = true)
+      const existingReview = await Review.findOne({ order: orderId });
 
-      if (existingOrderReview) {
-        console.log("❌ Order already reviewed:", orderId);
+      if (existingReview) {
+        console.log("❌ Order đã có review (kể cả đã xóa):", existingReview._id);
         return res.status(400).json({
-          message: "Đơn hàng này đã được đánh giá rồi",
+          message: "Bạn đã đánh giá đơn hàng này rồi, không thể đánh giá lại"
         });
       }
     }
@@ -53,9 +52,21 @@ export const createReview = async (req, res) => {
       const order = await Order.findOne({
         _id: orderId,
         user: userId,
-        status: "delivered", // status trong DB là string, không phải số
-        "items.product": productObjectId,
+        status: "delivered",
       });
+
+      if (!order) {
+        return res.status(400).json({ message: "Bạn cần mua và nhận hàng trước khi đánh giá" });
+      }
+
+      // LOGIC MỚI: Kiểm tra reviewStatus của order
+      if (order.reviewStatus === "reviewed" || order.reviewStatus === "review_deleted") {
+        console.log("❌ Order reviewStatus:", order.reviewStatus);
+        return res.status(400).json({
+          message: "Bạn đã đánh giá đơn hàng này rồi, không thể đánh giá lại"
+        });
+      }
+
 
       console.log("- Found order with orderId:", order ? "YES" : "NO");
       if (order) {
@@ -124,6 +135,15 @@ export const createReview = async (req, res) => {
 
     await review.save();
     console.log("✅ Review saved successfully:", review);
+
+    // Cập nhật trạng thái review trong đơn hàng
+    if (orderId) {
+      await Order.findByIdAndUpdate(orderId, {
+        reviewStatus: "reviewed",
+        reviewedAt: new Date()
+      });
+      console.log("✅ Order review status updated to 'reviewed'");
+    }
 
     // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và "CHUNG" đang "HOẠT ĐỘNG"
     const now = new Date();
@@ -250,7 +270,10 @@ export const getProductReviews = async (req, res) => {
 
     // Build filter - convert productId to ObjectId
     const productObjectId = new mongoose.Types.ObjectId(productId);
-    const filter = { product: productObjectId };
+    const filter = {
+      product: productObjectId,
+      isDeleted: { $ne: true } // Không lấy các review đã bị xóa
+    };
     if (rating) {
       filter.rating = parseInt(rating);
     }
@@ -360,9 +383,52 @@ export const deleteReview = async (req, res) => {
       return res.status(404).json({ message: "Review không tồn tại" });
     }
 
+    // Cập nhật trạng thái review trong đơn hàng khi user xóa review
+    if (review.order) {
+      await Order.findByIdAndUpdate(review.order, {
+        reviewStatus: "review_deleted",
+        reviewDeletedAt: new Date()
+      });
+      console.log("✅ Order review status updated to 'review_deleted'");
+    }
+
     res.json({ message: "Xóa đánh giá thành công" });
   } catch (error) {
     console.error("Error in deleteReview:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Admin xóa review
+export const adminDeleteReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const adminId = req.user.id;
+
+    const review = await Review.findById(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ message: "Review không tồn tại" });
+    }
+
+    // Đánh dấu review là đã xóa thay vì xóa vĩnh viễn
+    review.isDeleted = true;
+    review.deletedBy = adminId;
+    review.deletedAt = new Date();
+    await review.save();
+
+    // Cập nhật trạng thái review trong đơn hàng khi admin xóa review
+    if (review.order) {
+      await Order.findByIdAndUpdate(review.order, {
+        reviewStatus: "review_deleted",
+        reviewDeletedAt: new Date()
+      });
+      console.log("✅ Order review status updated to 'review_deleted' by admin");
+    }
+
+    res.json({ message: "Xóa đánh giá thành công" });
+  } catch (error) {
+    console.error("Error in adminDeleteReview:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -386,14 +452,22 @@ export const checkOrderReviewed = async (req, res) => {
       });
     }
 
-    // Check if order has been reviewed
+    // Check if order has been reviewed (kể cả đã bị xóa)
     const review = await Review.findOne({
       order: orderId,
     });
 
+    // Kiểm tra trạng thái review trong đơn hàng
+    const orderReviewStatus = order.reviewStatus || "pending";
+
+    // User đã review nếu:
+    // 1. Có review trong DB (kể cả đã bị xóa) HOẶC
+    // 2. reviewStatus là "reviewed" hoặc "review_deleted"
+    const hasReviewed = !!review || orderReviewStatus === "reviewed" || orderReviewStatus === "review_deleted";
+
     res.json({
-      hasReview: !!review,
-      review: review
+      hasReview: hasReviewed,
+      review: review && !review.isDeleted
         ? {
           _id: review._id,
           rating: review.rating,
@@ -401,6 +475,7 @@ export const checkOrderReviewed = async (req, res) => {
           createdAt: review.createdAt,
         }
         : null,
+      orderReviewStatus: orderReviewStatus
     });
   } catch (error) {
     console.error("Error in checkOrderReviewed:", error);
@@ -435,7 +510,7 @@ export const getLatestReviews = async (req, res) => {
     console.log("🔍 Getting latest reviews for homepage, limit:", reviewLimit);
 
     // Lấy các đánh giá mới nhất, populate thông tin user và product
-    const reviews = await Review.find({})
+    const reviews = await Review.find({ isDeleted: { $ne: true } }) // Không lấy các review đã bị xóa
       .populate("user", "name avatarUrl")
       .populate("product", "name images")
       .sort({ createdAt: -1 })

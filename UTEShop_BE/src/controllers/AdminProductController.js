@@ -1,6 +1,7 @@
 import Product from "../models/product.js";
 import Category from "../models/category.js";
 import Brand from "../models/brand.js";
+import Review from "../models/review.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 // Lấy tất cả products với phân trang và tìm kiếm
@@ -297,6 +298,10 @@ export const deleteProduct = asyncHandler(async (req, res) => {
         });
     }
 
+    // First, delete all reviews associated with this product
+    await Review.deleteMany({ product: req.params.id });
+
+    // Then delete the product
     await Product.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -316,6 +321,10 @@ export const deleteMultipleProducts = asyncHandler(async (req, res) => {
         });
     }
 
+    // First, delete all reviews associated with these products
+    await Review.deleteMany({ product: { $in: ids } });
+
+    // Then delete the products
     const result = await Product.deleteMany({ _id: { $in: ids } });
 
     res.status(200).json({

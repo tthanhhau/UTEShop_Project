@@ -38,7 +38,7 @@ const ProductCard = ({ product }) => {
         }
 
         // Nếu sản phẩm có size nhưng chưa chọn, hiển thị thông báo
-        if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+        if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0 && !selectedSize) {
             alert("Vui lòng chọn size trước khi mua hàng");
             return;
         }
@@ -63,7 +63,7 @@ const ProductCard = ({ product }) => {
         }
 
         // Nếu sản phẩm có size nhưng chưa chọn, hiển thị thông báo
-        if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+        if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0 && !selectedSize) {
             alert("Vui lòng chọn size trước khi thêm vào giỏ hàng");
             return;
         }
@@ -136,39 +136,41 @@ const ProductCard = ({ product }) => {
                 </div>
 
                 {/* Sizes - Display all sizes with hover and selection effects */}
-                {product.sizes && product.sizes.length > 0 && (
+                {product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0 && (
                     <div className="mb-2">
                         <div className="text-xs text-gray-600 mb-1.5 font-medium">Size:</div>
                         <div className="flex flex-wrap gap-1.5">
-                            {product.sizes.map((size, index) => {
-                                const variant = product.variants?.find(v => v.size === size);
-                                const isOutOfStock = variant && variant.stock === 0;
-                                const isSelected = selectedSize === size;
-                                const isHovered = hoveredSize === size;
-                                
+                            {product.sizes.map((sizeObj, index) => {
+                                // Handle both string sizes and object sizes
+                                const sizeValue = typeof sizeObj === 'object' ? sizeObj.size : sizeObj;
+                                const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : null;
+                                const variant = Array.isArray(product.variants) ? product.variants.find(v => v.size === sizeValue) : null;
+                                const isOutOfStock = (variant && variant.stock === 0) || (sizeStock === 0);
+                                const isSelected = selectedSize === sizeValue;
+                                const isHovered = hoveredSize === sizeValue;
+
                                 return (
                                     <button
-                                        key={index}
+                                        key={typeof sizeObj === 'object' ? sizeObj._id || index : index}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (!isOutOfStock) {
-                                                setSelectedSize(isSelected ? null : size);
+                                                setSelectedSize(isSelected ? null : sizeValue);
                                             }
                                         }}
-                                        onMouseEnter={() => !isOutOfStock && setHoveredSize(size)}
+                                        onMouseEnter={() => !isOutOfStock && setHoveredSize(sizeValue)}
                                         onMouseLeave={() => setHoveredSize(null)}
                                         disabled={isOutOfStock}
-                                        className={`text-xs px-2.5 py-1 rounded border-2 font-medium transition-all duration-200 ${
-                                            isOutOfStock
-                                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
-                                                : isSelected
+                                        className={`text-xs px-2.5 py-1 rounded border-2 font-medium transition-all duration-200 ${isOutOfStock
+                                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+                                            : isSelected
                                                 ? 'border-blue-500 bg-blue-500 text-white shadow-md transform scale-105'
                                                 : isHovered
-                                                ? 'border-blue-400 bg-blue-50 text-blue-700 transform scale-105'
-                                                : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                                        }`}
+                                                    ? 'border-blue-400 bg-blue-50 text-blue-700 transform scale-105'
+                                                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                                            }`}
                                     >
-                                        {size}
+                                        {sizeValue}
                                     </button>
                                 );
                             })}
