@@ -463,7 +463,7 @@ const CheckoutPage = () => {
                       </h3>
                       {item.size && (
                         <p className="text-sm text-gray-600 font-medium">
-                          Size: <span className="text-blue-600">{item.size}</span>
+                          Size: <span className="text-blue-600">{typeof item.size === 'object' ? item.size.size || item.size : item.size}</span>
                         </p>
                       )}
                       <p className="font-bold text-lg">
@@ -495,7 +495,7 @@ const CheckoutPage = () => {
                   </h3>
                   {selectedSize && (
                     <p className="text-sm text-gray-600 font-medium">
-                      Size: <span className="text-blue-600">{selectedSize}</span>
+                      Size: <span className="text-blue-600">{typeof selectedSize === 'object' ? selectedSize.size || selectedSize : selectedSize}</span>
                     </p>
                   )}
                   <p className="font-bold text-lg">
@@ -517,7 +517,7 @@ const CheckoutPage = () => {
                         <div className="flex-1">
                           <div>{item.product.name} x{item.quantity}</div>
                           {item.size && (
-                            <div className="text-sm text-blue-600 font-medium">Size: {item.size}</div>
+                            <div className="text-sm text-blue-600 font-medium">Size: {typeof item.size === 'object' ? item.size.size || item.size : item.size}</div>
                           )}
                         </div>
                         <span className="ml-2">
@@ -559,7 +559,7 @@ const CheckoutPage = () => {
                       <div className="flex-1">
                         <div>{productDetails.name} x{quantity}</div>
                         {selectedSize && (
-                          <div className="text-sm text-blue-600 font-medium">Size: {selectedSize}</div>
+                          <div className="text-sm text-blue-600 font-medium">Size: {typeof selectedSize === 'object' ? selectedSize.size || selectedSize : selectedSize}</div>
                         )}
                       </div>
                       <span className="ml-2">

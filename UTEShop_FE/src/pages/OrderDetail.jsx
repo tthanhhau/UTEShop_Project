@@ -93,8 +93,8 @@ const OrderDetail = () => {
                         <h2 className="text-xl font-semibold mb-6">Sản phẩm đã đặt</h2>
                         <div className="space-y-6">
                             {order.items.map((item) => (
-                                <div 
-                                    key={item._id} 
+                                <div
+                                    key={item._id}
                                     className="flex gap-6 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                                     onClick={() => navigate(`/products/${item.product._id}`)}
                                 >
@@ -106,7 +106,7 @@ const OrderDetail = () => {
                                     <div className="flex-1">
                                         <h3 className="font-medium text-lg mb-1 hover:text-primary transition-colors">{item.product.name}</h3>
                                         {item.size && (
-                                            <p className="text-sm text-blue-600 font-medium mb-1">Size: {item.size}</p>
+                                            <p className="text-sm text-blue-600 font-medium mb-1">Size: {typeof item.size === 'object' ? item.size.size || item.size : item.size}</p>
                                         )}
                                         <p className="text-gray-600 mb-2">Số lượng: {item.quantity}</p>
                                         <div className="flex justify-between items-center">

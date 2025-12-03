@@ -500,13 +500,13 @@ const ReviewSection = ({
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  {/*<button
+                  <button
                     onClick={() => handleDeleteReview(review._id)}
                     className="text-red-500 hover:text-red-700 p-1"
                     title="Xóa"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>*/}
+                  </button>
                 </div>
               )}
             </div>

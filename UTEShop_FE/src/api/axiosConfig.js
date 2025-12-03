@@ -11,9 +11,6 @@ api.interceptors.request.use(
     // Lấy token từ sessionStorage
     const token = sessionStorage.getItem("token");
 
-    // Dòng console.log này hữu ích cho việc debug, được giữ lại từ nhánh dev_hau1
-    console.log('🔍 Request interceptor - Token:', token ? 'Token exists' : 'No token');
-
     // Nếu token tồn tại, thêm nó vào header Authorization
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -33,9 +30,6 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Log lỗi ra console để dễ debug
-    console.log('🔍 Response interceptor - Error:', error.response?.data);
-
     // Nếu nhận được lỗi 401 (Unauthorized)
     if (error.response?.status === 401) {
       const errorCode = error.response?.data?.code;
@@ -48,9 +42,11 @@ api.interceptors.response.use(
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('refreshToken');
 
-        // Chuyển hướng người dùng về trang đăng nhập
-        // Chỉ chuyển hướng nếu họ không ở sẵn trang đăng nhập để tránh vòng lặp
-        if (window.location.pathname !== '/login') {
+        // Chỉ chuyển hướng nếu không phải là request đến trang auth
+        // và không phải đang ở trang login để tránh vòng lặp
+        const isAuthRequest = error.config?.url?.includes('/auth/');
+
+        if (!isAuthRequest && window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
       }

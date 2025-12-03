@@ -51,12 +51,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('adminToken');
       const storedUser = localStorage.getItem('adminUser');
+
+      // Check if token exists, if not redirect to login
+      if (!storedToken) {
+        router.push('/login');
+        return;
+      }
+
       if (storedUser) {
         setUser(JSON.parse(storedUser));
       }
     }
   }, []);
+
+  // Listen for storage changes to handle logout from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'adminToken' && !e.newValue) {
+        // Token was removed, redirect to login
+        router.push('/login');
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
+  }, [router]);
 
   // Auto-expand menu when accessing submenu items
   useEffect(() => {
@@ -190,8 +213,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         key={subItem.path}
                         href={subItem.path}
                         className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${isActive(subItem.path)
-                            ? 'bg-purple-100 text-purple-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          ? 'bg-purple-100 text-purple-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                           }`}
                       >
                         <FaAngleRight className="mr-2 text-xs text-gray-400" />

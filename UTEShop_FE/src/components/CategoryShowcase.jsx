@@ -5,7 +5,7 @@ import ProductCard from "./ProductCard";
 const CategoryShowcase = ({ title, subtitle, products, backgroundImage, backgroundColor, textColor, viewAllLink, maxProducts = 4 }) => {
   const navigate = useNavigate();
 
-  if (!products || products.length === 0) {
+  if (!products || !Array.isArray(products) || products.length === 0) {
     return null;
   }
 
@@ -20,7 +20,7 @@ const CategoryShowcase = ({ title, subtitle, products, backgroundImage, backgrou
     <div className={`relative py-12 overflow-hidden w-full ${backgroundColor || 'bg-gray-50'}`}>
       {/* Background Image with Overlay */}
       {backgroundImage && (
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center opacity-20"
           style={{ backgroundImage: `url(${backgroundImage})` }}
         >
@@ -42,7 +42,7 @@ const CategoryShowcase = ({ title, subtitle, products, backgroundImage, backgrou
               </p>
             )}
           </div>
-          
+
           {/* Decorative Bar */}
           <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full mb-6"></div>
 

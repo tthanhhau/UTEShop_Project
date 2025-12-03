@@ -47,6 +47,7 @@ export function PurchaseHistory() {
           completedOrders.map(async (order) => {
             try {
               const reviewCheck = await checkOrderReviewed(order._id);
+              // Kiểm tra hasReview từ backend (đã bao gồm cả review bị xóa)
               reviewStatusMap[order._id] = reviewCheck.hasReview;
             } catch (error) {
               console.error(

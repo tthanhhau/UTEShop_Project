@@ -339,12 +339,16 @@ export default function ReviewManagement() {
                                 <div className="flex items-center gap-3">
                                     <img
                                         src={review.user?.avatarUrl || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop"}
-                                        alt={review.user?.name}
+                                        alt={review.user?.name || 'Khách hàng'}
                                         className="w-12 h-12 rounded-full object-cover"
+                                        onError={(e) => {
+                                            e.currentTarget.src = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop";
+                                        }}
                                     />
                                     <div>
                                         <p className="font-medium text-gray-900">{review.user?.name || 'Khách hàng'}</p>
                                         <p className="text-sm text-gray-500">{review.user?.email || 'N/A'}</p>
+                                        <p className="text-xs text-gray-400">{review.user?.phone || 'N/A'}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -362,7 +366,22 @@ export default function ReviewManagement() {
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="text-sm text-gray-600">Sản phẩm:</span>
                                 <span className="text-sm font-medium text-purple-600">{review.product?.name || 'N/A'}</span>
+                                {review.product?.price && (
+                                    <span className="text-sm text-gray-500">
+                                        ({new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(review.product.price)})
+                                    </span>
+                                )}
                             </div>
+                            {(review.product?.category?.name || review.product?.brand?.name) && (
+                                <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
+                                    {review.product?.category?.name && (
+                                        <span>Danh mục: {review.product.category.name}</span>
+                                    )}
+                                    {review.product?.brand?.name && (
+                                        <span>Thương hiệu: {review.product.brand.name}</span>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Admin reply */}
                             {review.adminReply && (
@@ -448,8 +467,8 @@ export default function ReviewManagement() {
                                             key={pageNum}
                                             onClick={() => setPagination(prev => ({ ...prev, currentPage: pageNum }))}
                                             className={`px-3 py-1 border border-gray-300 rounded text-sm ${pagination.currentPage === pageNum
-                                                    ? 'bg-purple-600 text-white border-purple-600'
-                                                    : 'hover:bg-gray-50'
+                                                ? 'bg-purple-600 text-white border-purple-600'
+                                                : 'hover:bg-gray-50'
                                                 }`}
                                         >
                                             {pageNum}
@@ -482,17 +501,40 @@ export default function ReviewManagement() {
                             <div className="flex items-center gap-3 mb-2">
                                 <img
                                     src={replyModal.review?.user?.avatarUrl || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop"}
-                                    alt={replyModal.review?.user?.name}
+                                    alt={replyModal.review?.user?.name || 'Khách hàng'}
                                     className="w-10 h-10 rounded-full object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.src = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop";
+                                    }}
                                 />
                                 <div>
-                                    <p className="font-medium text-gray-900">{replyModal.review?.user?.name}</p>
+                                    <p className="font-medium text-gray-900">{replyModal.review?.user?.name || 'Khách hàng'}</p>
+                                    <p className="text-xs text-gray-500">{replyModal.review?.user?.email || 'N/A'}</p>
                                     <div className="flex items-center gap-1">
                                         {renderStars(replyModal.review?.rating || 0)}
                                     </div>
                                 </div>
                             </div>
-                            <p className="text-gray-700">{replyModal.review?.comment}</p>
+                            <p className="text-gray-700 mb-2">{replyModal.review?.comment}</p>
+                            <div className="text-sm text-gray-600">
+                                <span>Sản phẩm: </span>
+                                <span className="font-medium">{replyModal.review?.product?.name || 'N/A'}</span>
+                                {replyModal.review?.product?.price && (
+                                    <span className="ml-2">
+                                        ({new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(replyModal.review.product.price)})
+                                    </span>
+                                )}
+                            </div>
+                            {(replyModal.review?.product?.category?.name || replyModal.review?.product?.brand?.name) && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                    {replyModal.review?.product?.category?.name && (
+                                        <span className="mr-3">Danh mục: {replyModal.review.product.category.name}</span>
+                                    )}
+                                    {replyModal.review?.product?.brand?.name && (
+                                        <span>Thương hiệu: {replyModal.review.product.brand.name}</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Reply form */}
