@@ -20,6 +20,7 @@ export class Order {
         product: { type: Types.ObjectId, ref: 'Product' },
         quantity: Number,
         price: Number,
+        size: String,
       },
     ],
   })
@@ -27,6 +28,7 @@ export class Order {
     product: Types.ObjectId;
     quantity: number;
     price: number;
+    size?: string;
   }>;
 
   @Prop({ required: true })

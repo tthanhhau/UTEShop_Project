@@ -6,6 +6,7 @@ import {
   PointTransaction,
   PointTransactionSchema,
 } from '../schemas/PointTransactionSchema';
+import { User, UserSchema } from '../schemas/UserSchema';
 
 @Module({
   imports: [
@@ -15,6 +16,10 @@ import {
         schema: PointTransactionSchema,
         collection: 'pointtransactions' // Chỉ định collection name
       },
+      {
+        name: User.name,
+        schema: UserSchema
+      }
     ]),
   ],
   controllers: [PointsController],
