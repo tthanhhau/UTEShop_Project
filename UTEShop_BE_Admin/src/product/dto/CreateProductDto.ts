@@ -16,8 +16,9 @@ export class CreateProductDto {
   @IsNumber()
   price: number;
 
+  @IsOptional()
   @IsNumber()
-  stock: number;
+  stock?: number;
 
   @IsOptional()
   @IsArray()
@@ -33,5 +34,9 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   discountPercentage?: number;
+
+  @IsOptional()
+  @IsArray()
+  sizes?: Array<{ size: string; stock: number }>;
 }
 
