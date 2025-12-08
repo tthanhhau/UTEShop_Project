@@ -283,6 +283,11 @@ export default function CustomerOrderHistory() {
                             <p className="font-medium text-gray-900">
                               {item.product?.name || 'Sản phẩm đã bị xóa'}
                             </p>
+                            {item.size && (
+                              <p className="text-sm text-gray-500">
+                                Size: <span className="font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">{item.size}</span>
+                              </p>
+                            )}
                             <p className="text-sm text-gray-500">
                               Số lượng: {item.quantity}
                             </p>
