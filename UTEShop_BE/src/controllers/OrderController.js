@@ -155,8 +155,12 @@ class OrderController {
       console.log("💵 Final total:", finalTotal);
 
       // ✅ TRỪ ĐIỂM CỦA USER (cũng dùng atomic update)
+      console.log('🔍 DEBUG - usedPointsAmount:', usedPointsAmount, 'type:', typeof usedPointsAmount);
+      
       if (usedPointsAmount > 0) {
-        const pointsUsed = usedPointsAmount;
+        // Chuyển đổi từ VND sang điểm (100 VND = 1 điểm)
+        const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
+        console.log('🔍 DEBUG - Will deduct points:', pointsUsed, 'from amount:', usedPointsAmount);
 
         const user = await User.findOneAndUpdate(
           {
@@ -177,6 +181,25 @@ class OrderController {
         }
 
         console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
+        console.log('🔍 DEBUG - Creating PointTransaction...');
+        
+        // Tạo giao dịch đổi điểm (lưu số dương, type REDEEMED đã thể hiện là trừ)
+        try {
+          const transaction = await PointTransaction.create([{
+            user: userId,
+            type: 'REDEEMED',
+            points: pointsUsed, // Lưu số dương, type REDEEMED đã thể hiện là sử dụng điểm
+            description: `Sử dụng ${pointsUsed} điểm để giảm ${usedPointsAmount.toLocaleString()}đ cho đơn hàng`,
+            order: null // Sẽ update sau khi order được tạo
+          }], { session });
+          
+          console.log(`✅ Đã tạo giao dịch đổi ${pointsUsed} điểm:`, transaction[0]._id);
+        } catch (txError) {
+          console.error('❌ Lỗi tạo PointTransaction:', txError);
+          throw txError;
+        }
+      } else {
+        console.log('ℹ️ No points used in this order');
       }
 
       // Xử lý thanh toán online nếu cần
@@ -233,6 +256,23 @@ class OrderController {
 
       // Save order với session
       await order.save({ session });
+      
+      // Update orderId vào PointTransaction nếu có sử dụng điểm
+      if (usedPointsAmount > 0) {
+        await PointTransaction.updateOne(
+          {
+            user: userId,
+            type: 'REDEEMED',
+            order: null,
+            description: { $regex: `Sử dụng.*điểm để giảm.*cho đơn hàng` }
+          },
+          {
+            $set: { order: order._id }
+          },
+          { session }
+        );
+        console.log(`✅ Đã cập nhật orderId vào PointTransaction`);
+      }
 
       // Xử lý voucher đã sử dụng
       if (voucher && voucher.code) {
