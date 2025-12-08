@@ -4,9 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '../../../lib/axios';
 
+interface Order {
+  _id: string;
+  paymentMethod?: string;
+  status?: string;
+  paymentStatus?: string;
+  [key: string]: any;
+}
+
 export default function OrderManagement() {
   const router = useRouter();
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [pagination, setPagination] = useState({
@@ -55,9 +63,9 @@ export default function OrderManagement() {
       if (response.data.success) {
         const ordersData = response.data.data || [];
         const paginationData = response.data.pagination || {};
-        
+
         setOrders(ordersData);
-        
+
         // Cập nhật pagination từ backend
         setPagination({
           currentPage: paginationData.currentPage || page,
@@ -83,9 +91,9 @@ export default function OrderManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchOrders(
-        filters.search, 
-        filters.status, 
-        filters.paymentStatus, 
+        filters.search,
+        filters.status,
+        filters.paymentStatus,
         filters.paymentMethod,
         pagination.currentPage,
         pagination.pageSize
@@ -124,9 +132,9 @@ export default function OrderManagement() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       // Tìm order hiện tại để kiểm tra paymentMethod
-      const currentOrder = orders.find((o: any) => o._id === orderId);
+      const currentOrder = orders.find((o) => o._id === orderId);
       const isCOD = currentOrder?.paymentMethod === 'COD';
-      
+
       await axios.put(`/admin/orders/${orderId}/status`, { status: newStatus });
 
       // Nếu chuyển sang "delivered" với COD, backend sẽ tự động set paymentStatus = 'paid'
@@ -414,20 +422,20 @@ export default function OrderManagement() {
                   <td className="py-4 px-6">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
                       <i className={`fas ${order.status === 'pending' ? 'fa-clock' :
-                          order.status === 'processing' ? 'fa-box' :
-                            order.status === 'shipped' ? 'fa-truck' :
-                              order.status === 'delivered' ? 'fa-check-circle' :
-                                'fa-times-circle'
+                        order.status === 'processing' ? 'fa-box' :
+                          order.status === 'shipped' ? 'fa-truck' :
+                            order.status === 'delivered' ? 'fa-check-circle' :
+                              'fa-times-circle'
                         } mr-2`}></i>
                       <span>{getStatusText(order.status)}</span>
                     </span>
                   </td>
                   <td className="py-4 px-6">
                     <span className={`px-2 py-1 rounded-full text-xs ${order.paymentStatus === 'paid'
-                        ? 'bg-green-100 text-green-800'
-                        : order.paymentStatus === 'unpaid'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-green-100 text-green-800'
+                      : order.paymentStatus === 'unpaid'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
                       }`}>
                       {order.paymentStatus === 'paid' ? 'Đã thanh toán' :
                         order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
@@ -518,11 +526,10 @@ export default function OrderManagement() {
                     <button
                       key={pageNum}
                       onClick={() => setPagination(prev => ({ ...prev, currentPage: pageNum }))}
-                      className={`px-3 py-1 border border-gray-300 rounded text-sm ${
-                        pagination.currentPage === pageNum
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-1 border border-gray-300 rounded text-sm ${pagination.currentPage === pageNum
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'hover:bg-gray-50'
+                        }`}
                     >
                       {pageNum}
                     </button>
