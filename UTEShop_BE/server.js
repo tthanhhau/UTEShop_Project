@@ -48,16 +48,41 @@ app.locals.agenda = agenda;
 
 /* ----------------------------- Middlewares ------------------------------ */
 
-// CORS: hỗ trợ 1 hoặc nhiều origin, cách nhau dấu phẩy trong FRONTEND_URL
-const origins = (process.env.FRONTEND_URL || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+// CORS: hỗ trợ 1 hoặc nhiều origin
+const allowedOrigins = [
+  'http://localhost:5173',      // Frontend User (Vite dev)
+  'http://localhost:3000',      // Frontend Admin (Next.js dev)
+  'http://localhost:3002',      // Backend Admin (NestJS dev)
+  process.env.FRONTEND_URL,     // Frontend User production
+  process.env.ADMIN_FRONTEND_URL, // Frontend Admin production
+].filter(Boolean); // Remove undefined values
+
+// Thêm origins từ FRONTEND_URL nếu có nhiều (phân cách bằng dấu phẩy)
+if (process.env.FRONTEND_URL) {
+  const extraOrigins = process.env.FRONTEND_URL
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  allowedOrigins.push(...extraOrigins);
+}
 
 app.use(
   cors({
-    origin: true, // Allow all origins in development
-    credentials: false, // nếu dùng cookie/session hãy chuyển true và cấu hình lại
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin) return callback(null, true);
+
+      // Check if origin is in whitelist
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️  CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true, // Allow cookies and authorization headers
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 
