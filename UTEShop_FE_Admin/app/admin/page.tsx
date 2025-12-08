@@ -29,7 +29,7 @@ export default function DashboardPage() {
 
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
-    const years = [];
+    const years: number[] = [];
     for (let year = currentYear + 1; year >= 2020; year--) {
       years.push(year);
     }
