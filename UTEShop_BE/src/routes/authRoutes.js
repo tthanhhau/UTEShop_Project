@@ -15,6 +15,7 @@ import {
   me,
   refreshTokenController,
   logout,
+  facebookLogin,
 } from "../controllers/AuthController.js";
 
 const router = Router();
@@ -51,6 +52,16 @@ const loginSchema = z.object({
   }),
 });
 
+const facebookLoginSchema = z.object({
+  body: z.object({
+    accessToken: z.string().min(1),
+    userID: z.string().min(1),
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    picture: z.string().optional(),
+  }),
+});
+
 // ------------------- Route Definitions -------------------
 
 // --- OTP & Registration Routes ---
@@ -63,6 +74,7 @@ router.post("/forgot/verify", validate(resetVerifySchema), resetVerify);
 
 // --- Standard Auth Routes ---
 router.post("/login", validate(loginSchema), login);
+router.post("/facebook", validate(facebookLoginSchema), facebookLogin);
 router.get("/me", requireAuth, me);
 router.post("/refresh", refreshTokenController);
 router.post("/logout", logout);
