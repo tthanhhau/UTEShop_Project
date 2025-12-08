@@ -9,13 +9,33 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     console.log('✅ NestJS app created successfully');
 
-    // Enable CORS
+    // Enable CORS with whitelist
+    const allowedOrigins = [
+      'http://localhost:3000',      // Frontend Admin (Next.js dev)
+      'http://localhost:3001',      // Backend Admin (NestJS dev)
+      'http://localhost:3002',      // Alternative port
+      process.env.FRONTEND_URL,     // Frontend Admin production
+      process.env.ADMIN_FRONTEND_URL, // Alternative admin URL
+    ].filter(Boolean); // Remove undefined values
+
     app.enableCors({
-      // origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3002'],
-      origin: true,
+      origin: function (origin, callback) {
+        // Allow requests with no origin (Postman, curl, mobile apps)
+        if (!origin) return callback(null, true);
+
+        // Check if origin is in whitelist
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          console.warn(`⚠️  CORS blocked origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'), false);
+        }
+      },
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     });
-    console.log('✅ CORS enabled');
+    console.log('✅ CORS enabled with whitelist:', allowedOrigins);
 
     // Enable validation
     app.useGlobalPipes(new ValidationPipe());
