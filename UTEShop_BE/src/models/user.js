@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true, minlength: 6 },
+    facebookId: { type: String, unique: true, sparse: true }, // Facebook user ID
     role: { type: String, enum: ["customer", "admin"], default: "customer" },
     phone: { type: String },
     address: { type: String },
