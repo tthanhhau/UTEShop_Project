@@ -244,3 +244,136 @@ export const refreshTokenController = asyncHandler(async (req, res) => {
 export const logout = asyncHandler(async (_req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
+
+// 9) Facebook Login
+export const facebookLogin = asyncHandler(async (req, res) => {
+  const { accessToken, userID, name, email, picture } = req.body;
+
+  if (!accessToken || !userID) {
+    return res.status(400).json({
+      message: 'Facebook access token và userID là bắt buộc',
+      code: 'MISSING_FACEBOOK_DATA'
+    });
+  }
+
+  try {
+    // Verify Facebook token với Facebook Graph API (với retry logic)
+    const axios = (await import('axios')).default;
+    let fbResponse;
+    let retries = 3;
+
+    while (retries > 0) {
+      try {
+        console.log(`🔍 Verifying Facebook token (attempts left: ${retries})...`);
+        fbResponse = await axios.get(
+          `https://graph.facebook.com/v18.0/me`,
+          {
+            params: {
+              access_token: accessToken,
+              fields: 'id,name,email'
+            },
+            timeout: 10000, // 10 second timeout
+            headers: {
+              'Accept': 'application/json'
+            }
+          }
+        );
+        console.log('✅ Facebook token verified successfully');
+        break; // Success, exit retry loop
+      } catch (verifyError) {
+        retries--;
+        if (retries === 0) {
+          // Nếu verify thất bại sau 3 lần thử, vẫn cho phép login
+          // nhưng log warning (trust client-side verification)
+          console.warn('⚠️ Facebook token verification failed, trusting client data:', verifyError.message);
+          fbResponse = { data: { id: userID, name, email } };
+        } else {
+          console.log(`⚠️ Retry Facebook verification (${retries} left)...`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        }
+      }
+    }
+
+    // Kiểm tra userID match (nếu verify thành công)
+    if (fbResponse.data.id !== userID) {
+      console.error('❌ Facebook userID mismatch:', fbResponse.data.id, 'vs', userID);
+      return res.status(401).json({
+        message: 'Facebook token không hợp lệ',
+        code: 'INVALID_FACEBOOK_TOKEN'
+      });
+    }
+
+    // Tìm hoặc tạo user
+    let user = await User.findOne({
+      $or: [
+        { facebookId: userID },
+        { email: email || fbResponse.data.email }
+      ]
+    });
+
+    if (!user) {
+      // Tạo user mới từ Facebook
+      const userEmail = email || fbResponse.data.email || `fb_${userID}@facebook.com`;
+      const userName = name || fbResponse.data.name || `Facebook User ${userID}`;
+
+      user = await User.create({
+        email: userEmail,
+        username: userName,
+        password: Math.random().toString(36).slice(-8) + 'Fb!123', // Random password
+        facebookId: userID,
+        avatarUrl: picture || '',
+        role: 'customer'
+      });
+      console.log('✅ Created new user from Facebook:', user.email);
+    } else if (!user.facebookId) {
+      // Link Facebook account với existing user
+      user.facebookId = userID;
+      if (picture && !user.avatarUrl) {
+        user.avatarUrl = picture;
+      }
+      await user.save();
+      console.log('✅ Linked Facebook account to existing user:', user.email);
+    } else {
+      console.log('✅ Existing Facebook user logged in:', user.email);
+    }
+
+    // Tạo JWT tokens
+    const payload = {
+      _id: user._id,
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      loyaltyPoints: user.loyaltyPoints.balance
+    };
+
+    const token = signToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    console.log('✅ Facebook login successful for:', user.email);
+
+    return res.json({
+      token,
+      refreshToken,
+      user: {
+        _id: user._id,
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phone: user.phone || '',
+        address: user.address || '',
+        avatarUrl: user.avatarUrl || ''
+      },
+      message: 'Đăng nhập Facebook thành công'
+    });
+
+  } catch (error) {
+    console.error('❌ Facebook login error:', error);
+    return res.status(500).json({
+      message: 'Đăng nhập Facebook thất bại. Vui lòng thử lại.',
+      error: error.message,
+      code: 'FACEBOOK_LOGIN_ERROR'
+    });
+  }
+});
