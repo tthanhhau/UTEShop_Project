@@ -1,0 +1,60 @@
+services:
+  # Backend API
+  - type: web
+    name: uteshop-backend
+    runtime: node
+    region: singapore
+    plan: free
+    branch: main
+    rootDir: UTEShop_BE
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+
+  # Backend Admin API
+  - type: web
+    name: uteshop-backend-admin
+    runtime: node
+    region: singapore
+    plan: free
+    branch: main
+    rootDir: UTEShop_BE_Admin
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+
+  # Frontend Admin (Next.js)
+  - type: web
+    name: uteshop-admin
+    runtime: node
+    region: singapore
+    plan: free
+    branch: main
+    rootDir: UTEShop_FE_Admin
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # Frontend User (Vite/React)
+  - type: web
+    name: uteshop-frontend
+    runtime: static
+    region: singapore
+    plan: free
+    branch: main
+    rootDir: UTEShop_FE
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_HTTPS
+        value: true
