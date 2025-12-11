@@ -12,9 +12,13 @@ import MainLayout from "./layouts/MainLayout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/Register";
+import VerifyOtpPage from "./pages/VerifyOtp";
+import CompleteRegistrationPage from "./pages/CompleteRegistration";
 import ProductListPage from "./pages/ProductListPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ForgotPassword from "./pages/ForgotPassword";
+import VerifyResetOtpPage from "./pages/VerifyResetOtp";
+import ResetPasswordPage from "./pages/ResetPassword";
 import UserProfile from "./pages/Profile/Profile";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -62,7 +66,11 @@ function App() {
               <Route index element={<HomePage />} />
               <Route path="login" element={<LoginPage />} />
               <Route path="register" element={<RegisterPage />} />
+              <Route path="verify-otp" element={<VerifyOtpPage />} />
+              <Route path="complete-registration" element={<CompleteRegistrationPage />} />
               <Route path="forgot" element={<ForgotPassword />} />
+              <Route path="verify-reset-otp" element={<VerifyResetOtpPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route path="products" element={<ProductListPage />} />
               <Route path="products/:id" element={<ProductDetailPage />} />
               <Route path="cart" element={<CartPage />} />

@@ -68,7 +68,70 @@ export const registerRequestOtp = asyncHandler(async (req, res) => {
   }
 });
 
-// 2) Xác minh OTP & tạo tài khoản
+// 2a) Chỉ xác minh OTP (không tạo tài khoản)
+export const verifyOtpOnly = asyncHandler(async (req, res) => {
+  const { email, code } = req.body;
+
+  const otp = await Otp.findOne({ email, type: 'register' });
+  if (!otp) return res.status(400).json({ message: 'OTP không tồn tại hoặc đã dùng' });
+
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn' });
+  }
+
+  const ok = await compare(code, otp.codeHash);
+  if (!ok) {
+    otp.attempts = (otp.attempts || 0) + 1;
+    await otp.save();
+    return res.status(400).json({ message: 'Mã OTP không đúng' });
+  }
+
+  // Đánh dấu OTP đã được xác minh (thêm field verified)
+  otp.verified = true;
+  await otp.save();
+
+  return res.json({ 
+    message: 'Xác minh OTP thành công',
+    verified: true 
+  });
+});
+
+// 2b) Hoàn tất đăng ký (sau khi OTP đã được verify)
+export const completeRegistration = asyncHandler(async (req, res) => {
+  const { email, name, password } = req.body;
+
+  // Kiểm tra OTP đã được verify chưa
+  const otp = await Otp.findOne({ email, type: 'register', verified: true });
+  if (!otp) {
+    return res.status(400).json({ 
+      message: 'Vui lòng xác minh OTP trước khi hoàn tất đăng ký' 
+    });
+  }
+
+  // Kiểm tra OTP còn hạn không
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn, vui lòng đăng ký lại' });
+  }
+
+  // Tạo tài khoản
+  const user = await User.create({ email, username: name, password });
+
+  // Xóa OTP sau khi tạo tài khoản thành công
+  await Otp.deleteMany({ email, type: 'register' });
+
+  return res.status(201).json({
+    message: 'Đăng ký thành công',
+    user: {
+      id: user._id,
+      email: user.email,
+      name: user.name || user.username,
+    },
+  });
+});
+
+// 2c) Xác minh OTP & tạo tài khoản (giữ lại để tương thích)
 export const registerVerify = asyncHandler(async (req, res) => {
   const { email, code, name, password } = req.body;
 
@@ -121,7 +184,66 @@ export const resetRequestOtp = asyncHandler(async (req, res) => {
   }
 });
 
-// 4) Xác minh OTP & đổi mật khẩu
+// 4a) Chỉ xác minh OTP reset (không đổi mật khẩu)
+export const verifyResetOtpOnly = asyncHandler(async (req, res) => {
+  const { email, code } = req.body;
+
+  const otp = await Otp.findOne({ email, type: 'reset' });
+  if (!otp) return res.status(400).json({ message: 'OTP không tồn tại hoặc đã dùng' });
+
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn' });
+  }
+
+  const ok = await compare(code, otp.codeHash);
+  if (!ok) {
+    otp.attempts = (otp.attempts || 0) + 1;
+    await otp.save();
+    return res.status(400).json({ message: 'Mã OTP không đúng' });
+  }
+
+  // Đánh dấu OTP đã được xác minh
+  otp.verified = true;
+  await otp.save();
+
+  return res.json({ 
+    message: 'Xác minh OTP thành công',
+    verified: true 
+  });
+});
+
+// 4b) Đổi mật khẩu (sau khi OTP đã được verify)
+export const completePasswordReset = asyncHandler(async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  // Kiểm tra OTP đã được verify chưa
+  const otp = await Otp.findOne({ email, type: 'reset', verified: true });
+  if (!otp) {
+    return res.status(400).json({ 
+      message: 'Vui lòng xác minh OTP trước khi đổi mật khẩu' 
+    });
+  }
+
+  // Kiểm tra OTP còn hạn không
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn, vui lòng thử lại' });
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'Email không tồn tại' });
+
+  user.password = newPassword; // pre-save hook sẽ hash
+  await user.save();
+
+  // Xóa OTP sau khi đổi mật khẩu thành công
+  await Otp.deleteMany({ email, type: 'reset' });
+
+  return res.json({ message: 'Đổi mật khẩu thành công' });
+});
+
+// 4c) Xác minh OTP & đổi mật khẩu (giữ lại để tương thích)
 export const resetVerify = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body;
 
