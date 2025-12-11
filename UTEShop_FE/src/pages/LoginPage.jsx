@@ -19,6 +19,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,40 +27,58 @@ function LoginPage() {
   };
 
   const validatePassword = (password) => {
-    // Chỉ kiểm tra độ dài tối thiểu
-    return password.length >= 6;
+    // Kiểm tra độ dài tối thiểu 8 ký tự
+    return password.length >= 8;
   };
 
   const handleEmailChange = (e) => {
     const value = e.target.value;
     setEmail(value);
-    if (value && !validateEmail(value)) {
-      setEmailError("Email không đúng định dạng");
-    } else {
-      setEmailError("");
+    // Chỉ validate nếu đã submit ít nhất 1 lần
+    if (hasSubmitted) {
+      if (value && !validateEmail(value)) {
+        setEmailError("Email không đúng định dạng");
+      } else {
+        setEmailError("");
+      }
     }
   };
 
   const handlePasswordChange = (e) => {
     const value = e.target.value;
     setPassword(value);
-    if (value && !validatePassword(value)) {
-      setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
-    } else {
-      setPasswordError("");
+    // Chỉ validate nếu đã submit ít nhất 1 lần
+    if (hasSubmitted) {
+      if (value && !validatePassword(value)) {
+        setPasswordError("Mật khẩu phải có ít nhất 8 ký tự");
+      } else {
+        setPasswordError("");
+      }
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setHasSubmitted(true);
+    
+    let hasError = false;
+    
     if (!validateEmail(email)) {
       setEmailError("Email không đúng định dạng");
-      return;
+      hasError = true;
+    } else {
+      setEmailError("");
     }
+    
     if (!validatePassword(password)) {
-      setPasswordError("Mật khẩu không được chứa ký tự đặc biệt");
-      return;
+      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự");
+      hasError = true;
+    } else {
+      setPasswordError("");
     }
+    
+    if (hasError) return;
+    
     dispatch(loginUser({ email, password }));
   };
 
