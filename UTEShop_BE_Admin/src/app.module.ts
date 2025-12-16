@@ -19,6 +19,7 @@ import { AnalyticsModule } from './analytics/AnalyticsModule';
 import { ReviewModule } from './review/ReviewModule';
 import { PublicModule } from './public/PublicModule';
 import { MailerModule } from './config/mailer.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { MailerModule } from './config/mailer.module';
     ReviewModule,
     PublicModule,
     MailerModule,
+    NotificationModule,
   ],
 })
 export class AppModule { }

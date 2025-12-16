@@ -156,7 +156,7 @@ class OrderController {
 
       // ✅ TRỪ ĐIỂM CỦA USER (cũng dùng atomic update)
       console.log('🔍 DEBUG - usedPointsAmount:', usedPointsAmount, 'type:', typeof usedPointsAmount);
-      
+
       if (usedPointsAmount > 0) {
         // Chuyển đổi từ VND sang điểm (100 VND = 1 điểm)
         const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
@@ -182,7 +182,7 @@ class OrderController {
 
         console.log(`⭐ Trừ ${pointsUsed} điểm từ user ${userId}`);
         console.log('🔍 DEBUG - Creating PointTransaction...');
-        
+
         // Tạo giao dịch đổi điểm (lưu số dương, type REDEEMED đã thể hiện là trừ)
         try {
           const transaction = await PointTransaction.create([{
@@ -192,7 +192,7 @@ class OrderController {
             description: `Sử dụng ${pointsUsed} điểm để giảm ${usedPointsAmount.toLocaleString()}đ cho đơn hàng`,
             order: null // Sẽ update sau khi order được tạo
           }], { session });
-          
+
           console.log(`✅ Đã tạo giao dịch đổi ${pointsUsed} điểm:`, transaction[0]._id);
         } catch (txError) {
           console.error('❌ Lỗi tạo PointTransaction:', txError);
@@ -256,7 +256,7 @@ class OrderController {
 
       // Save order với session
       await order.save({ session });
-      
+
       // Update orderId vào PointTransaction nếu có sử dụng điểm
       if (usedPointsAmount > 0) {
         await PointTransaction.updateOne(
@@ -398,7 +398,7 @@ class OrderController {
 
       console.log("✅ ORDER - Order saved successfully:", order._id);
 
-      // Notification
+      // Notification cho User
       const notificationMessage = `Đơn hàng #${order._id} của bạn đã được tạo thành công!`;
       try {
         const newNotification = new Notification({
@@ -413,6 +413,24 @@ class OrderController {
           "⚠️ Notification failed (non-critical):",
           notifError.message
         );
+      }
+
+      // 🔔 Gửi thông báo đến Admin Backend
+      try {
+        const axios = (await import('axios')).default;
+        const ADMIN_API_URL = process.env.ADMIN_API_URL || 'http://localhost:3001';
+
+        await axios.post(`${ADMIN_API_URL}/notifications`, {
+          title: 'Đơn hàng mới',
+          message: `Khách hàng ${customerName} vừa đặt đơn hàng #${order._id.toString().slice(-8).toUpperCase()} - ${finalTotal.toLocaleString('vi-VN')}đ`,
+          type: 'new_order',
+          orderId: order._id.toString(),
+        }, {
+          timeout: 5000,
+        });
+        console.log('✅ Admin notification sent for order:', order._id);
+      } catch (adminNotifError) {
+        console.warn('⚠️ Admin notification failed (non-critical):', adminNotifError.message);
       }
 
       // Clear user's cart after order creation
