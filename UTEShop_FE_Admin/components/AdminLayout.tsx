@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt,
-  FaStar, FaChartLine, FaCog, FaBars, FaBell, FaSignOutAlt,
+  FaStar, FaChartLine, FaCog, FaBars, FaSignOutAlt,
   FaChevronLeft, FaChevronRight, FaAngleRight, FaComments
 } from 'react-icons/fa';
+import NotificationBell from './NotificationBell';
 
 interface MenuItem {
   path?: string;
@@ -270,12 +271,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </svg>
               </div>
 
-              <button className="relative p-2 text-gray-600 hover:text-purple-600 rounded-full hover:bg-gray-100">
-                <FaBell className="text-xl" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
-              </button>
+              <NotificationBell />
 
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">

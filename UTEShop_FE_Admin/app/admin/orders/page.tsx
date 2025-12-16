@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '../../../lib/axios';
 
 interface Order {
@@ -14,6 +14,8 @@ interface Order {
 
 export default function OrderManagement() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightOrderId = searchParams.get('orderId');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -101,6 +103,20 @@ export default function OrderManagement() {
     }, 300);
     return () => clearTimeout(timer);
   }, [filters.search, filters.status, filters.paymentStatus, filters.paymentMethod, pagination.currentPage, pagination.pageSize, fetchOrders]);
+
+  // Scroll to highlighted order from notification
+  useEffect(() => {
+    if (highlightOrderId && orders.length > 0) {
+      const element = document.getElementById(`order-${highlightOrderId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Remove highlight after 5 seconds
+        setTimeout(() => {
+          router.replace('/admin/orders', { scroll: false });
+        }, 5000);
+      }
+    }
+  }, [highlightOrderId, orders, router]);
 
   // Fetch stats khi filters thay đổi
   useEffect(() => {
@@ -399,7 +415,9 @@ export default function OrderManagement() {
               {orders.map((order: any) => (
                 <tr
                   key={order._id}
-                  className="border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                  id={`order-${order._id}`}
+                  className={`border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer ${highlightOrderId === order._id ? 'bg-yellow-100 ring-2 ring-yellow-400 animate-pulse' : ''
+                    }`}
                   onClick={() => router.push(`/admin/orders/${order._id}`)}
                   title="Click để xem chi tiết đơn hàng"
                 >
