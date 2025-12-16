@@ -50,7 +50,7 @@ function LoginPage() {
     // Chỉ validate nếu đã submit ít nhất 1 lần
     if (hasSubmitted) {
       if (value && !validatePassword(value)) {
-        setPasswordError("Mật khẩu phải có ít nhất 8 ký tự");
+        setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
       } else {
         setPasswordError("");
       }
@@ -71,7 +71,7 @@ function LoginPage() {
     }
 
     if (!validatePassword(password)) {
-      setPasswordError("Mật khẩu phải có ít nhất 8 ký tự");
+      setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
       hasError = true;
     } else {
       setPasswordError("");
