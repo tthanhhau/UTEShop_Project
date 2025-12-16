@@ -82,11 +82,11 @@ const Navbar = () => {
       setIsImageSearchLoading(true);
       // Chỉ lấy 1 sản phẩm phù hợp nhất
       const response = await searchByImage(file, 1);
-      
+
       if (response.success && response.data && response.data.length > 0) {
         // Lấy sản phẩm đầu tiên (có similarity cao nhất)
         const topProduct = response.data[0];
-        
+
         // Kiểm tra similarity score - nếu quá thấp thì cảnh báo
         if (topProduct.similarity < 0.5) {
           const confirm = window.confirm(
@@ -101,7 +101,7 @@ const Navbar = () => {
             return;
           }
         }
-        
+
         // Navigate to products page with image search results
         navigate('/products', {
           state: {
@@ -114,7 +114,17 @@ const Navbar = () => {
       }
     } catch (error) {
       console.error('Image search error:', error);
-      alert('Lỗi khi tìm kiếm hình ảnh. Vui lòng thử lại sau.');
+
+      // Check if it's a 503 error (service unavailable in production)
+      if (error.response?.status === 503) {
+        alert(
+          'Tính năng tìm kiếm bằng hình ảnh AI hiện không khả dụng trên production.\n\n' +
+          'Lý do: Tính năng này cần Python AI service với GPU/resources cao.\n\n' +
+          'Vui lòng thử trên môi trường local để demo tính năng này.'
+        );
+      } else {
+        alert('Lỗi khi tìm kiếm hình ảnh. Vui lòng thử lại sau.');
+      }
     } finally {
       setIsImageSearchLoading(false);
       // Reset file input

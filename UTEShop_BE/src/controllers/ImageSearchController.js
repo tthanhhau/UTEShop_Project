@@ -7,6 +7,9 @@ import asyncHandler from '../middlewares/asyncHandler.js';
 const IMAGE_SEARCH_SERVICE_URL = (process.env.IMAGE_SEARCH_SERVICE_URL || 'http://127.0.0.1:5002')
     .replace('localhost', '127.0.0.1');
 
+// Check if image search is enabled (Python service available)
+const IMAGE_SEARCH_ENABLED = process.env.IMAGE_SEARCH_ENABLED === 'true' || process.env.NODE_ENV !== 'production';
+
 // Create HTTP agent that forces IPv4
 const httpAgent = new http.Agent({
     family: 4 // Force IPv4
@@ -18,10 +21,20 @@ const httpAgent = new http.Agent({
  */
 export const searchByImage = asyncHandler(async (req, res) => {
     try {
+        // Check if image search is disabled in production
+        if (!IMAGE_SEARCH_ENABLED) {
+            return res.status(503).json({
+                success: false,
+                message: 'Tính năng tìm kiếm bằng hình ảnh hiện không khả dụng trên production. Vui lòng thử trên môi trường local.',
+                reason: 'AI Image Search requires Python service which is not deployed.',
+                suggestion: 'Tính năng này cần GPU/resources cao, chỉ có trong môi trường development.'
+            });
+        }
+
         console.log('📸 Image search request received');
         console.log('Request file:', req.file ? 'exists' : 'missing');
         console.log('Request body keys:', Object.keys(req.body || {}));
-        
+
         let imageData = null;
         let isBase64 = false;
 
@@ -33,13 +46,13 @@ export const searchByImage = asyncHandler(async (req, res) => {
                 size: req.file.buffer.length
             });
             imageData = req.file.buffer;
-        } 
+        }
         // Check if image is sent as base64 in body
         else if (req.body && req.body.image_base64) {
             console.log('📝 Processing base64 image');
             imageData = req.body.image_base64;
             isBase64 = true;
-        } 
+        }
         else {
             console.error('❌ No image provided in request');
             return res.status(400).json({
@@ -53,7 +66,7 @@ export const searchByImage = asyncHandler(async (req, res) => {
 
         // Forward request to Python image search service
         let response;
-        
+
         if (isBase64) {
             // Send as JSON with base64
             console.log('📤 Sending base64 image to Python service...');
@@ -89,7 +102,7 @@ export const searchByImage = asyncHandler(async (req, res) => {
                 }
             );
         }
-        
+
         console.log('✅ Python service responded:', response.status);
 
         if (response.data.success) {
@@ -110,7 +123,7 @@ export const searchByImage = asyncHandler(async (req, res) => {
         console.error('Error code:', error.code);
         console.error('Error response:', error.response?.data);
         console.error('Error status:', error.response?.status);
-        
+
         if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
             console.error('⚠️  Python service is not running or not accessible');
             return res.status(503).json({
@@ -162,7 +175,7 @@ export const updateEmbeddings = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('❌ Update embeddings error:', error.message);
         console.error('Error response:', error.response?.data);
-        
+
         if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
             return res.status(503).json({
                 success: false,
@@ -198,7 +211,7 @@ export const healthCheck = asyncHandler(async (req, res) => {
             timeout: 5000,
             httpAgent: httpAgent // Force IPv4
         });
-        
+
         return res.json({
             success: true,
             status: response.data.status,

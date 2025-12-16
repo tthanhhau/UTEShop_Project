@@ -9,24 +9,24 @@ import api from './axiosConfig';
 export const searchByImage = async (image, topK = 10) => {
   try {
     const formData = new FormData();
-    
+
     // If image is a File object
     if (image instanceof File) {
       formData.append('image', image);
-      
-      // Don't set Content-Type header - let browser set it with boundary
+
+      // DON'T set Content-Type header - let browser set it automatically with boundary
       const response = await api.post(`/image-search/search?top_k=${topK}`, formData);
-      
+
       return response.data;
-    } 
+    }
     // If image is a base64 string
     else if (typeof image === 'string') {
       const response = await api.post(`/image-search/search?top_k=${topK}`, {
         image_base64: image,
       });
-      
+
       return response.data;
-    } 
+    }
     else {
       throw new Error('Invalid image format. Expected File or base64 string.');
     }
