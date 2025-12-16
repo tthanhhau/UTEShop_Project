@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 
 @Controller('notifications')
 export class NotificationController {
