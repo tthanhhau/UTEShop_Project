@@ -62,12 +62,12 @@ export default function ResetPassword() {
     try {
       setLoading(true);
       await axios.post("/auth/forgot/reset-password", { email, newPassword });
-      
+
       // Đổi mật khẩu thành công, chuyển sang trang đăng nhập
-      navigate("/login", { 
-        state: { 
-          message: "Đổi mật khẩu thành công! Vui lòng đăng nhập." 
-        } 
+      navigate("/login", {
+        state: {
+          message: "Đổi mật khẩu thành công! Vui lòng đăng nhập."
+        }
       });
     } catch (err) {
       const msg =
@@ -124,7 +124,7 @@ export default function ResetPassword() {
                   placeholder="Mật khẩu mới (>= 8 ký tự)"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-10 outline-none focus:border-black"
                   autoComplete="new-password"
-                  minLength={8}
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -134,25 +134,25 @@ export default function ResetPassword() {
                   {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
-              
+
               {/* Password requirements - chỉ hiện khi đang nhập */}
               {newPassword && !hasSubmitted && (
                 <div className="mt-2 space-y-1">
-                  <PasswordRequirement 
-                    met={newPassword.length >= 8} 
-                    text="Ít nhất 8 ký tự" 
+                  <PasswordRequirement
+                    met={newPassword.length >= 6}
+                    text="Ít nhất 6 ký tự"
                   />
-                  <PasswordRequirement 
-                    met={/[A-Z]/.test(newPassword)} 
-                    text="Ít nhất 1 chữ hoa" 
+                  <PasswordRequirement
+                    met={/[A-Z]/.test(newPassword)}
+                    text="Ít nhất 1 chữ hoa"
                   />
-                  <PasswordRequirement 
-                    met={/[a-z]/.test(newPassword)} 
-                    text="Ít nhất 1 chữ thường" 
+                  <PasswordRequirement
+                    met={/[a-z]/.test(newPassword)}
+                    text="Ít nhất 1 chữ thường"
                   />
-                  <PasswordRequirement 
-                    met={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)} 
-                    text="Ít nhất 1 ký tự đặc biệt (!@#$%...)" 
+                  <PasswordRequirement
+                    met={/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)}
+                    text="Ít nhất 1 ký tự đặc biệt (!@#$%...)"
                   />
                 </div>
               )}

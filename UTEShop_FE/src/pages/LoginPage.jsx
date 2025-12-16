@@ -27,8 +27,8 @@ function LoginPage() {
   };
 
   const validatePassword = (password) => {
-    // Kiểm tra độ dài tối thiểu 8 ký tự
-    return password.length >= 8;
+    // Kiểm tra độ dài tối thiểu 6 ký tự
+    return password.length >= 6;
   };
 
   const handleEmailChange = (e) => {
@@ -60,25 +60,25 @@ function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setHasSubmitted(true);
-    
+
     let hasError = false;
-    
+
     if (!validateEmail(email)) {
       setEmailError("Email không đúng định dạng");
       hasError = true;
     } else {
       setEmailError("");
     }
-    
+
     if (!validatePassword(password)) {
       setPasswordError("Mật khẩu phải có ít nhất 8 ký tự");
       hasError = true;
     } else {
       setPasswordError("");
     }
-    
+
     if (hasError) return;
-    
+
     dispatch(loginUser({ email, password }));
   };
 
