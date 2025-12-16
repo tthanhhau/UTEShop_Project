@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { Heart, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Heart, Trash2, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
 import { getFavoritesAsync, toggleFavoriteAsync } from '../features/favorites/favoriteSlice';
+import { addToCart } from '../features/cart/cartSlice';
 import { formatPrice } from '../utils/formatPrice';
 
 const FavoritesPage = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { user } = useSelector(state => state.auth);
     const { items, loading, error, currentPage: reduxCurrentPage, totalPages, total } = useSelector(state => state.favorites);
 
@@ -42,6 +44,32 @@ const FavoritesPage = () => {
             console.error('Error removing favorite:', error);
             alert('Có lỗi xảy ra khi bỏ yêu thích sản phẩm');
         }
+    };
+
+    const handleBuyNow = (product) => {
+        // Kiểm tra còn hàng không
+        if (product.stock <= 0) {
+            alert('Sản phẩm đã hết hàng!');
+            return;
+        }
+
+        // Chuyển đến trang thanh toán với thông tin sản phẩm
+        navigate('/checkout', {
+            state: {
+                product: {
+                    _id: product._id,
+                    name: product.name,
+                    price: product.price,
+                    images: product.images,
+                    stock: product.stock,
+                    category: product.category,
+                    brand: product.brand
+                },
+                quantity: 1,
+                size: null, // Nếu sản phẩm có size, có thể thêm logic chọn size
+                fromFavorites: true
+            }
+        });
     };
 
     // Xử lý chuyển trang
@@ -158,6 +186,25 @@ const FavoritesPage = () => {
                                     </div>
                                 </div>
                             </Link>
+
+                            {/* Buy Now Button */}
+                            <div className="p-4 pt-0">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleBuyNow(product);
+                                    }}
+                                    disabled={product.stock <= 0}
+                                    className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium text-sm transition-colors ${product.stock <= 0
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        }`}
+                                >
+                                    <ShoppingCart className="w-4 h-4" />
+                                    {product.stock <= 0 ? 'Hết hàng' : 'Mua ngay'}
+                                </button>
+                            </div>
 
                             {/* Remove from favorites button */}
                             <button
