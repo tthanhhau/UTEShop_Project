@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '../../../lib/axios';
 
@@ -12,10 +12,9 @@ interface Order {
   [key: string]: any;
 }
 
-export default function OrderManagement() {
+// Wrapper component to handle Suspense for useSearchParams
+function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string | null }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const highlightOrderId = searchParams.get('orderId');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -566,5 +565,20 @@ export default function OrderManagement() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main export with Suspense wrapper for useSearchParams
+function OrderSearchParamsWrapper() {
+  const searchParams = useSearchParams();
+  const highlightOrderId = searchParams.get('orderId');
+  return <OrderManagementContent highlightOrderId={highlightOrderId} />;
+}
+
+export default function OrderManagement() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div>}>
+      <OrderSearchParamsWrapper />
+    </Suspense>
   );
 }
