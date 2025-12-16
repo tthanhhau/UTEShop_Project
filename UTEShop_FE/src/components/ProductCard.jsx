@@ -86,7 +86,7 @@ const ProductCard = ({ product }) => {
 
 
     return (
-        <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+        <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full">
             {/* Image Container */}
             <div className="relative overflow-hidden">
                 <img
@@ -112,8 +112,18 @@ const ProductCard = ({ product }) => {
             </div>
 
             {/* Content */}
-            <div className="p-4">
-                <h3 className="font-semibold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
+            <div className="p-4 flex flex-col flex-grow">
+                <h3
+                    className="font-semibold text-gray-800 text-sm h-10 mb-2 group-hover:text-blue-600 transition-colors overflow-hidden"
+                    style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}
+                    title={product.name}
+                >
                     {product.name}
                 </h3>
 
@@ -135,48 +145,51 @@ const ProductCard = ({ product }) => {
                     <span>Lượt xem: {product.viewCount || 0}</span>
                 </div>
 
-                {/* Sizes - Display all sizes with hover and selection effects */}
-                {product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0 && (
-                    <div className="mb-2">
-                        <div className="text-xs text-gray-600 mb-1.5 font-medium">Size:</div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {product.sizes.map((sizeObj, index) => {
-                                // Handle both string sizes and object sizes
-                                const sizeValue = typeof sizeObj === 'object' ? sizeObj.size : sizeObj;
-                                const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : null;
-                                const variant = Array.isArray(product.variants) ? product.variants.find(v => v.size === sizeValue) : null;
-                                const isOutOfStock = (variant && variant.stock === 0) || (sizeStock === 0);
-                                const isSelected = selectedSize === sizeValue;
-                                const isHovered = hoveredSize === sizeValue;
+                {/* Sizes - Fixed height container */}
+                <div className="mb-2 min-h-[52px]">
+                    {product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0 ? (
+                        <>
+                            <div className="text-xs text-gray-600 mb-1.5 font-medium">Size:</div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {product.sizes.map((sizeObj, index) => {
+                                    const sizeValue = typeof sizeObj === 'object' ? sizeObj.size : sizeObj;
+                                    const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : null;
+                                    const variant = Array.isArray(product.variants) ? product.variants.find(v => v.size === sizeValue) : null;
+                                    const isOutOfStock = (variant && variant.stock === 0) || (sizeStock === 0);
+                                    const isSelected = selectedSize === sizeValue;
+                                    const isHovered = hoveredSize === sizeValue;
 
-                                return (
-                                    <button
-                                        key={typeof sizeObj === 'object' ? sizeObj._id || index : index}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!isOutOfStock) {
-                                                setSelectedSize(isSelected ? null : sizeValue);
-                                            }
-                                        }}
-                                        onMouseEnter={() => !isOutOfStock && setHoveredSize(sizeValue)}
-                                        onMouseLeave={() => setHoveredSize(null)}
-                                        disabled={isOutOfStock}
-                                        className={`text-xs px-2.5 py-1 rounded border-2 font-medium transition-all duration-200 ${isOutOfStock
-                                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
-                                            : isSelected
-                                                ? 'border-blue-500 bg-blue-500 text-white shadow-md transform scale-105'
-                                                : isHovered
-                                                    ? 'border-blue-400 bg-blue-50 text-blue-700 transform scale-105'
-                                                    : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                                            }`}
-                                    >
-                                        {sizeValue}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+                                    return (
+                                        <button
+                                            key={typeof sizeObj === 'object' ? sizeObj._id || index : index}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!isOutOfStock) {
+                                                    setSelectedSize(isSelected ? null : sizeValue);
+                                                }
+                                            }}
+                                            onMouseEnter={() => !isOutOfStock && setHoveredSize(sizeValue)}
+                                            onMouseLeave={() => setHoveredSize(null)}
+                                            disabled={isOutOfStock}
+                                            className={`text-xs px-2.5 py-1 rounded border-2 font-medium transition-all duration-200 ${isOutOfStock
+                                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
+                                                : isSelected
+                                                    ? 'border-blue-500 bg-blue-500 text-white shadow-md transform scale-105'
+                                                    : isHovered
+                                                        ? 'border-blue-400 bg-blue-50 text-blue-700 transform scale-105'
+                                                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                                                }`}
+                                        >
+                                            {sizeValue}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-xs text-gray-400 italic">Không có size</div>
+                    )}
+                </div>
 
                 {/* Stock Status and Favorite */}
                 <div className="mb-3 flex items-center justify-between">
@@ -192,29 +205,35 @@ const ProductCard = ({ product }) => {
                     <FavoriteButton productId={product._id} size="small" />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                    {product.stock > 0 && (
+                {/* Action Buttons - Always at bottom */}
+                <div className="flex gap-2 mt-auto">
+                    {product.stock > 0 ? (
+                        <>
+                            <button
+                                onClick={handleBuyNow}
+                                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                            >
+                                Mua ngay
+                            </button>
+                            <button
+                                onClick={handleAddToCart}
+                                disabled={addingToCart}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:transform-none"
+                            >
+                                <ShoppingCart className="h-4 w-4" />
+                                <span className="truncate">{addingToCart ? "Đang..." : "Thêm giỏ"}</span>
+                            </button>
+                        </>
+                    ) : (
                         <button
-                            onClick={handleBuyNow}
-                            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                            disabled
+                            className="flex-1 bg-gray-300 text-gray-500 text-sm font-medium py-2 px-4 rounded-lg cursor-not-allowed"
                         >
-                            Mua ngay
-                        </button>
-                    )}
-                    {product.stock > 0 && (
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={addingToCart}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:transform-none"
-                        >
-                            <ShoppingCart className="h-4 w-4" />
-                            {addingToCart ? "Đang thêm..." : "Thêm giỏ"}
+                            Hết hàng
                         </button>
                     )}
                 </div>
             </div>
-
         </div>
     );
 };
