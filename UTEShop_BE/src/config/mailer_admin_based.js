@@ -35,6 +35,10 @@ console.log('  - MAIL_FROM:', process.env.MAIL_FROM || 'UTEShop <onboarding@rese
 async function sendViaResend({ to, subject, html }) {
     console.log('📧 Sending email via Resend API to:', to);
 
+    // QUAN TRỌNG: Resend free tier chỉ cho phép gửi từ onboarding@resend.dev
+    // Không được dùng gmail.com hoặc domain chưa verify
+    const fromEmail = 'UTEShop <onboarding@resend.dev>';
+
     const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -42,7 +46,7 @@ async function sendViaResend({ to, subject, html }) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            from: process.env.MAIL_FROM || 'UTEShop <onboarding@resend.dev>',
+            from: fromEmail,
             to: [to],
             subject: subject,
             html: html,
