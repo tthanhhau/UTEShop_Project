@@ -1,9 +1,11 @@
-// ESM - Based on working admin configuration with Resend fallback
+// ESM - Based on working admin configuration with Brevo/Resend fallback
 import nodemailer from 'nodemailer';
 
-// Check if Resend API is configured (preferred for production/Render)
+// Check which email service to use
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const USE_RESEND = !!RESEND_API_KEY;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const USE_BREVO = !!BREVO_API_KEY;
+const USE_RESEND = !!RESEND_API_KEY && !USE_BREVO; // Brevo ưu tiên hơn Resend
 
 export const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST || 'smtp.gmail.com',
@@ -20,8 +22,11 @@ export const transporter = nodemailer.createTransport({
 
 // Debug configuration
 console.log('📧 Mailer Configuration:');
+console.log('  - USE_BREVO:', USE_BREVO);
 console.log('  - USE_RESEND:', USE_RESEND);
-if (USE_RESEND) {
+if (USE_BREVO) {
+    console.log('  - BREVO_API_KEY:', 'CONFIGURED ✅');
+} else if (USE_RESEND) {
     console.log('  - RESEND_API_KEY:', 'CONFIGURED ✅');
 } else {
     console.log('  - MAIL_HOST:', process.env.MAIL_HOST || 'smtp.gmail.com');
@@ -29,7 +34,39 @@ if (USE_RESEND) {
     console.log('  - MAIL_USER:', process.env.MAIL_USER || 'holam24062003@gmail.com');
     console.log('  - MAIL_PASS:', process.env.MAIL_PASS ? 'DEFINED' : 'UNDEFINED');
 }
-console.log('  - MAIL_FROM:', process.env.MAIL_FROM || 'UTEShop <onboarding@resend.dev>');
+
+// Send email via Brevo (SendinBlue) API - 300 emails/day FREE, no domain verification needed
+async function sendViaBrevo({ to, subject, html }) {
+    console.log('📧 Sending email via Brevo API to:', to);
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'api-key': BREVO_API_KEY,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            sender: {
+                name: 'UTEShop',
+                email: process.env.BREVO_SENDER_EMAIL || 'bachphuc018@gmail.com'
+            },
+            to: [{ email: to }],
+            subject: subject,
+            htmlContent: html,
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        console.error('❌ Brevo API error:', data);
+        throw new Error(data.message || 'Failed to send email via Brevo');
+    }
+
+    console.log('✅ Email sent successfully via Brevo:', data.messageId);
+    return { success: true, messageId: data.messageId };
+}
 
 // Send email via Resend API
 async function sendViaResend({ to, subject, html }) {
@@ -64,15 +101,23 @@ async function sendViaResend({ to, subject, html }) {
     return { success: true, messageId: data.id };
 }
 
-// Named export: sendMail với error handling chi tiết và Resend fallback
+// Named export: sendMail với error handling chi tiết và Brevo/Resend fallback
 export async function sendMail({ to, subject, text, html, from }) {
-    // Nếu có Resend API key, ưu tiên dùng Resend
+    // Ưu tiên 1: Brevo (không cần verify domain)
+    if (USE_BREVO) {
+        try {
+            return await sendViaBrevo({ to, subject, html });
+        } catch (brevoError) {
+            console.error('❌ Brevo failed, trying other methods:', brevoError.message);
+        }
+    }
+
+    // Ưu tiên 2: Resend (cần verify domain để gửi đến email khác)
     if (USE_RESEND) {
         try {
             return await sendViaResend({ to, subject, html });
         } catch (resendError) {
             console.error('❌ Resend failed, trying Gmail SMTP:', resendError.message);
-            // Fallback to Gmail if Resend fails
         }
     }
 
@@ -112,7 +157,11 @@ export async function sendMail({ to, subject, text, html, from }) {
 
 // Kiểm tra kết nối email service
 export async function verifyMailer() {
-    // Nếu dùng Resend, không cần verify SMTP
+    // Nếu dùng Brevo hoặc Resend, không cần verify SMTP
+    if (USE_BREVO) {
+        console.log('✅ Using Brevo API - no SMTP verification needed');
+        return true;
+    }
     if (USE_RESEND) {
         console.log('✅ Using Resend API - no SMTP verification needed');
         return true;
