@@ -7,10 +7,15 @@ dotenv.config();
 
 class ElasticsearchService {
     constructor() {
+        // Support both ELASTICSEARCH_URL (Bonsai) and ELASTICSEARCH_NODE (local)
+        const esUrl = process.env.ELASTICSEARCH_URL || process.env.ELASTICSEARCH_NODE || 'http://localhost:9200';
+
         this.client = new Client({
-            node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200',
+            node: esUrl,
         });
         this.indexName = process.env.ELASTICSEARCH_INDEX_PRODUCTS || 'uteshop_products2';
+
+        console.log('📦 Elasticsearch connecting to:', esUrl.replace(/\/\/.*:.*@/, '//***:***@')); // Hide credentials in log
     }
 
     // Kiểm tra kết nối

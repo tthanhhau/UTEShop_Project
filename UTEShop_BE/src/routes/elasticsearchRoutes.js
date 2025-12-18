@@ -138,6 +138,61 @@ router.post('/sync/:productId', async (req, res) => {
     }
 });
 
+// Đồng bộ TẤT CẢ sản phẩm vào Elasticsearch (Admin)
+router.post('/sync-all', async (req, res) => {
+    try {
+        // Dynamic import để tránh circular dependency
+        const Product = (await import('../models/product.js')).default;
+
+        console.log('🚀 Bắt đầu đồng bộ tất cả sản phẩm...');
+
+        // Check Elasticsearch connection
+        const isConnected = await elasticsearchService.checkConnection();
+        if (!isConnected) {
+            return res.status(500).json({
+                success: false,
+                message: 'Không thể kết nối đến Elasticsearch'
+            });
+        }
+
+        // Create index if not exists
+        await elasticsearchService.createIndex();
+
+        // Get all products
+        const products = await Product.find()
+            .populate('category', 'name')
+            .populate('brand', 'name')
+            .lean();
+
+        if (products.length === 0) {
+            return res.json({
+                success: true,
+                message: 'Không có sản phẩm nào để đồng bộ',
+                count: 0
+            });
+        }
+
+        // Bulk index
+        const result = await elasticsearchService.bulkIndexProducts(products);
+
+        console.log(`✅ Đã đồng bộ ${products.length} sản phẩm`);
+
+        res.json({
+            success: true,
+            message: `Đã đồng bộ ${products.length} sản phẩm vào Elasticsearch`,
+            count: products.length,
+            hasErrors: result.errors || false
+        });
+    } catch (error) {
+        console.error('Sync all error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi đồng bộ sản phẩm',
+            error: error.message
+        });
+    }
+});
+
 // Xóa sản phẩm khỏi Elasticsearch (Admin)
 router.delete('/delete/:productId', async (req, res) => {
     try {
