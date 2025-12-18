@@ -1,5 +1,14 @@
-// ESM - Based on working admin configuration
+// ESM - Based on working admin configuration with Brevo/Resend fallback
 import nodemailer from 'nodemailer';
+
+// Check which email service to use (priority: Mailjet > Brevo > Resend > Gmail)
+const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
+const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const USE_MAILJET = !!(MAILJET_API_KEY && MAILJET_SECRET_KEY);
+const USE_BREVO = !!BREVO_API_KEY && !USE_MAILJET;
+const USE_RESEND = !!RESEND_API_KEY && !USE_BREVO && !USE_MAILJET;
 
 export const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST || 'smtp.gmail.com',
@@ -15,17 +24,155 @@ export const transporter = nodemailer.createTransport({
 });
 
 // Debug configuration
-console.log('📧 Mailer Configuration (Admin-based):');
-console.log('  - MAIL_HOST:', process.env.MAIL_HOST || 'smtp.gmail.com');
-console.log('  - MAIL_PORT:', process.env.MAIL_PORT || '587');
-console.log('  - MAIL_USER:', process.env.MAIL_USER || 'holam24062003@gmail.com');
-console.log('  - MAIL_PASS:', process.env.MAIL_PASS ? 'DEFINED' : 'UNDEFINED');
-console.log('  - MAIL_FROM:', process.env.MAIL_FROM || 'Your Fashion Shop <holam24062003@gmail.com>');
+console.log('📧 Mailer Configuration:');
+console.log('  - USE_MAILJET:', USE_MAILJET);
+console.log('  - USE_BREVO:', USE_BREVO);
+console.log('  - USE_RESEND:', USE_RESEND);
+if (USE_MAILJET) {
+    console.log('  - MAILJET: CONFIGURED ✅');
+} else if (USE_BREVO) {
+    console.log('  - BREVO_API_KEY:', 'CONFIGURED ✅');
+} else if (USE_RESEND) {
+    console.log('  - RESEND_API_KEY:', 'CONFIGURED ✅');
+} else {
+    console.log('  - MAIL_HOST:', process.env.MAIL_HOST || 'smtp.gmail.com');
+    console.log('  - MAIL_PORT:', process.env.MAIL_PORT || '587');
+    console.log('  - MAIL_USER:', process.env.MAIL_USER || 'holam24062003@gmail.com');
+    console.log('  - MAIL_PASS:', process.env.MAIL_PASS ? 'DEFINED' : 'UNDEFINED');
+}
 
-// Named export: sendMail với error handling chi tiết
+// Send email via Mailjet API - 200 emails/day FREE, instant activation
+async function sendViaMailjet({ to, subject, html }) {
+    console.log('📧 Sending email via Mailjet API to:', to);
+
+    const auth = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString('base64');
+    const senderEmail = process.env.MAILJET_SENDER_EMAIL || 'bachphuc018@gmail.com';
+
+    const response = await fetch('https://api.mailjet.com/v3.1/send', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            Messages: [{
+                From: { Email: senderEmail, Name: 'UTEShop' },
+                To: [{ Email: to }],
+                Subject: subject,
+                HTMLPart: html,
+            }]
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || (data.Messages && data.Messages[0]?.Status === 'error')) {
+        console.error('❌ Mailjet API error:', data);
+        throw new Error(data.Messages?.[0]?.Errors?.[0]?.ErrorMessage || 'Failed to send email via Mailjet');
+    }
+
+    console.log('✅ Email sent successfully via Mailjet');
+    return { success: true, messageId: data.Messages?.[0]?.To?.[0]?.MessageID };
+}
+
+// Send email via Brevo (SendinBlue) API - 300 emails/day FREE, no domain verification needed
+async function sendViaBrevo({ to, subject, html }) {
+    console.log('📧 Sending email via Brevo API to:', to);
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'api-key': BREVO_API_KEY,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            sender: {
+                name: 'UTEShop',
+                email: process.env.BREVO_SENDER_EMAIL || 'bachphuc018@gmail.com'
+            },
+            to: [{ email: to }],
+            subject: subject,
+            htmlContent: html,
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        console.error('❌ Brevo API error:', data);
+        throw new Error(data.message || 'Failed to send email via Brevo');
+    }
+
+    console.log('✅ Email sent successfully via Brevo:', data.messageId);
+    return { success: true, messageId: data.messageId };
+}
+
+// Send email via Resend API
+async function sendViaResend({ to, subject, html }) {
+    console.log('📧 Sending email via Resend API to:', to);
+
+    // QUAN TRỌNG: Resend free tier chỉ cho phép gửi từ onboarding@resend.dev
+    // Không được dùng gmail.com hoặc domain chưa verify
+    const fromEmail = 'UTEShop <onboarding@resend.dev>';
+
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            from: fromEmail,
+            to: [to],
+            subject: subject,
+            html: html,
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        console.error('❌ Resend API error:', data);
+        throw new Error(data.message || 'Failed to send email via Resend');
+    }
+
+    console.log('✅ Email sent successfully via Resend:', data.id);
+    return { success: true, messageId: data.id };
+}
+
+// Named export: sendMail với error handling chi tiết và fallback chain
 export async function sendMail({ to, subject, text, html, from }) {
+    // Ưu tiên 1: Mailjet (kích hoạt ngay, 200 emails/ngày)
+    if (USE_MAILJET) {
+        try {
+            return await sendViaMailjet({ to, subject, html });
+        } catch (mailjetError) {
+            console.error('❌ Mailjet failed, trying other methods:', mailjetError.message);
+        }
+    }
+
+    // Ưu tiên 2: Brevo (cần kích hoạt tài khoản)
+    if (USE_BREVO) {
+        try {
+            return await sendViaBrevo({ to, subject, html });
+        } catch (brevoError) {
+            console.error('❌ Brevo failed, trying other methods:', brevoError.message);
+        }
+    }
+
+    // Ưu tiên 3: Resend (cần verify domain để gửi đến email khác)
+    if (USE_RESEND) {
+        try {
+            return await sendViaResend({ to, subject, html });
+        } catch (resendError) {
+            console.error('❌ Resend failed, trying Gmail SMTP:', resendError.message);
+        }
+    }
+
+    // Gmail SMTP
     try {
-        console.log('📧 Sending email to:', to);
+        console.log('📧 Sending email via Gmail SMTP to:', to);
         console.log('📧 Subject:', subject);
         console.log('📧 From:', from || process.env.MAIL_FROM || process.env.MAIL_USER);
 
@@ -37,7 +184,7 @@ export async function sendMail({ to, subject, text, html, from }) {
             html,
         });
 
-        console.log('✅ Email sent successfully:', result.messageId);
+        console.log('✅ Email sent successfully via Gmail:', result.messageId);
         console.log('📧 Email details:', {
             messageId: result.messageId,
             response: result.response,
@@ -46,7 +193,7 @@ export async function sendMail({ to, subject, text, html, from }) {
 
         return result;
     } catch (error) {
-        console.error('❌ Email sending failed:', error);
+        console.error('❌ Gmail SMTP failed:', error);
         console.error('❌ Error details:', {
             code: error.code,
             command: error.command,
@@ -57,8 +204,22 @@ export async function sendMail({ to, subject, text, html, from }) {
     }
 }
 
-// Kiểm tra kết nối SMTP với chi tiết
+// Kiểm tra kết nối email service
 export async function verifyMailer() {
+    // Nếu dùng API services, không cần verify SMTP
+    if (USE_MAILJET) {
+        console.log('✅ Using Mailjet API - no SMTP verification needed');
+        return true;
+    }
+    if (USE_BREVO) {
+        console.log('✅ Using Brevo API - no SMTP verification needed');
+        return true;
+    }
+    if (USE_RESEND) {
+        console.log('✅ Using Resend API - no SMTP verification needed');
+        return true;
+    }
+
     try {
         console.log('🔍 Verifying SMTP connection...');
         console.log('📧 Mail user:', process.env.MAIL_USER);

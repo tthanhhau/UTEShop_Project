@@ -28,8 +28,8 @@ const reviewSchema = new mongoose.Schema(
 
 // Index để tối ưu truy vấn
 reviewSchema.index({ product: 1, createdAt: -1 });
-// Option 2: One review per order (recommended)
-reviewSchema.index({ order: 1 }, { unique: true }); // Mỗi đơn hàng chỉ được review 1 lần
+// Mỗi sản phẩm trong mỗi đơn hàng chỉ được review 1 lần
+reviewSchema.index({ order: 1, product: 1 }, { unique: true, sparse: true });
 reviewSchema.index({ user: 1, product: 1 }); // Index for performance
 
 export default mongoose.model("Review", reviewSchema);

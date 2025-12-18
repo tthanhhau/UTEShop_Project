@@ -79,14 +79,14 @@ const resetVerifySchema = z.object({
   body: z.object({
     email: z.string().email(),
     code: z.string().length(6),
-    newPassword: z.string().min(8),
+    newPassword: z.string().min(6),
   }),
 });
 
 const loginSchema = z.object({
   body: z.object({
     email: z.string().email(),
-    password: z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
+    password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
   }),
 });
 

@@ -24,15 +24,19 @@ export const createReview = async (req, res) => {
       return res.status(404).json({ message: "Sản phẩm không tồn tại" });
     }
 
-    // LOGIC MỚI: Kiểm tra đơn hàng đã được review chưa (kể cả đã xóa)
+    // LOGIC MỚI: Kiểm tra SẢN PHẨM trong đơn hàng đã được review chưa
     if (orderId) {
-      // Tìm BẤT KỲ review nào của order này (kể cả isDeleted = true)
-      const existingReview = await Review.findOne({ order: orderId });
+      // Tìm review của SẢN PHẨM NÀY trong ĐƠN HÀNG NÀY (không phải toàn bộ order)
+      const existingReview = await Review.findOne({
+        order: orderId,
+        product: productId,
+        user: userId
+      });
 
       if (existingReview) {
-        console.log("❌ Order đã có review (kể cả đã xóa):", existingReview._id);
+        console.log("❌ Sản phẩm này trong đơn hàng đã có review:", existingReview._id);
         return res.status(400).json({
-          message: "Bạn đã đánh giá đơn hàng này rồi, không thể đánh giá lại"
+          message: "Bạn đã đánh giá sản phẩm này trong đơn hàng rồi, không thể đánh giá lại"
         });
       }
     }
@@ -59,13 +63,7 @@ export const createReview = async (req, res) => {
         return res.status(400).json({ message: "Bạn cần mua và nhận hàng trước khi đánh giá" });
       }
 
-      // LOGIC MỚI: Kiểm tra reviewStatus của order
-      if (order.reviewStatus === "reviewed" || order.reviewStatus === "review_deleted") {
-        console.log("❌ Order reviewStatus:", order.reviewStatus);
-        return res.status(400).json({
-          message: "Bạn đã đánh giá đơn hàng này rồi, không thể đánh giá lại"
-        });
-      }
+      // Không cần check reviewStatus của order nữa vì mỗi sản phẩm có thể review riêng
 
 
       console.log("- Found order with orderId:", order ? "YES" : "NO");
@@ -136,14 +134,8 @@ export const createReview = async (req, res) => {
     await review.save();
     console.log("✅ Review saved successfully:", review);
 
-    // Cập nhật trạng thái review trong đơn hàng
-    if (orderId) {
-      await Order.findByIdAndUpdate(orderId, {
-        reviewStatus: "reviewed",
-        reviewedAt: new Date()
-      });
-      console.log("✅ Order review status updated to 'reviewed'");
-    }
+    // Không cập nhật reviewStatus của order nữa vì mỗi sản phẩm có review riêng
+    console.log("✅ Review created for product", productId, "in order", orderId);
 
     // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và "CHUNG" đang "HOẠT ĐỘNG"
     const now = new Date();
@@ -480,6 +472,50 @@ export const checkOrderReviewed = async (req, res) => {
   } catch (error) {
     console.error("Error in checkOrderReviewed:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Check if a specific product in an order has been reviewed
+export const checkProductReviewed = async (req, res) => {
+  try {
+    const { orderId, productId } = req.params;
+    const userId = req.user.id;
+
+    // Verify order belongs to user and is delivered
+    const order = await Order.findOne({
+      _id: orderId,
+      user: userId,
+      status: "delivered",
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Đơn hàng không tồn tại hoặc chưa được giao",
+        hasReview: false
+      });
+    }
+
+    // Check if this specific product in this order has been reviewed
+    const review = await Review.findOne({
+      order: orderId,
+      product: productId,
+      user: userId
+    });
+
+    res.json({
+      hasReview: !!review,
+      review: review && !review.isDeleted
+        ? {
+          _id: review._id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+        }
+        : null
+    });
+  } catch (error) {
+    console.error("Error in checkProductReviewed:", error);
+    res.status(500).json({ message: "Server error", hasReview: false });
   }
 };
 

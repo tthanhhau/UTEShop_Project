@@ -42,6 +42,10 @@ import elasticsearchRoutes from "./src/routes/elasticsearchRoutes.js";
 import imageSearchRoutes from "./src/routes/imageSearchRoutes.js";
 
 const app = express();
+
+// Trust proxy for Render (required for rate limiter behind reverse proxy)
+app.set('trust proxy', 1);
+
 const httpServer = http.createServer(app);
 
 // Khởi tạo Socket.IO

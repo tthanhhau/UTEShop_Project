@@ -68,40 +68,40 @@ const HomePage = () => {
         );
     }
 
-    // Hero banners - 5 banners về mỹ phẩm
+    // Hero banners - 5 banners về thời trang, giày dép, phụ kiện
     const heroBanners = [
         {
-            image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1920&h=800&fit=crop",
-            title: "Bảo vệ làn da hoàn hảo",
-            description: "Kem chống nắng SPF 50+ - Bảo vệ da tối ưu trước tia UV từ các thương hiệu hàng đầu",
+            image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&h=800&fit=crop&q=90",
+            title: "Bộ sưu tập mới nhất",
+            description: "Khám phá xu hướng thời trang 2024 - Quần áo, giày dép từ các thương hiệu hàng đầu",
             buttonText: "Khám phá ngay",
             link: "/products?sort=newest"
         },
         {
-            image: "https://images.unsplash.com/photo-1556228852-80de8a8b0e80?w=1920&h=800&fit=crop&q=80",
-            title: "Kem chống nắng cao cấp",
-            description: "Bảo vệ da khỏi tia UVA/UVB - Công thức nhẹ tênh, không gây bết dính",
+            image: "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=1920&h=800&fit=crop&q=90",
+            title: "Giày thể thao cao cấp",
+            description: "Nike, Adidas, Puma - Phong cách năng động, thoải mái cho mọi hoạt động",
             buttonText: "Mua ngay",
-            link: "/products?category=kem-chong-nang"
+            link: "/products?sort=best-selling"
         },
         {
-            image: "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=1920&h=800&fit=crop",
-            title: "Làm sạch sâu & dịu nhẹ",
-            description: "Sữa rửa mặt cao cấp - Làm sạch sâu, dưỡng ẩm và làm dịu làn da mỗi ngày",
+            image: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=1920&h=800&fit=crop&q=90",
+            title: "Thời trang nam thanh lịch",
+            description: "Áo sơ mi, quần tây, vest - Phong cách lịch lãm cho quý ông hiện đại",
             buttonText: "Xem sản phẩm",
             link: "/products?sort=best-selling"
         },
         {
-            image: "https://images.unsplash.com/photo-1570554886111-e80fcca6a029?w=1920&h=800&fit=crop&q=80",
-            title: "Sữa rửa mặt cho mọi loại da",
-            description: "Làm sạch nhẹ nhàng - Cân bằng độ pH tự nhiên, phù hợp cho da nhạy cảm",
+            image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&h=800&fit=crop&q=90",
+            title: "Thời trang nữ sành điệu",
+            description: "Váy đầm, áo kiểu, phụ kiện - Tôn vinh vẻ đẹp phái đẹp mỗi ngày",
             buttonText: "Khám phá",
-            link: "/products?category=sua-rua-mat"
+            link: "/products?sort=newest"
         },
         {
-            image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=1920&h=800&fit=crop",
+            image: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=1920&h=800&fit=crop&q=90",
             title: "Ưu đãi đặc biệt",
-            description: "Giảm giá lên đến 50% cho bộ sưu tập skincare và mỹ phẩm cao cấp",
+            description: "Giảm giá lên đến 50% cho bộ sưu tập thời trang và phụ kiện cao cấp",
             buttonText: "Mua ngay",
             link: "/products?sort=top-discount"
         }
