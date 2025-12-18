@@ -158,6 +158,14 @@ function LoginPage() {
 
   useEffect(() => {
     if (user) {
+      // Kiểm tra có pending purchase từ chatbot không
+      const pendingPurchase = sessionStorage.getItem("uteshop_pending_purchase");
+      if (pendingPurchase) {
+        // Có sản phẩm đang chờ mua -> chuyển đến trang chủ (ChatBot sẽ xử lý thêm vào giỏ và chuyển checkout)
+        navigate("/", { replace: true });
+        return;
+      }
+      
       // Lấy trang trước đó từ location state (nếu được redirect từ PrivateRoute)
       const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
