@@ -96,6 +96,11 @@ const CheckoutPage = () => {
 
     // Kiểm tra xem có thông tin sản phẩm được truyền không
     const state = location.state;
+    console.log("📦 CheckoutPage - Full state received:", state);
+    console.log("📦 CheckoutPage - cartItems:", state?.cartItems);
+    console.log("📦 CheckoutPage - fromCart:", state?.fromCart);
+    console.log("📦 CheckoutPage - product:", state?.product);
+    
     if (!state || (!state.product && !state.cartItems)) {
       // Nếu không có thông tin sản phẩm, chuyển về trang sản phẩm
       navigate("/products", {
@@ -113,15 +118,17 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Xử lý trường hợp mua từ giỏ hàng
-    if (state.cartItems && state.fromCart) {
+    // Xử lý trường hợp mua từ giỏ hàng (ưu tiên cartItems nếu có)
+    if (state.cartItems && Array.isArray(state.cartItems) && state.cartItems.length > 0) {
+      console.log("📦 CheckoutPage - Processing cartItems:", state.cartItems.length, "items");
       setCartItems(state.cartItems);
       setIsFromCart(true);
     } else if (state.product) {
       // Xử lý trường hợp mua trực tiếp
+      console.log("📦 CheckoutPage - Processing single product:", state.product.name);
       setProductDetails(state.product);
       setQuantity(state.quantity || 1);
-      setSelectedSize(state.size || null);
+      setSelectedSize(state.selectedSize || state.size || null);
       setIsFromCart(false);
     }
   }, [location, user, navigate, dispatch]);
