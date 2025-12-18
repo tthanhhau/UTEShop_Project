@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import api from "@/api/axiosConfig";
-import { checkOrderReviewed } from "../../api/reviewApi";
+import { checkProductInOrderReviewed } from "../../api/reviewApi";
 import {
   Search,
   Package,
@@ -79,7 +79,7 @@ export function OrderTracking() {
         const response = await api.get("/orders");
         setOrdersData(response.data.orders);
 
-        // Check review status for delivered orders
+        // Check review status for each product in delivered orders
         const deliveredOrders = response.data.orders.filter(
           (order) => {
             const statusNum = typeof order.status === 'string'
@@ -90,20 +90,25 @@ export function OrderTracking() {
         );
         const reviewStatusMap = {};
 
+        // Check review status cho từng sản phẩm trong từng đơn hàng
         await Promise.all(
-          deliveredOrders.map(async (order) => {
-            try {
-              const reviewCheck = await checkOrderReviewed(order._id);
-              // Kiểm tra hasReview từ backend (đã bao gồm cả review bị xóa)
-              reviewStatusMap[order._id] = reviewCheck.hasReview;
-            } catch (error) {
-              console.error(
-                `Error checking review for order ${order._id}:`,
-                error
-              );
-              reviewStatusMap[order._id] = false;
-            }
-          })
+          deliveredOrders.flatMap((order) =>
+            order.items.map(async (item) => {
+              const productId = item.product?._id || item.product;
+              const key = `${order._id}_${productId}`;
+              try {
+                // Kiểm tra user đã review sản phẩm này trong đơn hàng này chưa
+                const result = await checkProductInOrderReviewed(order._id, productId);
+                reviewStatusMap[key] = result.hasReview;
+              } catch (error) {
+                console.error(
+                  `Error checking review for order ${order._id} product ${productId}:`,
+                  error
+                );
+                reviewStatusMap[key] = false;
+              }
+            })
+          )
         );
 
         setReviewStatus(reviewStatusMap);
@@ -214,10 +219,10 @@ export function OrderTracking() {
     navigate(`/products/${productId}?review=true&orderId=${orderId}#reviews`);
   };
 
-  const updateReviewStatus = (orderId) => {
+  const updateReviewStatus = (orderId, productId) => {
     setReviewStatus((prev) => ({
       ...prev,
-      [orderId]: true,
+      [`${orderId}_${productId}`]: true,
     }));
   };
 
@@ -386,7 +391,7 @@ export function OrderTracking() {
                         </div>
                         {statusNumber === 5 && (
                           <div className="flex-shrink-0">
-                            {reviewStatus[order._id] ? (
+                            {reviewStatus[`${order._id}_${item.product?._id || item.product}`] ? (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -402,7 +407,7 @@ export function OrderTracking() {
                                 size="sm"
                                 onClick={() =>
                                   handleReviewProduct(
-                                    item.product._id,
+                                    item.product?._id || item.product,
                                     order._id
                                   )
                                 }

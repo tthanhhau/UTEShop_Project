@@ -1,4 +1,7 @@
+import axios from 'axios';
 import api from './axiosConfig';
+
+const API_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 /**
  * Search products by image
@@ -8,25 +11,36 @@ import api from './axiosConfig';
  */
 export const searchByImage = async (image, topK = 10) => {
   try {
-    const formData = new FormData();
-    
-    // If image is a File object
+    // If image is a File object - use raw axios to avoid Content-Type override
     if (image instanceof File) {
+      const formData = new FormData();
       formData.append('image', image);
-      
-      // Don't set Content-Type header - let browser set it with boundary
-      const response = await api.post(`/image-search/search?top_k=${topK}`, formData);
-      
+
+      // Get token for auth
+      const token = sessionStorage.getItem('token');
+
+      // Use raw axios to properly send multipart/form-data
+      const response = await axios.post(
+        `${API_URL}/image-search/search?top_k=${topK}`,
+        formData,
+        {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          timeout: 60000,
+        }
+      );
+
       return response.data;
-    } 
+    }
     // If image is a base64 string
     else if (typeof image === 'string') {
       const response = await api.post(`/image-search/search?top_k=${topK}`, {
         image_base64: image,
       });
-      
+
       return response.data;
-    } 
+    }
     else {
       throw new Error('Invalid image format. Expected File or base64 string.');
     }

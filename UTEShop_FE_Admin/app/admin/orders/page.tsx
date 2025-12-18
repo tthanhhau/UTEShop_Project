@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '../../../lib/axios';
 
 interface Order {
@@ -12,7 +12,8 @@ interface Order {
   [key: string]: any;
 }
 
-export default function OrderManagement() {
+// Wrapper component to handle Suspense for useSearchParams
+function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string | null }) {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +102,20 @@ export default function OrderManagement() {
     }, 300);
     return () => clearTimeout(timer);
   }, [filters.search, filters.status, filters.paymentStatus, filters.paymentMethod, pagination.currentPage, pagination.pageSize, fetchOrders]);
+
+  // Scroll to highlighted order from notification
+  useEffect(() => {
+    if (highlightOrderId && orders.length > 0) {
+      const element = document.getElementById(`order-${highlightOrderId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Remove highlight after 5 seconds
+        setTimeout(() => {
+          router.replace('/admin/orders', { scroll: false });
+        }, 5000);
+      }
+    }
+  }, [highlightOrderId, orders, router]);
 
   // Fetch stats khi filters thay đổi
   useEffect(() => {
@@ -399,7 +414,9 @@ export default function OrderManagement() {
               {orders.map((order: any) => (
                 <tr
                   key={order._id}
-                  className="border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                  id={`order-${order._id}`}
+                  className={`border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer ${highlightOrderId === order._id ? 'bg-yellow-100 ring-2 ring-yellow-400 animate-pulse' : ''
+                    }`}
                   onClick={() => router.push(`/admin/orders/${order._id}`)}
                   title="Click để xem chi tiết đơn hàng"
                 >
@@ -548,5 +565,20 @@ export default function OrderManagement() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main export with Suspense wrapper for useSearchParams
+function OrderSearchParamsWrapper() {
+  const searchParams = useSearchParams();
+  const highlightOrderId = searchParams.get('orderId');
+  return <OrderManagementContent highlightOrderId={highlightOrderId} />;
+}
+
+export default function OrderManagement() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div>}>
+      <OrderSearchParamsWrapper />
+    </Suspense>
   );
 }

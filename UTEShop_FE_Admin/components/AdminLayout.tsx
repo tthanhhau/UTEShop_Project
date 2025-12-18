@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt,
-  FaStar, FaChartLine, FaCog, FaBars, FaBell, FaSignOutAlt,
+  FaStar, FaChartLine, FaCog, FaBars, FaSignOutAlt,
   FaChevronLeft, FaChevronRight, FaAngleRight, FaComments
 } from 'react-icons/fa';
+import NotificationBell from './NotificationBell';
 
 interface MenuItem {
   path?: string;
@@ -248,34 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-                <svg
-                  className="w-5 h-5 absolute left-3 top-3 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-
-              <button className="relative p-2 text-gray-600 hover:text-purple-600 rounded-full hover:bg-gray-100">
-                <FaBell className="text-xl" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
-              </button>
+              <NotificationBell />
 
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">

@@ -236,7 +236,7 @@ function UserProfile() {
   };
 
   const validatePassword = (password) => {
-    const minLength = 8;
+    const minLength = 6;
     const hasUpperCase = /[A-Z]/.test(password);
     const hasNumber = /\d/.test(password);
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
@@ -317,9 +317,9 @@ function UserProfile() {
         >
           Trang cá nhân
         </h1>
-        <p className="text-muted-foreground text-lg italic">
+        {/* <p className="text-muted-foreground text-lg italic">
           S'habiller est un mode de vie.
-        </p>
+        </p> */}
       </div>
 
       {/* Profile Overview Card */}
@@ -329,11 +329,10 @@ function UserProfile() {
             {/* === PHẦN AVATAR ĐƠN GIẢN HÓA === */}
             <div className="relative group">
               <Avatar
-                className={`h-24 w-24 ring-2 ring-offset-2 ring-violet-400 transition-all duration-300 ${
-                  isUploadingAvatar
-                    ? "opacity-50 cursor-not-allowed"
-                    : "cursor-pointer hover:ring-indigo-500 hover:scale-105"
-                }`}
+                className={`h-24 w-24 ring-2 ring-offset-2 ring-violet-400 transition-all duration-300 ${isUploadingAvatar
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer hover:ring-indigo-500 hover:scale-105"
+                  }`}
                 onClick={handleAvatarClick}
               >
                 <AvatarImage
@@ -370,10 +369,9 @@ function UserProfile() {
               <p className="text-muted-foreground">{userInfo?.email}</p>
               <div className="flex items-center gap-3 mt-2">
                 <Badge
-                  className={`${
-                    TIER_STYLES[userInfo?.loyaltyPoints.tier.toLowerCase()] ||
+                  className={`${TIER_STYLES[userInfo?.loyaltyPoints.tier.toLowerCase()] ||
                     TIER_STYLES.default
-                  } flex items-center gap-1.5`}
+                    } flex items-center gap-1.5`}
                 >
                   <Award className="w-3.5 h-3.5" />
                   {userInfo?.loyaltyPoints.tier}
@@ -549,18 +547,18 @@ function UserProfile() {
                 <h4 className="font-medium mb-2 text-gray-700">Yêu Cầu:</h4>
                 <ul className="text-sm space-y-1">
                   <li
-                    className={`flex items-center gap-2 ${passwordForm.newPassword.length >= 8
-                        ? "text-green-600"
-                        : "text-muted-foreground"
+                    className={`flex items-center gap-2 ${passwordForm.newPassword.length >= 6
+                      ? "text-green-600"
+                      : "text-muted-foreground"
                       }`}
                   >
-                    {passwordForm.newPassword.length >= 8 ? "✓" : "•"} Ít nhất 8
+                    {passwordForm.newPassword.length >= 6 ? "✓" : "•"} Ít nhất 6
                     ký tự
                   </li>
                   <li
                     className={`flex items-center gap-2 ${/[A-Z]/.test(passwordForm.newPassword)
-                        ? "text-green-600"
-                        : "text-muted-foreground"
+                      ? "text-green-600"
+                      : "text-muted-foreground"
                       }`}
                   >
                     {/[A-Z]/.test(passwordForm.newPassword) ? "✓" : "•"} Ít nhất
@@ -568,8 +566,8 @@ function UserProfile() {
                   </li>
                   <li
                     className={`flex items-center gap-2 ${/\d/.test(passwordForm.newPassword)
-                        ? "text-green-600"
-                        : "text-muted-foreground"
+                      ? "text-green-600"
+                      : "text-muted-foreground"
                       }`}
                   >
                     {/\d/.test(passwordForm.newPassword) ? "✓" : "•"} Ít nhất 1
@@ -577,8 +575,8 @@ function UserProfile() {
                   </li>
                   <li
                     className={`flex items-center gap-2 ${/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
-                        ? "text-green-600"
-                        : "text-muted-foreground"
+                      ? "text-green-600"
+                      : "text-muted-foreground"
                       }`}
                   >
                     {/[!@#$%^&*(),.?":{}|<>]/.test(passwordForm.newPassword)
