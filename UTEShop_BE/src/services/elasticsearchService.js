@@ -10,6 +10,7 @@ class ElasticsearchService {
         // Support both ELASTICSEARCH_URL (Bonsai) and ELASTICSEARCH_NODE (local)
         const esUrl = process.env.ELASTICSEARCH_URL || process.env.ELASTICSEARCH_NODE || 'http://localhost:9200';
 
+        // ES 7.x client tương thích với Bonsai/OpenSearch
         this.client = new Client({
             node: esUrl,
         });
