@@ -20,23 +20,36 @@ class ChatbotService {
   }
 
   // Đọc trực tiếp từ file .env để lấy giá trị mới nhất
+  // Fallback sang process.env nếu file không tồn tại (production/Render)
   readEnvFile() {
     const envPath = path.join(__dirname, "../../.env");
+
+    // Kiểm tra file .env có tồn tại không
+    if (!fs.existsSync(envPath)) {
+      // Production mode: dùng process.env
+      console.log("📦 Production mode: using process.env");
+      return {
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-1.5-flash"
+      };
+    }
+
+    // Development mode: đọc từ file .env
     const envContent = fs.readFileSync(envPath, "utf-8");
     const envVars = {};
-    
+
     envContent.split("\n").forEach(line => {
       // Bỏ qua comment và dòng trống
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) return;
-      
+
       const match = trimmed.match(/^([^=]+)=(.*)$/);
       if (match) {
         const key = match[1].trim();
         let value = match[2].trim();
         // Loại bỏ quotes nếu có
-        if ((value.startsWith('"') && value.endsWith('"')) || 
-            (value.startsWith("'") && value.endsWith("'"))) {
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
           value = value.slice(1, -1);
         }
         // Loại bỏ comment inline
@@ -47,7 +60,7 @@ class ChatbotService {
         envVars[key] = value;
       }
     });
-    
+
     return envVars;
   }
 
@@ -57,14 +70,14 @@ class ChatbotService {
     const envVars = this.readEnvFile();
     const currentKey = envVars.GEMINI_API_KEY;
     const currentModel = envVars.GEMINI_MODEL || "gemini-1.5-flash";
-    
+
     console.log(`🔑 Gemini API Key: ${currentKey?.substring(0, 15)}...${currentKey?.substring(currentKey.length - 5)}`);
     console.log(`🤖 Using model from .env: ${currentModel}`);
-    
+
     // Luôn tạo instance mới với key hiện tại
     this._genAI = new GoogleGenerativeAI(currentKey);
     this._lastModel = currentModel;
-    
+
     return { genAI: this._genAI, model: currentModel };
   }
 
@@ -93,11 +106,11 @@ class ChatbotService {
   async analyzeMessage(message, state) {
     try {
       let contextPrompt = SYSTEM_PROMPT;
-      
+
       if (state.step === "selecting_size" && state.selectedProduct) {
         contextPrompt += `\n\nCONTEXT: Khách đang chọn size cho "${state.selectedProduct.name}". Size có sẵn: ${state.selectedProduct.sizes?.map(s => s.size).join(", ") || "N/A"}.`;
       }
-      
+
       if (state.step === "confirm_more") {
         contextPrompt += `\n\nCONTEXT: Khách vừa thêm sản phẩm vào giỏ.`;
       }
@@ -129,13 +142,13 @@ class ChatbotService {
     try {
       const query = { isActive: true, isVisible: true };
       if (excludeIds?.length > 0) query._id = { $nin: excludeIds };
-      
+
       // Xử lý brand
       if (filters.brand) {
         const brand = await Brand.findOne({ name: { $regex: filters.brand, $options: "i" } });
         if (brand) query.brand = brand._id;
       }
-      
+
       // Xử lý category từ filters hoặc từ keyword
       const categoryKeywords = {
         "giày": ["giày", "shoe", "sneaker", "dép", "sandal"],
@@ -143,17 +156,17 @@ class ChatbotService {
         "quần": ["quần", "pant", "jean", "short", "trouser"],
         "phụ kiện": ["mũ", "nón", "túi", "balo", "thắt lưng", "kính"]
       };
-      
+
       let categoryFound = null;
       const keyword = filters.keyword?.toLowerCase().trim();
-      
+
       // Kiểm tra xem keyword có phải là loại sản phẩm không
       if (keyword) {
         for (const [catName, keywords] of Object.entries(categoryKeywords)) {
           if (keywords.some(k => keyword.includes(k))) {
             // Tìm category trong DB
-            const category = await Category.findOne({ 
-              name: { $regex: catName, $options: "i" } 
+            const category = await Category.findOne({
+              name: { $regex: catName, $options: "i" }
             });
             if (category) {
               categoryFound = category;
@@ -164,29 +177,29 @@ class ChatbotService {
           }
         }
       }
-      
+
       // Nếu có category từ filters, ưu tiên dùng
       if (filters.category && !categoryFound) {
         const category = await Category.findOne({ name: { $regex: filters.category, $options: "i" } });
         if (category) query.category = category._id;
       }
-      
+
       // Nếu không tìm được category từ keyword, tìm theo tên sản phẩm
       if (!categoryFound && keyword) {
         query.name = { $regex: keyword, $options: "i" };
       }
-      
+
       if (filters.hasDiscount) query.discountPercentage = { $gt: 0 };
 
       console.log(`🔍 Search query:`, JSON.stringify(query, null, 2));
-      
+
       let products = await Product.find(query)
         .populate("category", "name")
         .populate("brand", "name")
         .limit(limit)
         .sort({ soldCount: -1 })
         .lean();
-      
+
       // Fallback: tìm trong description nếu không có kết quả
       if (products.length === 0 && keyword && !categoryFound) {
         delete query.name;
@@ -197,7 +210,7 @@ class ChatbotService {
           .limit(limit)
           .lean();
       }
-      
+
       console.log(`🔍 Found ${products.length} products`);
       return products;
     } catch (error) {
@@ -218,15 +231,15 @@ class ChatbotService {
   // Tư vấn size dựa trên chiều cao, cân nặng
   getSizeAdvice(filters) {
     const { height, weight, footLength, productType } = filters;
-    
+
     // Bảng size áo (dựa trên chiều cao và cân nặng)
     const getClothingSize = (h, w) => {
       // h: chiều cao (cm), w: cân nặng (kg)
       if (!h || !w) return null;
-      
+
       // Tính BMI để hỗ trợ
       const bmi = w / ((h / 100) ** 2);
-      
+
       if (h < 160) {
         if (w < 50) return { size: "XS", note: "Dáng nhỏ nhắn" };
         if (w < 58) return { size: "S", note: "Dáng cân đối" };
@@ -257,7 +270,7 @@ class ChatbotService {
     // Bảng size quần (dựa trên chiều cao và cân nặng)
     const getPantsSize = (h, w) => {
       if (!h || !w) return null;
-      
+
       if (h < 165) {
         if (w < 52) return { size: "28", waist: "71cm", note: "Eo nhỏ" };
         if (w < 58) return { size: "29", waist: "74cm", note: "Eo vừa" };
@@ -288,7 +301,7 @@ class ChatbotService {
     // Bảng size giày (dựa trên chiều dài chân)
     const getShoeSize = (footLen) => {
       if (!footLen) return null;
-      
+
       const sizeChart = [
         { length: 23, eu: 37, us: 5 },
         { length: 23.5, eu: 37.5, us: 5.5 },
@@ -304,14 +317,14 @@ class ChatbotService {
         { length: 28.5, eu: 45, us: 10.5 },
         { length: 29, eu: 46, us: 11 },
       ];
-      
+
       const match = sizeChart.find(s => footLen <= s.length) || sizeChart[sizeChart.length - 1];
       return { size: match.eu, us: match.us, note: `Chiều dài chân ${footLen}cm` };
     };
 
     // Xử lý theo loại sản phẩm
     const type = productType?.toLowerCase() || "";
-    
+
     if (type.includes("giày") || type.includes("shoe") || type.includes("sneaker") || footLength) {
       if (footLength) {
         const advice = getShoeSize(footLength);
@@ -321,20 +334,20 @@ class ChatbotService {
       }
       return `👟 **TƯ VẤN SIZE GIÀY**\n\nĐể tư vấn chính xác, bạn cho tôi biết **chiều dài bàn chân** (cm) nhé!\n\n📏 **Cách đo:**\n1. Đặt chân lên giấy trắng\n2. Vẽ viền quanh bàn chân\n3. Đo từ gót đến ngón dài nhất\n\n**Bảng size tham khảo:**\n• 25cm → Size 40\n• 26cm → Size 41\n• 27cm → Size 43\n• 28cm → Size 44`;
     }
-    
+
     if (type.includes("quần") || type.includes("pant") || type.includes("jean")) {
       const advice = getPantsSize(height, weight);
       if (advice) {
         return `👖 **TƯ VẤN SIZE QUẦN**\n\n📏 Chiều cao: ${height}cm | Cân nặng: ${weight}kg\n\n✅ **Size phù hợp: ${advice.size}** (Vòng eo ~${advice.waist})\n📝 ${advice.note}\n\n💡 **Mẹo chọn quần:**\n• Quần jean: lấy vừa hoặc nhỉnh 1 size\n• Quần short: có thể lấy rộng hơn 1 size\n• Quần jogger: lấy đúng size\n\nBạn muốn tìm quần size ${advice.size} không? 😊`;
       }
     }
-    
+
     // Mặc định là áo
     const advice = getClothingSize(height, weight);
     if (advice) {
       return `👕 **TƯ VẤN SIZE ÁO**\n\n📏 Chiều cao: ${height}cm | Cân nặng: ${weight}kg\n\n✅ **Size phù hợp: ${advice.size}**\n📝 ${advice.note}\n\n💡 **Mẹo chọn áo:**\n• Áo thun: lấy đúng size hoặc oversize +1\n• Áo polo: lấy đúng size\n• Hoodie: có thể lấy lớn hơn 1 size\n\nBạn muốn tìm áo size ${advice.size} không? 😊`;
     }
-    
+
     return `📏 **TƯ VẤN SIZE**\n\nĐể tư vấn chính xác, bạn cho tôi biết:\n• **Chiều cao** (cm)\n• **Cân nặng** (kg)\n• **Loại sản phẩm** (áo/quần/giày)\n\nVí dụ: "Tôi cao 170cm nặng 65kg muốn mua áo"`;
   }
 
@@ -343,7 +356,7 @@ class ChatbotService {
     try {
       let startDate, endDate;
       const now = new Date();
-      
+
       // Xử lý relative date
       if (filters.relative) {
         switch (filters.relative) {
@@ -374,7 +387,7 @@ class ChatbotService {
         const day = parseInt(filters.day);
         const month = filters.month ? parseInt(filters.month) - 1 : now.getMonth();
         const year = filters.year ? parseInt(filters.year) : now.getFullYear();
-        
+
         startDate = new Date(year, month, day);
         endDate = new Date(year, month, day + 1);
       } else {
@@ -414,7 +427,7 @@ class ChatbotService {
           delivered: "✅ Đã giao",
           cancelled: "❌ Đã hủy"
         };
-        
+
         const orderDate = new Date(order.createdAt);
         const dateFormatted = orderDate.toLocaleDateString("vi-VN", {
           day: "2-digit",
@@ -476,19 +489,19 @@ class ChatbotService {
         default: return "hôm nay";
       }
     }
-    
+
     if (filters.day) {
       const day = filters.day;
       const month = filters.month || (startDate.getMonth() + 1);
       return `ngày ${day}/${month}`;
     }
-    
+
     return "hôm nay";
   }
 
   detectSimpleIntent(message, state) {
     const msg = message.toLowerCase().trim();
-    
+
     const selectMatch = msg.match(/(?:mua|lấy|chọn)?\s*(?:số|sản phẩm)?\s*(\d+)/i);
     if (selectMatch && state.lastProducts.length > 0) {
       const idx = parseInt(selectMatch[1]);
@@ -496,27 +509,27 @@ class ChatbotService {
         return { intent: "select_product", filters: { productIndex: idx }, message: "" };
       }
     }
-    
+
     if (state.step === "selecting_size") {
       // Kiểm tra xem người dùng có đang HỎI về size không (cần tư vấn)
       const needAdvicePatterns = /không biết|ko biết|chọn size nào|size nào phù hợp|nên chọn|tư vấn|phù hợp với tôi|size gì|mặc size nào/i;
       if (needAdvicePatterns.test(msg)) {
         return { intent: "size_advice", filters: { needAdvice: true }, message: "" };
       }
-      
+
       // Chỉ chọn size khi người dùng nói RÕ RÀNG size cụ thể
       const sizeMatch = msg.match(/^(?:lấy |chọn |mua )?(?:size )?(xs|s|m|l|xl|xxl|\d{2})$/i);
       if (sizeMatch) return { intent: "select_size", filters: { size: sizeMatch[1].toUpperCase() }, message: "" };
     }
-    
+
     if (state.cart.length > 0 && /^(không|ko|xong|thanh toán|checkout)$/i.test(msg)) {
       return { intent: "checkout", filters: {}, message: "" };
     }
-    
+
     if (state.step === "confirm_order" && /^(đồng ý|ok|có|xác nhận)$/i.test(msg)) {
       return { intent: "confirm_yes", filters: {}, message: "" };
     }
-    
+
     return null;
   }
 
@@ -526,7 +539,7 @@ class ChatbotService {
     if (userId) state.userId = userId;
     console.log(`🤖 [${sessionId}] Message: "${message}" (userId: ${userId || "guest"})`);
     console.log(`🛒 Current cart: ${state.cart.length} items, step: ${state.step}`);
-    
+
     let analysis = this.detectSimpleIntent(message, state);
     if (analysis) {
       console.log(`🤖 Simple detect: ${analysis.intent}`);
@@ -572,8 +585,8 @@ class ChatbotService {
           }
           products = [state.selectedProduct];
         } else {
-          responseMessage = state.lastProducts.length === 0 
-            ? "😊 Bạn chưa tìm sản phẩm nào. Hãy cho tôi biết bạn muốn tìm gì nhé!" 
+          responseMessage = state.lastProducts.length === 0
+            ? "😊 Bạn chưa tìm sản phẩm nào. Hãy cho tôi biết bạn muốn tìm gì nhé!"
             : `😊 Vui lòng chọn số từ 1 đến ${state.lastProducts.length} để chọn sản phẩm bạn thích nhé!`;
         }
         break;
@@ -647,7 +660,7 @@ class ChatbotService {
         if (state.step === "selecting_size" && state.selectedProduct) {
           const productName = state.selectedProduct.name.toLowerCase();
           const availableSizes = state.selectedProduct.sizes?.filter(s => s.stock > 0).map(s => s.size) || [];
-          
+
           // Xác định loại sản phẩm từ tên
           let productType = "áo";
           if (productName.includes("quần") || productName.includes("jean") || productName.includes("short")) {
@@ -655,7 +668,7 @@ class ChatbotService {
           } else if (productName.includes("giày") || productName.includes("sneaker") || productName.includes("dép")) {
             productType = "giày";
           }
-          
+
           // Nếu có thông tin chiều cao, cân nặng thì tư vấn luôn
           if (analysis.filters.height && analysis.filters.weight) {
             responseMessage = this.getSizeAdvice({ ...analysis.filters, productType });
