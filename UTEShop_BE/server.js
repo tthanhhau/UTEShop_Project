@@ -1,7 +1,15 @@
 // server.js
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env từ thư mục hiện tại của server.js
+dotenv.config({ path: path.join(__dirname, ".env") });
 console.log("MONGODB_URI from server.js:", process.env.MONGODB_URI);
+console.log("GEMINI_API_KEY from server.js:", process.env.GEMINI_API_KEY?.substring(0, 20) + "...");
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -145,6 +153,9 @@ app.use("/api/admin/brands", adminBrandRoutes);
 app.use("/api/vouchers", voucherRoutes);
 app.use("/api/points", pointsRoutes);
 
+// Chatbot AI routes
+import chatbotRoutes from "./src/chatbot/chatbotRoutes.js";
+app.use("/api/chatbot", chatbotRoutes);
 
 /* ------------------------------- 404 & Err ------------------------------ */
 

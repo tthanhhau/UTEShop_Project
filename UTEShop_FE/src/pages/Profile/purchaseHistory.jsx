@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +21,14 @@ import { addToCart } from "../../features/cart/cartSlice";
 export function PurchaseHistory() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
   const [reviewStatus, setReviewStatus] = useState({});
   const [isAdding, setIsAdding] = useState(false);
-  const [error, setError] = useState(null); // Thêm state error để xử lý lỗi
+  const [error, setError] = useState(null);
+  const [highlightOrderId, setHighlightOrderId] = useState(null);
+  const orderRefs = useRef({});
 
   // Xử lý điều hướng đến trang đánh giá sản phẩm
   const handleReviewProduct = (productId, orderId) => {
@@ -47,7 +50,6 @@ export function PurchaseHistory() {
           completedOrders.map(async (order) => {
             try {
               const reviewCheck = await checkOrderReviewed(order._id);
-              // Kiểm tra hasReview từ backend (đã bao gồm cả review bị xóa)
               reviewStatusMap[order._id] = reviewCheck.hasReview;
             } catch (error) {
               console.error(
@@ -61,12 +63,35 @@ export function PurchaseHistory() {
         setReviewStatus(reviewStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
-        setError(err?.message || 'Lỗi không xác định'); // Xử lý lỗi an toàn
+        setError(err?.message || 'Lỗi không xác định');
       }
     };
 
     fetchOrdersData();
   }, []);
+
+  // Xử lý highlight và scroll đến đơn hàng từ chatbot
+  useEffect(() => {
+    const orderId = searchParams.get("highlight");
+    if (orderId && orders.length > 0) {
+      setHighlightOrderId(orderId);
+      
+      // Scroll đến đơn hàng sau khi render
+      setTimeout(() => {
+        const orderElement = orderRefs.current[orderId];
+        if (orderElement) {
+          orderElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+
+      // Xóa highlight sau 5 giây
+      setTimeout(() => {
+        setHighlightOrderId(null);
+        // Xóa query param khỏi URL
+        navigate("/purchase-history", { replace: true });
+      }, 5000);
+    }
+  }, [searchParams, orders, navigate]);
 
   // ===== PHẦN TÌM KIẾM ĐÃ ĐƯỢC CẬP NHẬT TỪ ĐOẠN CODE 1 =====
   const filteredorders = (Array.isArray(orders) ? orders : []).filter((order) => {
@@ -163,8 +188,13 @@ export function PurchaseHistory() {
         ) : (
           filteredorders.map((order) => (
             <Card
-              key={order._id} // Sử dụng _id từ API thay vì id
-              className="overflow-hidden bg-white rounded-xl border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200"
+              key={order._id}
+              ref={(el) => (orderRefs.current[order._id] = el)}
+              className={`overflow-hidden bg-white rounded-xl border-2 shadow-lg transition-all duration-500 ${
+                highlightOrderId === order._id
+                  ? "border-yellow-400 ring-4 ring-yellow-200 scale-[1.02] shadow-2xl animate-pulse"
+                  : "border-gray-200 hover:shadow-xl"
+              }`}
             >
               <CardHeader className=" bg-white ">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
