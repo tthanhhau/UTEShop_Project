@@ -20,7 +20,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true, minlength: 6 },
+
+    facebookId: { type: String, unique: true, sparse: true }, // Facebook user ID
     role: { type: String, enum: ["customer", "admin"], default: "customer" },
+
+   
     phone: { type: String },
     address: { type: String },
     birthDate: {
@@ -41,9 +45,12 @@ const userSchema = new mongoose.Schema(
         default: "BRONZE",
       }
     },
-    
+
     // Track voucher claims để kiểm soát limit chính xác
     voucherClaims: [{
+      value: { type: Number, required: true },
+      discountType: { type: String, enum: ["PERCENTAGE", "FIXED"], required: true },
+      minOrder: { type: Number, default: 0 },
       voucherCode: { type: String, required: true },
       claimCount: { type: Number, default: 1, min: 1 },
       lastClaimed: { type: Date, default: Date.now },

@@ -27,9 +27,9 @@ export const fetchCart = createAsyncThunk(
 
 export const addToCart = createAsyncThunk(
   'cart/addToCart',
-  async ({ productId, quantity = 1 }, thunkAPI) => {
+  async ({ productId, quantity = 1, size }, thunkAPI) => {
     try {
-      const { data } = await api.post('/cart/add', { productId, quantity });
+      const { data } = await api.post('/cart/add', { productId, quantity, size });
       console.log('🛒 AddToCart response:', data); // Debug log
       return {
         ...data.data, // Backend trả data.data chứa items, totalItems, totalAmount
@@ -46,9 +46,9 @@ export const addToCart = createAsyncThunk(
 
 export const updateCartItem = createAsyncThunk(
   'cart/updateCartItem',
-  async ({ productId, quantity }, thunkAPI) => {
+  async ({ productId, quantity, size }, thunkAPI) => {
     try {
-      const { data } = await api.put('/cart/update', { productId, quantity });
+      const { data } = await api.put('/cart/update', { productId, quantity, size });
       return data.data;
     } catch (error) {
       return thunkAPI.rejectWithValue(
@@ -60,9 +60,10 @@ export const updateCartItem = createAsyncThunk(
 
 export const removeFromCart = createAsyncThunk(
   'cart/removeFromCart',
-  async (productId, thunkAPI) => {
+  async ({ productId, size }, thunkAPI) => {
     try {
-      const { data } = await api.delete(`/cart/remove/${productId}`);
+      const url = size ? `/cart/remove/${productId}?size=${size}` : `/cart/remove/${productId}`;
+      const { data } = await api.delete(url);
       return data.data;
     } catch (error) {
       return thunkAPI.rejectWithValue(

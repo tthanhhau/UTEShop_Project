@@ -4,7 +4,11 @@ import axios from './axios';
 export const authApi = {
   login: (credentials: { email: string; password: string }) =>
     axios.post('/auth/admin/login', credentials),
-  getProfile: () => axios.get('/auth/admin/me'),
+  getProfile: () => axios.get('/auth/me'),
+  forgotPassword: (data: { email: string }) =>
+    axios.post('/auth/admin/forgot-password', data),
+  resetPassword: (data: { email: string; otp: string; newPassword: string }) =>
+    axios.post('/auth/admin/reset-password', data),
 };
 
 // Analytics API
@@ -33,23 +37,23 @@ export const brandApi = {
 // Category API
 export const categoryApi = {
   getAll: (params?: { page?: number; limit?: number; search?: string }) =>
-    axios.get('/admin/Categorys', { params }),
-  getById: (id: string) => axios.get(`/admin/Categorys/${id}`),
-  create: (data: any) => axios.post('/admin/Categorys', data),
-  update: (id: string, data: any) => axios.put(`/admin/Categorys/${id}`, data),
-  delete: (id: string) => axios.delete(`/admin/Categorys/${id}`),
-  deleteMultiple: (ids: string[]) => axios.delete('/admin/Categorys/multiple/delete', { data: { ids } }),
+    axios.get('/admin/categories', { params }),
+  getById: (id: string) => axios.get(`/admin/categories/${id}`),
+  create: (data: any) => axios.post('/admin/categories', data),
+  update: (id: string, data: any) => axios.put(`/admin/categories/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/categories/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/categories/multiple/delete', { data: { ids } }),
 };
 
 // Product API
 export const productApi = {
   getAll: (params?: { page?: number; limit?: number; search?: string }) =>
-    axios.get('/admin/Products', { params }),
-  getById: (id: string) => axios.get(`/admin/Products/${id}`),
-  create: (data: any) => axios.post('/admin/Products', data),
-  update: (id: string, data: any) => axios.put(`/admin/Products/${id}`, data),
-  delete: (id: string) => axios.delete(`/admin/Products/${id}`),
-  deleteMultiple: (ids: string[]) => axios.delete('/admin/Products/multiple/delete', { data: { ids } }),
+    axios.get('/admin/products', { params }),
+  getById: (id: string) => axios.get(`/admin/products/${id}`),
+  create: (data: any) => axios.post('/admin/products', data),
+  update: (id: string, data: any) => axios.put(`/admin/products/${id}`, data),
+  delete: (id: string) => axios.delete(`/admin/products/${id}`),
+  deleteMultiple: (ids: string[]) => axios.delete('/admin/products/multiple/delete', { data: { ids } }),
 };
 
 // Order API
@@ -94,6 +98,16 @@ export const pointsApi = {
   getUserPoints: (userId: string) => axios.get(`/admin/points/user/${userId}`),
 };
 
+// Review API
+export const reviewApi = {
+  getAll: (params?: { page?: number; limit?: number; search?: string; rating?: number; productId?: string }) =>
+    axios.get('/admin/reviews', { params }),
+  getById: (id: string) => axios.get(`/admin/reviews/${id}`),
+  getStats: () => axios.get('/admin/reviews/stats'),
+  reply: (id: string, comment: string) => axios.post(`/admin/reviews/${id}/reply`, { comment }),
+  delete: (id: string) => axios.delete(`/admin/reviews/${id}`),
+};
+
 export default {
   auth: authApi,
   analytics: analyticsApi,
@@ -104,4 +118,5 @@ export default {
   customer: customerApi,
   voucher: voucherApi,
   points: pointsApi,
+  review: reviewApi,
 };

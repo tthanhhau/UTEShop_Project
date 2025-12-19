@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import MultiImageUpload from '../../../components/MultiImageUpload';
+import { FaEdit, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function ProductsManagement() {
   const [products, setProducts] = useState([]);
@@ -20,11 +21,13 @@ export default function ProductsManagement() {
     images: [] as string[],
     category: '',
     brand: '',
-    discountPercentage: 0
+    discountPercentage: 0,
+    sizes: [] as Array<{ size: string; stock: number }>
   });
   const [filters, setFilters] = useState({
     category: '',
-    brand: ''
+    brand: '',
+    search: ''
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -34,11 +37,11 @@ export default function ProductsManagement() {
   });
 
   // Fetch products
-  const fetchProducts = async (page = 1, category = '', brand = '') => {
+  const fetchProducts = useCallback(async (page = 1, category = '', brand = '', search = '') => {
     try {
       setLoading(true);
       const response = await axios.get('/admin/Products', {
-        params: { page, limit: 10, category, brand }
+        params: { page, limit: 10, category, brand, search }
       });
 
       if (response.data.success) {
@@ -50,10 +53,10 @@ export default function ProductsManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Fetch categories and brands
-  const fetchCategoriesAndBrands = async () => {
+  const fetchCategoriesAndBrands = useCallback(async () => {
     try {
       const [categoriesRes, brandsRes] = await Promise.all([
         axios.get('/admin/Categorys'),
@@ -64,31 +67,55 @@ export default function ProductsManagement() {
     } catch (error) {
       console.error('Error fetching categories and brands:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchProducts();
     fetchCategoriesAndBrands();
-  }, []);
+  }, [fetchProducts, fetchCategoriesAndBrands]);
+
+  // Debounce search with useEffect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchProducts(1, filters.category, filters.brand, filters.search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search, filters.category, filters.brand, fetchProducts]);
 
   // Handle filter change
   const handleFilterChange = (filterType: string, value: string) => {
     const newFilters = { ...filters, [filterType]: value };
     setFilters(newFilters);
-    fetchProducts(1, newFilters.category, newFilters.brand);
+    if (filterType !== 'search') {
+      fetchProducts(1, newFilters.category, newFilters.brand, newFilters.search);
+    }
+  };
+
+  // Handle search - only update state, useEffect will handle fetch
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFilters({ ...filters, search: value });
   };
 
   // Handle form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Tính tổng stock từ sizes nếu có, nếu không dùng stock nhập tay
+      const totalStock = formData.sizes.length > 0
+        ? formData.sizes.reduce((sum, item) => sum + (item.stock || 0), 0)
+        : parseInt(formData.stock || '0');
+
       const submitData = {
         ...formData,
         price: parseFloat(formData.price),
-        stock: parseInt(formData.stock),
+        stock: totalStock,
         discountPercentage: parseFloat(formData.discountPercentage.toString()),
-        images: formData.images || []
+        images: formData.images || [],
+        sizes: formData.sizes
       };
+
+      console.log('📤 Submitting product data:', submitData);
 
       if (editingProduct) {
         await axios.put(`/admin/Products/${editingProduct._id}`, submitData);
@@ -99,9 +126,10 @@ export default function ProductsManagement() {
       setShowModal(false);
       setEditingProduct(null);
       resetForm();
-      fetchProducts(pagination.currentPage, filters.category, filters.brand);
-    } catch (error) {
+      fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
+    } catch (error: any) {
       console.error('Error saving product:', error);
+      alert('Lỗi khi lưu sản phẩm: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -110,10 +138,20 @@ export default function ProductsManagement() {
     if (confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
       try {
         await axios.delete(`/admin/Products/${id}`);
-        fetchProducts(pagination.currentPage, filters.category, filters.brand);
+        fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
       } catch (error) {
         console.error('Error deleting product:', error);
       }
+    }
+  };
+
+  // Handle toggle product visibility
+  const handleToggleVisibility = async (id: string) => {
+    try {
+      await axios.patch(`/admin/Products/${id}/toggle-visibility`);
+      fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
+    } catch (error) {
+      console.error('Error toggling product visibility:', error);
     }
   };
 
@@ -127,7 +165,7 @@ export default function ProductsManagement() {
           data: { ids: selectedProducts }
         });
         setSelectedProducts([]);
-        fetchProducts(pagination.currentPage, filters.category, filters.brand);
+        fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
       } catch (error) {
         console.error('Error deleting products:', error);
       }
@@ -144,7 +182,8 @@ export default function ProductsManagement() {
       images: [],
       category: '',
       brand: '',
-      discountPercentage: 0
+      discountPercentage: 0,
+      sizes: []
     });
   };
 
@@ -159,9 +198,57 @@ export default function ProductsManagement() {
       images: product.images || [],
       category: product.category?._id || '',
       brand: product.brand?._id || '',
-      discountPercentage: product.discountPercentage || 0
+      discountPercentage: product.discountPercentage || 0,
+      sizes: product.sizes || []
     });
     setShowModal(true);
+  };
+
+  // Get selected category info
+  const getSelectedCategory = (): any => {
+    return categories.find((cat: any) => cat._id === formData.category);
+  };
+
+  // Check if category is clothing (quần áo)
+  const isClothingCategory = (): boolean => {
+    const category = getSelectedCategory();
+    return category?.name?.toLowerCase().includes('quần') || 
+           category?.name?.toLowerCase().includes('áo') ||
+           category?.name?.toLowerCase().includes('clothing');
+  };
+
+  // Check if category is shoes (giày)
+  const isShoesCategory = (): boolean => {
+    const category = getSelectedCategory();
+    return category?.name?.toLowerCase().includes('giày') || 
+           category?.name?.toLowerCase().includes('shoe');
+  };
+
+  // Add size
+  const handleAddSize = () => {
+    const newSize = isClothingCategory() ? 'S' : '38';
+    setFormData({
+      ...formData,
+      sizes: [...formData.sizes, { size: newSize, stock: 0 }]
+    });
+  };
+
+  // Remove size
+  const handleRemoveSize = (index: number) => {
+    setFormData({
+      ...formData,
+      sizes: formData.sizes.filter((_, i) => i !== index)
+    });
+  };
+
+  // Update size
+  const handleUpdateSize = (index: number, field: 'size' | 'stock', value: string | number) => {
+    const updatedSizes = [...formData.sizes];
+    updatedSizes[index] = {
+      ...updatedSizes[index],
+      [field]: field === 'stock' ? parseInt(value.toString()) : value
+    };
+    setFormData({ ...formData, sizes: updatedSizes });
   };
 
   // Handle checkbox
@@ -206,29 +293,43 @@ export default function ProductsManagement() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex gap-4">
-        <select
-          value={filters.category}
-          onChange={(e) => handleFilterChange('category', e.target.value)}
-          className="border rounded px-3 py-2"
-        >
-          <option value="">Tất cả danh mục</option>
-          {categories.map((cat: any) => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
-          ))}
-        </select>
+      {/* Search and Filters */}
+      <div className="mb-6 space-y-4">
+        {/* Search Bar */}
+        <div className="flex gap-4">
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên sản phẩm..."
+            value={filters.search}
+            onChange={handleSearch}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
 
-        <select
-          value={filters.brand}
-          onChange={(e) => handleFilterChange('brand', e.target.value)}
-          className="border rounded px-3 py-2"
-        >
-          <option value="">Tất cả thương hiệu</option>
-          {brands.map((brand: any) => (
-            <option key={brand._id} value={brand._id}>{brand.name}</option>
-          ))}
-        </select>
+        {/* Filters */}
+        <div className="flex gap-4">
+          <select
+            value={filters.category}
+            onChange={(e) => handleFilterChange('category', e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            <option value="">Tất cả danh mục</option>
+            {categories.map((cat: any) => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters.brand}
+            onChange={(e) => handleFilterChange('brand', e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            <option value="">Tất cả thương hiệu</option>
+            {brands.map((brand: any) => (
+              <option key={brand._id} value={brand._id}>{brand.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
@@ -259,10 +360,16 @@ export default function ProductsManagement() {
                   Thương hiệu
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Giá
+                  Giá gốc
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Kho
+                  Giá bán
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Size
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Trạng thái
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Hành động
@@ -288,19 +395,54 @@ export default function ProductsManagement() {
                   <td className="px-6 py-4">{product.category?.name || 'N/A'}</td>
                   <td className="px-6 py-4">{product.brand?.name || 'N/A'}</td>
                   <td className="px-6 py-4">{product.price.toLocaleString()}đ</td>
-                  <td className="px-6 py-4">{product.stock}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className={`font-semibold ${product.discountPercentage > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                        {(product.price * (1 - (product.discountPercentage || 0) / 100)).toLocaleString()}đ
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        (-{product.discountPercentage || 0}%)
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {product.sizes && product.sizes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {product.sizes.map((sizeItem: any, idx: number) => (
+                          <span 
+                            key={idx} 
+                            className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded whitespace-nowrap"
+                            title={`Số lượng: ${sizeItem.stock}`}
+                          >
+                            {sizeItem.size} ({sizeItem.stock})
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Không có size</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleToggleVisibility(product._id)}
+                      className={`p-2 rounded-full ${product.isActive ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 hover:bg-gray-100'}`}
+                      title={product.isActive ? 'Click để ẩn sản phẩm' : 'Click để hiển thị sản phẩm'}
+                    >
+                      {product.isActive ? <FaEye /> : <FaEyeSlash />}
+                    </button>
+                  </td>
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleEdit(product)}
-                      className="text-blue-600 hover:text-blue-800 mr-3"
+                      className="text-purple-600 hover:text-purple-900 mr-4"
                     >
-                      Sửa
+                      <FaEdit className="inline" />
                     </button>
                     <button
                       onClick={() => handleDelete(product._id)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-red-600 hover:text-red-900"
                     >
-                      Xóa
+                      <FaTrash className="inline" />
                     </button>
                   </td>
                 </tr>
@@ -319,10 +461,10 @@ export default function ProductsManagement() {
           {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
             <button
               key={page}
-              onClick={() => fetchProducts(page, filters.category, filters.brand)}
+              onClick={() => fetchProducts(page, filters.category, filters.brand, filters.search)}
               className={`px-3 py-1 rounded ${page === pagination.currentPage
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-200 hover:bg-gray-300'
                 }`}
             >
               {page}
@@ -364,26 +506,50 @@ export default function ProductsManagement() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              {/* Giá gốc, Giảm giá, Giá bán */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Giá</label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
-                    required
-                  />
+                  <label className="block text-sm font-medium mb-2">Giá gốc</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="w-full border rounded px-3 py-2 pr-8"
+                      required
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">đ</span>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Kho</label>
+                  <label className="block text-sm font-medium mb-2">Giảm giá (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={formData.discountPercentage}
+                      onChange={(e) => setFormData({ ...formData, discountPercentage: parseFloat(e.target.value) })}
+                      className="w-full border rounded px-3 py-2 pr-8"
+                      min="0"
+                      max="100"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Giá bán</label>
                   <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    className="w-full border rounded px-3 py-2"
-                    required
+                    type="text"
+                    value={(() => {
+                      const price = parseFloat(formData.price) || 0;
+                      const discount = parseFloat(formData.discountPercentage.toString()) || 0;
+                      const finalPrice = price * (1 - discount / 100);
+                      return finalPrice.toLocaleString() + 'đ';
+                    })()}
+                    className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-700 font-semibold"
+                    disabled
+                    readOnly
                   />
                 </div>
               </div>
@@ -420,17 +586,80 @@ export default function ProductsManagement() {
                 </div>
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Giảm giá (%)</label>
-                <input
-                  type="number"
-                  value={formData.discountPercentage}
-                  onChange={(e) => setFormData({ ...formData, discountPercentage: parseFloat(e.target.value) })}
-                  className="w-full border rounded px-3 py-2"
-                  min="0"
-                  max="100"
-                />
-              </div>
+              {/* Size Management */}
+              {(isClothingCategory() || isShoesCategory()) && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium">
+                      {isClothingCategory() ? 'Kích cỡ (Size)' : 'Số giày'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddSize}
+                      className="text-sm bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700"
+                    >
+                      + Thêm {isClothingCategory() ? 'size' : 'số'}
+                    </button>
+                  </div>
+                  
+                  {formData.sizes.length === 0 ? (
+                    <div className="text-sm text-gray-500 italic p-3 bg-gray-50 rounded">
+                      Chưa có {isClothingCategory() ? 'size' : 'số giày'} nào. Nhấn "Thêm {isClothingCategory() ? 'size' : 'số'}" để thêm.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {formData.sizes.map((sizeItem, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          {isClothingCategory() ? (
+                            <select
+                              value={sizeItem.size}
+                              onChange={(e) => handleUpdateSize(index, 'size', e.target.value)}
+                              className="border rounded px-3 py-2 flex-1"
+                            >
+                              <option value="XS">XS</option>
+                              <option value="S">S</option>
+                              <option value="M">M</option>
+                              <option value="L">L</option>
+                              <option value="XL">XL</option>
+                              <option value="XXL">XXL</option>
+                              <option value="XXXL">XXXL</option>
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={sizeItem.size}
+                              onChange={(e) => handleUpdateSize(index, 'size', e.target.value)}
+                              placeholder="VD: 38, 39, 40..."
+                              className="border rounded px-3 py-2 flex-1"
+                            />
+                          )}
+                          <input
+                            type="number"
+                            value={sizeItem.stock}
+                            onChange={(e) => handleUpdateSize(index, 'stock', e.target.value)}
+                            placeholder="Số lượng"
+                            className="border rounded px-3 py-2 w-32"
+                            min="0"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSize(index)}
+                            className="text-red-600 hover:text-red-800 px-3 py-2"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {formData.sizes.length > 0 && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      Tổng số lượng: {formData.sizes.reduce((sum, item) => sum + (item.stock || 0), 0)}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="mb-4">
                 <MultiImageUpload

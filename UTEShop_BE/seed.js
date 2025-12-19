@@ -4,13 +4,16 @@ import Product from "./src/models/product.js";
 import Category from "./src/models/category.js";
 import Brand from "./src/models/brand.js";
 
+// test
 dotenv.config();
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shop";
+const MONGO_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fashion_store";
 
 async function seed() {
   try {
     await mongoose.connect(MONGO_URI);
     console.log("✅ Kết nối MongoDB thành công!");
+
+
 
     // Xóa dữ liệu cũ
     await Product.deleteMany();
@@ -33,14 +36,14 @@ async function seed() {
       {
         name: "Nike",
         description: "Just Do It - Thương hiệu thể thao hàng đầu thế giới",
-        logo: "https://picsum.photos/100/100?random=101",
+        logo: "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1759919697/bd481wqvms9mtanldbem.jpg",
         website: "https://nike.com",
         country: "USA"
       },
       {
         name: "Adidas",
         description: "Impossible is Nothing - Ba sọc kinh điển",
-        logo: "https://picsum.photos/100/100?random=102",
+        logo: "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1758874162/utvqkocqdimdv9rzlw0b.png",
         website: "https://adidas.com",
         country: "Germany"
       },
@@ -48,21 +51,21 @@ async function seed() {
       {
         name: "Zara",
         description: "Fast fashion từ Tây Ban Nha",
-        logo: "https://picsum.photos/100/100?random=104",
+        logo: "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1758644566/zara_jv1myp.png",
         website: "https://zara.com",
         country: "Spain"
       },
       {
         name: "H&M",
         description: "Fashion for everyone từ Thụy Điển",
-        logo: "https://picsum.photos/100/100?random=105",
+        logo: "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1758644567/hm_ygxvj8.png",
         website: "https://hm.com",
         country: "Sweden"
       },
       {
         name: "Louis Vuitton",
         description: "Thương hiệu xa xỉ từ Pháp",
-        logo: "https://picsum.photos/100/100?random=106",
+        logo: "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1758644567/lv_gwcmsx.png",
         website: "https://louisvuitton.com",
         country: "France"
       },
@@ -95,7 +98,7 @@ async function seed() {
         name: "Áo khúc côn cầu nam của trường đại học",
         description:
           "Phong cách thể thao năng động mà bạn có thể diện xuống phố. Với các mảng lưới và điểm nhấn lấp lánh, chiếc áo len oversize này lấy cảm hứng từ những chiếc áo đấu khúc côn cầu cổ điển, mang đến cho bạn vẻ ngoài táo bạo, đậm chất thể thao.",
-        price: 2039000,
+        price: 203900,
         stock: 70,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522279/nike2_0_xqjjjc.avif",
@@ -115,7 +118,7 @@ async function seed() {
         name: "Áo polo Dri-FIT nam",
         description:
           "Chất vải ImpossiblySoft mềm mại và mịn màng đến bất ngờ, mang đến cảm giác thoải mái cho mọi hoạt động. Chiếc áo polo dệt kim đôi cao cấp này được thiết kế với đường may tinh tế và công nghệ Dri-FIT thấm hút mồ hôi, mang đến sự thoải mái tối ưu khi di chuyển.",
-        price: 2189000,
+        price: 218000,
         stock: 80,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522280/nike3_0_bnqo82.avif",
@@ -133,7 +136,7 @@ async function seed() {
         name: "Áo Polo tay ngắn nam",
         description:
           "Từ sân golf đến câu lạc bộ, chiếc áo polo cổ điển này từ bộ sưu tập Nike Club mang đến một món đồ chủ lực đặc trưng cho tủ đồ của bạn. Chất vải cotton piqué bền bỉ và thoáng khí, đồng thời tạo điểm nhấn tinh tế cho mọi trang phục. Hơn nữa, áo được thiết kế để tạo cảm giác thoải mái cho phần ngực và cơ thể, mang đến phong cách thể thao năng động mà bạn có thể phối nhiều lớp. Kết hợp với quần chinos và giày thể thao Nike yêu thích của bạn để có một vẻ ngoài chỉn chu, lịch lãm mà bạn có thể diện ở bất cứ đâu.",
-        price: 1279000,
+        price: 127000,
         stock: 60,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522281/nike4_0_l7wzhr.avif",
@@ -151,7 +154,7 @@ async function seed() {
         name: "Jordan Flight Men's Utility Trousers",
         description:
           "Chiếc quần Ripstop nhẹ nhàng và rộng rãi này mang đậm phong cách tiện dụng và truyền thống Jordan. Túi hình thoi kết hợp với túi hộp tiêu chuẩn tạo nên vẻ ngoài độc đáo. Dây rút ở mắt cá chân cho phép bạn điều chỉnh độ dài của quần.",
-        price: 2299000,
+        price: 229000,
         stock: 60,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522286/nike5_0_ewamyw.avif",
@@ -169,7 +172,7 @@ async function seed() {
         name: "JNike Air Men's Woven Track Trousers",
         description:
           "Quần thể thao cao cấp này được may từ chất liệu vải chống thấm nước, mềm mại và lớp lót lưới thoáng khí. Kiểu dáng ống quần thẳng, rộng rãi giúp bạn thoải mái vận động suốt cả ngày.",
-        price: 2599000,
+        price: 259000,
         stock: 60,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522288/nike6_0_zbzppf.avif",
@@ -187,7 +190,7 @@ async function seed() {
         name: "Jordan Sport Men's Dri-FIT Mesh Diamond Shorts",
         description:
           "Lưới nhẹ và công nghệ thấm mồ hôi của chúng tôi giúp bạn luôn sảng khoái khi trận đấu nóng lên. Và lớp băng kim cương đặc trưng? Đó chính là điểm nhấn hoàn hảo.",
-        price: 1119000,
+        price: 111000,
         stock: 60,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522292/nike7_0_sefwab.avif",
@@ -205,7 +208,7 @@ async function seed() {
         name: "Nike SB Kearny Cargo Skate Trousers",
         description:
           "Chiếc quần nhẹ, thấm mồ hôi này được thiết kế để vận động thoải mái. Với 6 túi, bạn sẽ có nhiều chỗ để cất giữ những vật dụng cần thiết một cách an toàn trên và ngoài ván trượt. Dây buộc ở gấu quần cho phép bạn thắt chặt quần ở mắt cá chân hoặc để hở để cảm nhận sự thoải mái.",
-        price: 2039000,
+        price: 203000,
         stock: 60,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756522294/nike8_0_yipv26.avif",
@@ -223,7 +226,7 @@ async function seed() {
         name: "Áo Thun Arsenal Terrace Icons",
         description:
           "Hãy sống lại một trong những thời kỳ đáng nhớ nhất của môn thể thao vua cùng chiếc áo thun adidas Arsenal này. Lấy cảm hứng từ phong cách khán đài thập niên 80, thiết kế này nổi bật với huy hiệu khẩu thần công ở ngực và logo câu lạc bộ cổ điển ở sau cổ áo. Chất vải cotton mềm mại mang đến cảm giác thoải mái dù bạn đang cổ vũ cho Pháo Thủ hay đơn giản chỉ muốn thể hiện tình yêu bóng đá.",
-        price: 1200000,
+        price: 120000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756523661/adias1_0_vjojgx.avif",
@@ -241,7 +244,7 @@ async function seed() {
         name: "Áo Thun Real Madrid Terrace Icons",
         description:
           "Thể hiện niềm đam mê với Real Madrid qua phong cách cổ điển đặc trưng của adidas. Chiếc áo thun bóng đá này là một thiết kế cổ điển, hoàn hảo để bạn thể hiện niềm đam mê của mình trong ngày thi đấu và cả những dịp thường ngày. Logo Ba Lá được thêu trên nền vải single jersey mềm mại mang lại vẻ ngoài cổ điển đặc trưng của những năm 1980.",
-        price: 1200000,
+        price: 120000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756523666/adias2_0_tczvjf.avif",
@@ -296,7 +299,7 @@ async function seed() {
         name: "Quần Short Sân Nhà Liverpool FC Mùa Giải 25/26",
         description:
           "Chào mừng trở về nhà, Những Chiến Binh Áo Đỏ. Liverpool FC và adidas – bộ đôi hoàn hảo qua mọi thời đại. Mở màn cho lần tái hợp thứ ba, chiếc quần short sân nhà này thuộc bộ sưu tập gợi nhớ phong cách từ những năm tháng trước. Liver Bird – biểu tượng của niềm tin và hy vọng trong bóng đá – sải cánh vững chãi ngay trên gấu quần. Công nghệ AEROREADY kiểm soát độ ẩm giúp người hâm mộ luôn khô ráo qua mọi khoảnh khắc ăn mừng cuồng nhiệt.",
-        price: 15000000,
+        price: 150000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756526418/adias5_0_xt793f.avif",
@@ -314,7 +317,7 @@ async function seed() {
         name: "Quần Short Graphic In Số",
         description:
           "Thư giãn thoải mái trong chiếc quần short adidas này. Với kiểu dáng rộng rãi, thoải mái, chiếc quần này mang đến cảm giác thư thái, tự do. Chất vải tricot mềm mại mang lại cảm giác thoải mái, dù bạn đang thư giãn trên ghế sofa hay ra ngoài cùng bạn bè. Họa tiết graphic số cỡ lớn ở ống quần tạo điểm nhấn thể thao cho diện mạo của bạn.",
-        price: 4199000,
+        price: 419000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756526424/adias6_0_vh3ub3.avif",
@@ -332,7 +335,7 @@ async function seed() {
         name: "Quần Short Nỉ adidas Marvel Spider-man",
         description:
           "Spider-Man thân thiện của khu phố xuất hiện đầy ấn tượng khi giăng tơ qua logo 3-Thanh biểu tượng — điểm nhấn thú vị trên chiếc quần short adidas này. Chất vải pha cotton mang lại cảm giác thoải mái, dù bạn đang chiến đấu với những kẻ phản diện hay chỉ đơn giản là thư giãn trong thời gian rảnh. Dây rút ở cạp quần cho phép bạn dễ dàng điều chỉnh độ vừa vặn.",
-        price: 1200000,
+        price: 120000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756526429/adias7_0_mo3sth.avif",
@@ -350,7 +353,7 @@ async function seed() {
         name: "Quần Short adidas Crazy Lite — In Họa Tiết Toàn Bộ",
         description:
           "Khi bạn gắn bó với sân bóng rổ mỗi ngày, bạn cần một chiếc quần short chuyên dụng để luôn thoải mái trong từng pha di chuyển. Chiếc quần short bóng rổ siêu nhẹ này của adidas nổi bật với họa tiết in khắp quần, mang đến vẻ ngoài độc đáo. Thiết kế rộng rãi giúp bạn tự do bứt tốc từ đầu sân đến cuối sân mà không bị cản trở. Công nghệ CLIMACOOL thoát ẩm và đánh bay mồ hôi mang lại cảm giác mát mẻ, khô ráo và không chút phân tâm.",
-        price: 1200000,
+        price: 120000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756526435/adias8_0_o1kame.avif",
@@ -369,7 +372,7 @@ async function seed() {
         name: "ÁO SƠ MI DENIM DÁNG BOXY FIT",
         description:
           "Áo sơ mi dáng boxy fit, chất liệu denim cotton. Cổ ve lật và tay dài bo gấu cài khuy. Túi ngực chi tiết viền. Hiệu ứng bạc màu. Cài khuy phía trước.",
-        price: 1399000,
+        price: 139000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542180/zara1_0_hm2d3d.jpg",
@@ -387,7 +390,7 @@ async function seed() {
         name: "ÁO SƠ MI VẢI RŨ KIỂU DÁNG",
         description:
           "Áo sơ mi dáng suông, may từ vải rũ pha viscose. Cổ ve lật, tay ngắn. Gấu xẻ hai bên. Cài khuy phía trước.",
-        price: 1399000,
+        price: 139000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542181/zara2_0_dulvij.jpg",
@@ -405,7 +408,7 @@ async function seed() {
         name: "ÁO SƠ MI 100% VẢI LINEN",
         description:
           "Áo sơ mi dáng suông, may từ vải linen pha viscose. Cổ ve lật, tay ngắn. Gấu xẻ hai bên. Cài khuy phía trước.",
-        price: 1699000,
+        price: 169000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542182/zara3_0_xqwr0f.jpg",
@@ -423,7 +426,7 @@ async function seed() {
         name: "ÁO SƠ MI HỌA TIẾT CÁ CHÉP",
         description:
           "Áo sơ mi vải rũ pha sợi viscose, dáng relaxed fit. Cổ ve nhọn khoét chữ K, cộc tay. Có một túi đáp trước ngực. Gấu xẻ hai bên. Cài phía trước bằng hàng khuy cài.",
-        price: 1399000,
+        price: 139000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542181/zara4_0_jnebgr.jpg",
@@ -442,7 +445,7 @@ async function seed() {
         name: "QUẦN VẢI DỆT THIẾT KẾ THOẢI MÁ",
         description:
           "Quần dáng slim fit, chất liệu vải co giãn hai chiều. Có hai túi phía trước và hai túi may viền cài khuy phía sau. Cài phía trước bằng khóa kéo và khuy.",
-        price: 1399000,
+        price: 139000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542182/zara5_0_f120io.jpg",
@@ -460,7 +463,7 @@ async function seed() {
         name: "QUẦN DÁNG WIDE FIT XẾP LI",
         description:
           "Quần vải pha sợi viscose, dáng wide fit. Cạp có chi tiết xếp li. Có túi hai bên và hai túi may viền phía sau. Cài phía trước bằng khóa kéo và khuy.",
-        price: 1899000,
+        price: 189000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542183/zara6_0_myokgt.jpg",
@@ -478,7 +481,7 @@ async function seed() {
         name: "QUẦN CHINO DÁNG SKINNY FIT",
         description:
           "Áo sơ mi dáng boxy fit, chất liệu denim cotton. Cổ ve lật và tay dài bo gấu cài khuy. Túi ngực chi tiết viền. Hiệu ứng bạc màu. Cài khuy phía trước.",
-        price: 1199000,
+        price: 119000,
         stock: 35,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542184/zara7_0_mlpiwj.jpg",
@@ -496,7 +499,7 @@ async function seed() {
         name: "QUẦN DÁNG SLIM FIT THIẾT KẾ THOẢI MÁI",
         description:
           "Quần bằng vải siêu co giãn. Cạp co giãn. Có hai túi phía trước và hai túi may viền phía sau. Cài phía trước bằng khóa kéo và khuy.",
-        price: 1399000,
+        price: 139000,
         stock: 25,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756542195/zara8_0_zqhg4g.jpg",
@@ -515,7 +518,7 @@ async function seed() {
         name: "Áo Sơ Mi Da",
         description:
           "Thuộc bộ sưu tập Thu-Đông 2025 do Giám đốc sáng tạo Pharrell hợp tác với nhà thiết kế Nigo, mẫu áo sơ mi da toát lên vẻ đẹp tinh tế, khẳng định kỹ nghệ chế tác bậc thầy của Maison. Chất liệu da bê mềm mại màu be với bề mặt tựa vải Linen, điểm xuyết họa tiết Monogram được in tinh tế. Các nhãn thương hiệu bằng da màu hồng và xanh lá bắt mắt như logo LV Japan trên ngực áo và chữ Vuitton cách điệu ở mặt sau hoàn thiện tổng thể trẻ trung, năng động.",
-        price: 122000000,
+        price: 1200000,
         stock: 15,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543806/lv1_0_ahpsrw.avif",
@@ -532,7 +535,7 @@ async function seed() {
         name: "Áo Sơ Mi Họa Tiết Damier",
         description:
           "Được may từ vải lụa Twill óng ánh, mẫu áo sơ mi ngắn tay gây ấn tượng với nền vải phủ họa tiết Damier, lồng ghép dòng chữ Marque L.Vuitton Déposée đặc trưng. Với gam màu xanh dương thanh lịch, thiết kế dễ dàng kết hợp với các mẫu trang phục màu trơn hoặc quần ngắn đồng điệu để tạo nên tổng thể thời thượng.",
-        price: 52500000,
+        price: 520000,
         stock: 20,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543806/lv2_0_x3m1nl.webp",
@@ -550,7 +553,7 @@ async function seed() {
         name: "Áo Hoodie",
         description:
           "Là mảnh ghép bắt mắt cho trang phục thường nhật, mẫu áo Hoodie đậm chất hè được may từ vải Jersey mỏng nhẹ dệt từ sợi Cotton hữu cơ. Nổi bật trên nền vải màu trắng sữa là mô típ hoa lồng ghép chữ Vuitton màu xanh dương đậm, một dấu ấn đặc trưng của bộ sưu tập Thu-Đông 2025. Dây rút mũ trùm cũng có màu xanh dương đồng điệu, kết hợp với đầu dây bằng kim loại màu vàng sẫm.",
-        price: 37500000,
+        price: 370000,
         stock: 10,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543807/lv3_0_bgsxu0.avif",
@@ -568,7 +571,7 @@ async function seed() {
         name: "Áo Polo",
         description:
           "Lấy cảm hứng từ phong cách đường phố đầu những năm 2000, mẫu áo Polo là một mảnh ghép thuộc bộ sưu tập Thu-Đông 2025 do Giám đốc sáng tạo Pharrell Williams hợp tác sản xuất với nhà thiết kế Nigo. Ngoài chất liệu mỏng nhẹ và thoáng mát, áo còn được tô điểm mô típ biểu tượng của nhà mốt Pháp trên nền vải dệt kim màu nâu sẫm, phù hợp để mặc thường nhật.",
-        price: 47000000,
+        price: 470000,
         stock: 40,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543814/lv4_0_i0sdyl.avif",
@@ -585,7 +588,7 @@ async function seed() {
         name: "Quần Jean",
         description:
           "Quần Jean cao cấp, chất liệu denim cotton. Có hai túi phía trước và hai túi may viền phía sau. Cài phía trước bằng khóa kéo và khuy.",
-        price: 185000000,
+        price: 180000,
         stock: 10,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543818/lv5_0_iysoox.webp",
@@ -603,7 +606,7 @@ async function seed() {
         name: "Quần Ống Loe",
         description:
           "Mẫu quần ống loe màu đen được may từ hỗn hợp len-Mohair cao cấp, kết hợp năm túi và đinh tán ánh ngọc trai thời thượng. Điểm nhấn thương hiệu được thể hiện tinh tế qua miếng da Nubuck trên túi phụ với dòng chữ Marque L.Vuitton Déposée và chi tiết Jacqueron ở phía sau dập nổi mô típ Mini Damier.",
-        price: 37500000,
+        price: 375000,
         stock: 100,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543822/lv6_0_oyire1.avif",
@@ -620,7 +623,7 @@ async function seed() {
         name: "Quần Dài Họa Tiết Damoflage - Made To Order",
         description:
           "Thuộc bộ sưu tập Thu-Đông 2025, mẫu quần dài ghi dấu ấn với họa tiết Damoflage Sakura màu hồng được dệt kiểu Jacquard, gợi nhớ đến biểu tượng hoa anh đào chủ đạo của BST. Thiết kế sở hữu phom dáng rộng rãi theo phong cách Workwear, kết hợp với chi tiếp đắp trước gối, túi quần và miếng da Jacqueron dập nổi mô típ Mini Damier. Quần có thể kết hợp với áo khoác đồng điệu để tạo nên bộ âu phục đẹp mắt. Đây là sản phẩm được sản xuất theo đơn đặt hàng.",
-        price: 91000000,
+        price: 910000,
         stock: 10,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543824/lv7_0_pcpds7.avif",
@@ -638,7 +641,7 @@ async function seed() {
         name: "Quần Ngắn Họa Tiết Damier",
         description:
           "Mẫu quần ngắn năng động được may từ chất liệu Cotton Piqué màu be điểm xuyết mô típ Damier, kết hợp với các chi tiết bằng vải Nylon nổi bật ở phía ngoài hai ống quần và trên túi quần. Thắt lưng có dây rút bo sọc gân và đầu dây bằng kim loại màu vàng, trong khi nhãn thêu LV Japan tạo điểm nhấn trên túi quần bên trái, gợi liên tưởng đến bộ sưu tập hợp tác với nhà thiết kế Nigo người Nhật. Sản phẩm sẽ phối hợp hài hòa với áo dệt kim đồng điệu để tạo nên tổng thể thoải mái.",
-        price: 37500000,
+        price: 370000,
         stock: 10,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756543828/lv8_1_ivjj45.avif",
@@ -712,7 +715,7 @@ async function seed() {
         name: "Áo sơ mi cổ hai ve dệt ô vuông Loose Fit",
         description:
           "Áo sơ mi ngắn tay bằng jersey dệt ô vuông mềm có cổ hai ve, nẹp khuy liền, cầu vai phía sau, vai ráp trễ và vạt ngang có đường xẻ hai bên. Dáng rộng để mặc thoải mái nhưng không bị thụng. ",
-        price: 3799000,
+        price: 379000,
         stock: 120,
         images: [
           "https://res.cloudinary.com/dx8ffnhq3/image/upload/v1756545527/hm4_0_xisg2e.avif",
@@ -797,6 +800,657 @@ async function seed() {
         viewCount: 10,
         discountPercentage: 30,
       },
+      {
+        name: "Giày Adizero EVO SL",
+        description:
+          "Trải nghiệm sự nhanh nhẹn và linh hoạt với đôi giày Adizero Evo SL. Với cảm hứng từ sự đổi mới của những đôi giày chạy đột phá trong dòng Adizero, đặc biệt là Pro Evo 1, Evo SL được thiết kế cho bạn chạy thoải mái, hay chỉ để đi lại. Kết hợp công nghệ Adizero với thiết kế táo bạo lấy cảm hứng từ đua xe, đây là sự tiến hóa của tốc độ trong mọi khía cạnh của cuộc sống. Lớp đệm LIGHTSTRIKE PRO trong phần giữa đế giúp mang lại sự thoải mái và giảm chấn, tối ưu hóa khả năng hồi phục năng lượng.",
+        price: 3000000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970330/Giay_Adizero_EVO_SL_trang_JS4487_HM7_yempvu.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763969363/Giay_Adizero_EVO_SL_trang_JS4487_HM3_hover_v3yspb.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970330/Giay_Adizero_EVO_SL_trang_JS4487_HM4_gvnuzs.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970330/Giay_Adizero_EVO_SL_trang_JS4487_HM10_bigacd.avif",
+        ],
+        category: giay._id,
+        brand: adidas._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Campus",
+        description:
+          "Dù ra mắt trên sân bóng rổ nhưng dòng giày adidas Campus đã nhanh chóng được ưa chuộng ở khắp mọi nơi. Ở phiên bản này, chúng tôi biến hóa kiểu dáng biểu tượng ấy theo một hướng mới và kết hợp các chất liệu, màu sắc và tỷ lệ thiết kế hiện đại. Thân giày bằng da cao cấp với lớp lót bằng vải dệt terry mềm mại, tất cả đặt trên đế giữa màu trắng ngà — mối liên kết đậm nét với di sản Campus.",
+        price: 2600000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970617/Giay_Campus_00s_Xam_HQ8707_01_standard_uuadgp.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970617/Giay_Campus_00s_Xam_HQ8707_05_standard_sggwlo.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970617/Giay_Campus_00s_Xam_HQ8707_04_standard_ksltoa.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763970617/Giay_Campus_00s_Xam_HQ8707_02_standard_hover_mtvo3g.avif",
+        ],
+        category: giay._id,
+        brand: adidas._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày SL 72 RS",
+        description:
+          "Đôi giày adidas này sẵn sàng cho những hành trình phiêu lưu thường ngày. Ra đời năm 1972 dành cho các vận động viên điền kinh, giày SL 72 đã trường tồn qua bao thập kỷ nhờ phong cách thanh thoát và tối giản. Đế giữa bằng chất liệu EVA và đế ngoài bằng cao su sần mang lại cảm giác êm ái và độ bám đảm bảo sự thoải mái suốt ngày dài, bất kể bạn đang dạo phố hay tụ tập bạn bè. Các chi tiết phủ ngoài bằng da lộn tạo chiều sâu và hiệu ứng sần cho thân giày bằng vải nylon. Hãy diện lên mình thiết kế adidas iconic này và tìm về tinh thần đơn giản trong quá khứ.",
+        price: 2400000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971092/Giay_SL_72_RS_DJen_JI1282_01_standard_x3ycmz.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971092/Giay_SL_72_RS_DJen_JI1282_04_standard_geahja.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971093/Giay_SL_72_RS_DJen_JI1282_02_standard_hover_gvbkw1.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971092/Giay_SL_72_RS_DJen_JI1282_05_standard_fm5fbu.avif",
+        ],
+        category: giay._id,
+        brand: adidas._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Mule Adifom Stan Smith",
+        description:
+          "Xỏ giày và xuống phố. Biến hóa một thiết kế classic, đôi giày mule adidas này tôn vinh dòng giày Stan Smith biểu tượng theo một cách mà bạn không ngờ tới. Thân giày và đệm gót giày gọn gàng lấy cảm hứng từ thiết kế nguyên bản, nhưng kiểu dáng hầm hố và bề mặt siêu mượt mà là nét biến tấu đầy hiện đại. Giày làm từ chất liệu mút foam có nguồn gốc một phần từ mía, tạo nên thiết kế thân thiện với môi trường để bạn tự hào diện lên mình. Giày không có quai dán và dây giày để tiện xỏ và tháo — nhưng luôn thoải mái trên chân suốt quá trình mang. Mẫu giày này làm từ các chất liệu tự nhiên và có thể tái tạo, là một phần trong hành trình của chúng tôi hướng tới chấm dứt sử dụng tài nguyên hữu hạn và góp phần loại bỏ rác thải nhựa.",
+        price: 990000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971417/Giay_Mule_Adifom_Stan_Smith_nau_IE7052_01_standard_kilmne.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971417/Giay_Mule_Adifom_Stan_Smith_nau_IE7052_02_standard_hover_du2psr.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971418/Giay_Mule_Adifom_Stan_Smith_nau_IE7052_42_detail_jm5f0m.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971418/Giay_Mule_Adifom_Stan_Smith_nau_IE7052_41_detail_rn3ii5.avif",
+        ],
+        category: giay._id,
+        brand: adidas._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Chạy Bộ Ultrarun 5",
+        description:
+          "Hãy chạy xa hơn một chút và nhanh hơn một chút ở mỗi bước chạy. Đôi giày chạy bộ adidas này giúp bạn tiến gần hơn tới mục tiêu với cảm giác bật nảy nhờ đệm Bounce 2.0 siêu nhẹ dưới chân. Thân giày bằng vải lưới giữ cho đôi chân bạn luôn mát mẻ và thoải mái từ đầu đến cuối, trong khi đế ngoài bám chắc giúp bạn bước đi tự tin khi rèn luyện sức bền.",
+        price: 1320000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971761/Giay_Chay_Bo_Ultrarun_5_Mau_xanh_da_troi_JH6019_01_00_standard_iep7xq.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971761/Giay_Chay_Bo_Ultrarun_5_Mau_xanh_da_troi_JH6019_02_standard_hover_tjtaeb.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971761/Giay_Chay_Bo_Ultrarun_5_Mau_xanh_da_troi_JH6019_05_standard_i1pojm.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763971762/Giay_Chay_Bo_Ultrarun_5_Mau_xanh_da_troi_JH6019_04_standard_rgdq3x.avif",
+        ],
+        category: giay._id,
+        brand: adidas._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày thể thao H&M be nhạt",
+        description:
+          "Giày thể thao với cổ giày có đệm, buộc dây và có lưỡi gà phía trước. Lớp lót và đế trong bằng vải lông xù và đế có vân nổi nhẹ, xẻ rãnh bên dưới.",
+        price: 749000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763972427/1443937efc00ff112e9f8a04e15defd5ec23861d_kgq9pr.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763972427/aabfc7eb7d23f4fe19c29fcdea67f04c10a50056_kyfqqy.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763972427/5da1b5892f413e2e4d7da30636fe01a5497c904d_ejualc.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763972427/b55befe5d14745e38419c28f070382d95b01d472_ua5pok.avif",
+        ],
+        category: giay._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày thuyền",
+        description:
+          "Giày thuyền buộc dây bên trên và đường may da đanh phía trước. Lót bằng cotton canvas.",
+        price: 990000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763973441/39b5c1e7df9d8dbcbd491dd681a3545e88c762d4_svjurh.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763973441/fce65fa8f540f350d8ad0d2b6b2fba6be69c2294_e8huqk.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763973441/e7aecd9b7595ed3691cfed0d5e68092a9d5fbc80_tsdpyw.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763973441/53b507ea08285fd6d6b2db36f7834c5349da192e_hneoan.avif",
+        ],
+        category: giay._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày loafer",
+        description:
+          "Giày loafer có đường may da đanh và một đai có chi tiết xích kim loại ở phía trước. Lớp lót bằng cotton dệt chéo.",
+        price: 420000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974276/6d4a5cfe33b4ee1effd937614c7f2d887ad064ae_p7dd9o.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974276/b9d794884005be363a364a8f11f5fcae32709430_ssavsy.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974277/36e739b37c6ab032ce0908425a8149f302d5f148_wt3xuv.avif"
+        ],
+        category: giay._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Boot da có chi tiết ghệt bảo hộ",
+        description:
+          "Boot làm từ da có chi tiết nhìn giống ghệt bảo hộ cài khuy bấm để bạn có thể tạo kiểu khác nhau. Ống cao ngang mắt cá có quai tròn ở mỗi bên, đế ngoài bằng cao su to dày với độ bám tốt và phần chắn bùn được may chắc chắn ở quanh mũi và gót. Lót vải lưới có đệm và đế trong bằng da có đệm mỏng. Cả khuy bấm và đế đều có logo của nhà thiết kế.",
+        price: 1200000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974651/7684c913bd54958dec55a050e8efbd625819161e_rnbvrh.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974652/d8c8e7c21d526d94c88409e2ea2e8fc889b084c1_i1jk6a.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974652/e29fa5fa96d855138799975cee89a8fdc4cb576e_k9ppta.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763974651/8ac6ec60581628a0f5437a1b53e06946c8992dc3_gvvh0h.avif",
+        ],
+        category: giay._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike Metcon 10",
+        description:
+          "Tăng cường tiềm năng tập luyện chéo của bạn với Metcon 10. Sản phẩm tối ưu hóa độ ổn định cho các bài tập nặng hơn với đế Hyperlift siêu bền và tăng cường khả năng vận động với lớp mút ReactX đàn hồi. Với khả năng hoàn trả năng lượng tốt hơn và trọng lượng nhẹ hơn Metcon 9, sản phẩm giúp bạn chinh phục mọi chuyển động mà bài tập yêu cầu.",
+        price: 3200000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975012/M_NIKE_METCON_10_nngoef.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975012/M_NIKE_METCON_10_2_msns1o.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975012/M_NIKE_METCON_10_1_iqqzmj.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975013/M_NIKE_METCON_10_4_leph6l.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike Free Metcon 6",
+        description:
+          "Free Metcon 6 mở ra thế giới luyện tập đa dạng cho bạn. Chúng tôi đã tăng cường độ linh hoạt cho phần mũi bàn chân, giúp đôi giày linh hoạt nhất của chúng tôi có thể thích ứng tốt nhất, và gia cố thêm phần gót chân bằng lớp đệm mút. Điều này đồng nghĩa với việc bạn có thể tự do thực hiện các động tác mạnh mẽ trong các bài tập plyo và cardio, cùng với nền tảng vững chắc cần thiết cho các bài tập tạ.",
+        price: 2600000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975332/W_NIKE_FREE_METCON_6_vkk2qf.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975332/W_NIKE_FREE_METCON_6_1_tpvs3y.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975332/W_NIKE_FREE_METCON_6_2_zsuid7.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975333/W_NIKE_FREE_METCON_6_3_tomzdr.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike SB Malor",
+        description:
+          "Hãy chinh phục đôi giày này! SB Malor được thiết kế dành cho những người mới bắt đầu trượt ván, những người cần một đôi giày có thể chịu được nhiều giờ luyện tập để trau dồi kỹ năng. Các lớp da lộn và vải bạt giúp giày bền bỉ, trong khi đế ngoài kết hợp họa tiết xương cá với họa tiết tròn của Air Force 1 giúp tăng cường độ bám và chuyển động. Hãy xỏ chân vào, Malor đã sẵn sàng để chinh phục mọi thử thách.",
+        price: 1100000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975570/NIKE_SB_MALOR_tenvtt.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975571/NIKE_SB_MALOR_1_uwonju.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975559/NIKE_SB_MALOR_2_vb2wny.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763975560/NIKE_SB_MALOR_3_fykpga.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike Pegasus 41",
+        description:
+          "Đệm phản hồi linh hoạt của Pegasus mang đến trải nghiệm chạy bộ đường trường năng động hàng ngày. Trải nghiệm khả năng hoàn trả năng lượng nhẹ hơn với bộ đôi Air Zoom và đế giữa bằng bọt ReactX. Thêm vào đó, lớp lưới kỹ thuật cải tiến ở phần thân giày giúp giảm trọng lượng và tăng khả năng thoáng khí.",
+        price: 1900000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763998592/AIR_ZOOM_PEGASUS_41_qk6spu.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763998593/AIR_ZOOM_PEGASUS_41_1_epcoqr.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763998593/AIR_ZOOM_PEGASUS_41_2_mgoc6t.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763998596/AIR_ZOOM_PEGASUS_41_3_us9zrp.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike Air Max SNDR SE",
+        description:
+          "Vượt xa thời đại năm 1999, Air Max SNDR đã trở lại—và vẫn đáp ứng mọi tiêu chí. Từ chất liệu cao su tổng hợp đến khóa kéo, đôi giày thể thao đột phá này tiếp tục phá vỡ mọi khuôn mẫu. Mở khóa kéo để lộ ra con số 6453, gợi nhớ đến bốn số cuối cùng trong danh sách các văn phòng của Nike trên toàn thế giới, đánh vần chữ NIKE trên bàn phím.",
+        price: 3100000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999340/NIKE_AIR_MAX_SNDR_SE_u28hws.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999340/NIKE_AIR_MAX_SNDR_SE_2_scyf2i.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999340/NIKE_AIR_MAX_SNDR_SE_1_gkykpr.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999340/NIKE_AIR_MAX_SNDR_SE_3_akfied.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike SB Malor",
+        description:
+          "Hãy chinh phục đôi giày này! SB Malor được thiết kế dành cho những người mới bắt đầu trượt ván, những người cần một đôi giày có thể chịu được nhiều giờ luyện tập để trau dồi kỹ năng. Các lớp da lộn và vải bạt giúp giày bền bỉ, trong khi đế ngoài kết hợp họa tiết xương cá với họa tiết tròn của Air Force 1 giúp tăng cường độ bám và chuyển động. Hãy xỏ chân vào, Malor đã sẵn sàng để chinh phục mọi thử thách.",
+        price: 2800000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999755/NIKE_SB_ZOOM_BLAZER_MID_vby3uc.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999755/NIKE_SB_ZOOM_BLAZER_MID_2_pufi1u.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999756/NIKE_SB_ZOOM_BLAZER_MID_1_qua1d1.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1763999754/NIKE_SB_ZOOM_BLAZER_MID_3_ltbylk.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike ACG Zoom Gaiadome GORE-TEX SE",
+        description:
+          "Đôi giày này sẽ đưa bạn đến bất cứ nơi đâu. Được rèn từ vật liệu siêu bền, chúng sở hữu công nghệ GORE-TEX và các vấu lớn được tinh chỉnh để phù hợp với những sườn núi dốc. Nói một cách đơn giản, chúng được thiết kế đặc biệt cho bất cứ điều gì bạn muốn làm ngoài trời — đi bộ đường dài, đeo ba lô hay đơn giản là khám phá.",
+        price: 2400000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764000019/ACG_ZOOM_GAIADOME_GTX_SE_dqbpfv.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764000018/ACG_ZOOM_GAIADOME_GTX_SE_2_i1wn7u.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764000018/ACG_ZOOM_GAIADOME_GTX_SE_1_mzyd2x.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764000018/ACG_ZOOM_GAIADOME_GTX_SE_3_w5othq.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nike Vapor 12",
+        description:
+          "Xuất hiện trên sàn đấu quần vợt những năm 90 dưới đôi chân của tay vợt nổi tiếng nhất thời bấy giờ, thiết kế Hot Lava đã thu hút mọi ánh nhìn trên sân đấu với phong cách táo bạo và độc đáo. Với phiên bản Vapor đặc biệt này, nó đã trở lại với cùng một phong cách đã làm nên biểu tượng, chỉ khác là hiệu suất thi đấu hiện đại như đệm Air Zoom, giúp bạn luôn sẵn sàng tấn công.",
+        price: 3000000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764001114/W_ZOOM_VAPOR_12_HC_PRM_kzokcl.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764001114/W_ZOOM_VAPOR_12_HC_PRM_2_avesdt.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764001114/W_ZOOM_VAPOR_12_HC_PRM_1_rbs2o0.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764001114/W_ZOOM_VAPOR_12_HC_PRM_3_lcftfm.avif",
+        ],
+        category: giay._id,
+        brand: nike._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Thể Thao LV Classic",
+        description:
+          "Phiên bản hai tông màu thời thượng của giày thể thao LV Classic được làm từ vải lưới kỹ thuật và da bê có vân nhiều màu sắc. Điểm nhấn nổi bật là logo LV năng động do Giám đốc sáng tạo của dòng thời trang nam, Pharrell Williams, biến tấu cùng dòng chữ Vuitton tinh tế ở đế ngoài to bản bằng cao su. Linh hoạt và dễ mang, thiết kế sẽ là lựa chọn hoàn hảo cho nhiều phong cách trang phục.",
+        price: 3200000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764036957/louis-vuitton-lv-classic-sneaker--BVU01CMI20_PM1_Side_view_os7bzu.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764036957/louis-vuitton-lv-classic-sneaker--BVU01CMI20_PM2_Front_view_grumtu.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764036957/louis-vuitton-lv-classic-sneaker--BVU01CMI20_PM1_Back_view_flfkp6.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764036957/louis-vuitton-lv-classic-sneaker--BVU01CMI20_PM1_Interior_view_ubvhmw.avif",
+        ],
+        category: giay._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Thể Thao LV BUTTERSOFT",
+        description:
+          "Là một thiết kế của Giám đốc sáng tạo Pharrell Williams, giày LV BUTTERSOFT được lấy cảm hứng từ thập niên 60 khi giày thể thao lần đầu tiên trở thành phụ kiện thời trang. Phiên bản này được may từ da cừu và da bê in họa tiết Monogram biểu tượng, kết hợp thân trên lót đệm êm ái. Dấu ấn thương hiệu được thể hiện qua logo LV, viền da tự nhiên và các mô típ dập nổi của bộ sưu tập Thu-Đông 2025 như tôm hùm và góc mặt nghiêng của Pharrell Williams.",
+        price: 3850000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764037893/louis-vuitton-lv-buttersoft-sneaker--BTU01TSKMA_PM1_Side_view_chjzpl.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764037892/louis-vuitton-lv-buttersoft-sneaker--BTU01TSKMA_PM2_Front_view_bez4go.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764037891/louis-vuitton-lv-buttersoft-sneaker--BTU01TSKMA_PM1_Back_view_v9whqz.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764037872/louis-vuitton-lv-buttersoft-sneaker--BTU01TSKMA_PM1_Interior_view_brd4qa.avif",
+        ],
+        category: giay._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày LV Oxford Derby",
+        description:
+          "Xuất hiện trên sàn đấu quần vợt những năm 90 dưới đôi chân của tay vợt nổi tiếng nhất thời bấy giờ, thiết kế Hot Lava đã thu hút mọi ánh nhìn trên sân đấu với phong cách táo bạo và độc đáo. Với phiên bản Vapor đặc biệt này, nó đã trở lại với cùng một phong cách đã làm nên biểu tượng, chỉ khác là hiệu suất thi đấu hiện đại như đệm Air Zoom, giúp bạn luôn sẵn sàng tấn công.",
+        price: 3150000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038074/louis-vuitton-lv-oxford-derby--BVA00APC02_PM1_Side_view_cw9q76.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038073/louis-vuitton-lv-oxford-derby--BVA00APC02_PM2_Front_view_g1dhx8.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038073/louis-vuitton-lv-oxford-derby--BVA00APC02_PM1_Back_view_jc6pph.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038073/louis-vuitton-lv-oxford-derby--BVA00APC02_PM1_Interior_view_xyakts.avif",
+        ],
+        category: giay._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Thể Thao LV Soft",
+        description:
+          "Giày thể thao LV Soft được làm từ chất liệu mặt dưới của da bê mềm mại trong phom dáng hiện đại. Sản phẩm có dây buộc và phần gót đàn hồi giúp mang giày dễ dàng, nhanh chóng. Các dấu ấn tinh tế của thương hiệu được thể hiện qua vòng phía sau và nhãn logo LV bằng da tự nhiên, kết hợp chữ Vuitton do Giám đốc sáng tạo Pharrell Williams thiết kế.",
+        price: 3400000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038619/louis-vuitton-lv-soft-sneaker--BVU01DSC31_PM1_Side_view_isdo0w.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038595/louis-vuitton-lv-soft-sneaker--BVU01DSC31_PM2_Front_view_ddkzov.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038576/louis-vuitton-lv-soft-sneaker--BVU01DSC31_PM1_Back_view_wz0hg7.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764038559/louis-vuitton-lv-soft-sneaker--BVU01DSC31_PM1_Interior_view_ixxzbf.avif",
+        ],
+        category: giay._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Giày Lười LV Resort",
+        description:
+          "Giày Lười LV Resort mang thiết kế tối giản, chất liệu da cao cấp và điểm nhấn logo LV sang trọng, mang lại sự thoải mái và đẳng cấp cho mọi bước chân.",
+        price: 2790000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764039442/louis-vuitton-lv-resort-loafer--BVL01BSC92_PM1_Side_view_qtmbct.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764039422/louis-vuitton-lv-resort-loafer--BVL01BSC92_PM2_Front_view_obwkao.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764039422/louis-vuitton-lv-resort-loafer--BVL01BSC92_PM1_Interior_view_khvmwi.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764039422/louis-vuitton-lv-resort-loafer--BVL01BSC92_PM2_Front_view_obwkao.avif",
+        ],
+        category: giay._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "KHĂN QUÀNG HỌA TIẾT KẺ SỌC VÀ TUA RUA",
+        description:
+          "Khăn quàng được làm từ vải có độ mềm mại. Hai đầu phối tua rua.",
+        price: 279000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764040702/03920660700-a1_jckcgg.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764040703/03920660700-e1_xfmtpm.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764040703/03920660700-e2_hrxwt5.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764040702/03920660700-e3_nkw8aq.jpg",
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "THẮT LƯNG DA HIỆU ỨNG CỔ ĐIỂN",
+        description:
+          "Thắt lưng làm bằng da. Đầu dây có chi tiết kim loại. Khóa cài và đai luồn dây bằng kim loại.",
+        price: 399000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041434/05919332800-a1_c3pzj9.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041433/05919332800-e2_lg3rtm.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041433/05919332800-e1_icttez.jpg"
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "MŨ LEN DÁNG NGẮN CƠ BẢN",
+        description:
+          "Mũ len dáng ngắn dệt kim từ sợi pha cotton. Có viền lật.",
+        price: 119000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041544/03166323420-e1_mrxm9z.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041544/03166323420-e3_r8vu3w.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041544/03166323420-e2_xei39x.jpg"
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "MŨ NỒI VẢI FLANEL",
+        description:
+          "Mũ nồi có vành được làm từ vải flanen. Co giãn điều chỉnh.",
+        price: 179000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041774/09065307401-a1_op6lng.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041849/09065307401-e1_qkyqvr.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041850/09065307401-e2_wwb6rf.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041852/09065307401-e3_sjb6zc.jpg",
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "CÀ VẠT BẢN NHỎ 100% LỤA",
+        description:
+          "Cà vạt bản nhỏ chất liệu vải lụa.",
+        price: 229000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041976/09569407800-e2_usnd6f.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041975/09569407800-e3_rau7eh.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041975/09569407800-e4_qbr516.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764041976/09569407800-e1_eruacm.jpg",
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "VÒNG CỔ XÍCH DÂY THỪNG MẶT DÂY",
+        description:
+          "Vòng cổ xích với các mắt xích hình dây thừng và mặt dây chuyền cùng tông màu. Cài bằng móc cài.",
+        price: 320000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042256/08435364302-a1_uudboh.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042299/08435364302-e1_gnduth.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042301/08435364302-e2_qt1xjk.jpg"
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "VÒNG TAY ĐÍNH HẠT CƯỜM NHIỀU MÀU",
+        description:
+          "Vòng tay kiểu khớp nối, các mặt kim loại đính cườm màu. Cài bằng móc cài thanh ngang.",
+        price: 390000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042427/05502409808-e1_wnxwf7.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042426/05502409808-e2_ds7ddu.jpg",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042426/05502409808-a2_mzxemb.jpg"
+        ],
+        category: phukien._id,
+        brand: zara._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Ví Đựng Thẻ Tiny Recto Verso LV Bloom",
+        description:
+          "Thuộc bộ sưu tập LV Bloom, ví đựng thẻ Tiny Recto Verso được may từ da bê trong gam màu nổi bật, điểm xuyết phụ kiện trang trí hình hoa Monogram với lớp hoàn thiện ánh kim hai màu. Không gian ví được tối ưu nhờ thiết kế xếp ly thông minh, gồm một ngăn lớn ở mặt trước kết hợp với hai khe đựng thẻ ở mặt sau.",
+        price: 1320000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042734/louis-vuitton-tiny-recto-verso-card-holder-lv-bloom--M14614_PM2_Front_view_g6ikjv.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042735/louis-vuitton-tiny-recto-verso-card-holder-lv-bloom--M14614_PM1_Interior_view_syabsr.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764042734/louis-vuitton-tiny-recto-verso-card-holder-lv-bloom--M14614_PM1_Back_view_onc3yz.avif"
+        ],
+        category: phukien._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Túi Nano Alma",
+        description:
+          "Được làm từ da Epi có vân, túi Nano Alma là phiên bản thu nhỏ của mẫu túi Alma kinh điển. Nhỏ gọn mà vẫn đủ tiện dụng, thiết kế có thể đựng vừa điện thoại, chìa khóa, ví đựng thẻ, nước hoa du lịch và nhiều món đồ thiết yếu khác. Sản phẩm có quai xách đôi và dây đeo rời dễ điều chỉnh độ dài để biến hóa nhiều phong cách.",
+        price: 1500000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043013/louis-vuitton-nano-alma--M81945_PM2_Front_view_x3wq4p.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043017/louis-vuitton-nano-alma--M81945_PM1_Side_view_rzlv9z.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043012/louis-vuitton-nano-alma--M81945_PM1_Interior_view_dd1cw3.avif"
+        ],
+        category: phukien._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Nơ Bướm LV Starry Night",
+        description:
+          "Nơ bướm LV Starry Night của bộ sưu tập mùa này toát lên vẻ đẹp lấp lánh nhờ kết hợp giữa chất liệu lụa cao cấp cùng sợi Lurex màu bạc. Với phần nơ được thắt sẵn có thể điều chỉnh độ rộng và cố định bằng móc cài đơn giản, phụ kiện là lựa chọn lý tưởng để phối với trang phục dự tiệc sang trọng.",
+        price: 380000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043409/louis-vuitton-lv-starry-night-bow-tie--M79091_PM2_Front_view_nagvbs.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043409/louis-vuitton-lv-starry-night-bow-tie--M79091_PM1_Side_view_dpjpz6.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043410/louis-vuitton-lv-starry-night-bow-tie--M79091_PM1_Detail_view_x4jipo.avif"
+        ],
+        category: phukien._id,
+        brand: lv._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Mũ lưỡi trai cotton có hoạ tiết",
+        description:
+          "Mũ lưỡi trai bằng cotton dệt chéo có hoạ tiết phía trước. Đai thấm mồ hôi và đai điều chỉnh có khoá kim loại ở phía sau. Có lót một phần.",
+        price: 260000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043953/a8fa70a8fda22433b3ee0eed2ccc57d986d96a29_dt1v3m.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764043953/8f3fbc0d0f604c774933dd8d777274957318cddb_wo5kea.avif"
+        ],
+        category: phukien._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Mũ cói",
+        description:
+          "Mũ bằng cói nhựa đan có đai thấm mồ hôi bằng lụa sọc ngang. Vành mũ rộng 9 cm.",
+        price: 300000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044121/ebcec901154f1514568bdf45888c8e4fb91a5cdd_hle0fn.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044122/16eb33b0684ea77c807a19de91992e6cba128448_uyzklb.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044124/72397f4df623631af8f4449da90f2bf9df67465b_kecrcp.avif"
+        ],
+        category: phukien._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Kính mát",
+        description:
+          "Kính mát làm từ thép không gỉ 304 với dáng thẳng, thanh lịch cùng các chi tiết thanh mảnh. Ve mũi điều chỉnh được và mắt kính nhựa phủ màu, chống tia cực tím.",
+        price: 420000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044308/146351beacab3cf10b05bd943d226bd682cb74dc_agmd2y.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044307/95a53c283ffde6ba827156e14d6ccb1b0737fbea_gwzupb.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044320/8e8657e089f2c74a83437d254e6d255d80b7adc2_yipicm.avif"
+        ],
+        category: phukien._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Kính mát thể thao",
+        description:
+          "Kính mát dáng shield chống rạn làm từ polycarbonate. Mắt kính phủ màu, chống tia cực tím.",
+        price: 420000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044508/b2fb8940e9ef6a652e84b529353ca7838b0e9909_pb7akn.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044504/56b78988a30a69d44e67ec75f0b2959a42754be0_vuzaeu.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764044506/26bfb3aa2fe9f5a19d0227ac31fa1b6f48055019_cxgla2.avif"
+        ],
+        category: phukien._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
+      {
+        name: "Thắt lưng da",
+        description:
+          "Thắt lưng da với mặt khoá kim loại. Rộng 3,3 cm.",
+        price: 400000,
+        stock: 100,
+        images: [
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764045093/db004e8b396ecc25bce5d85f71717846657c24e2_itvbv0.avif",
+          "https://res.cloudinary.com/dizp1emal/image/upload/v1764045094/892c0cb14a70cd6d39d858a4fd69e1864e4cd8b6_kugpzg.avif"
+        ],
+        category: phukien._id,
+        brand: hm._id,
+        soldCount: 50,
+        viewCount: 200,
+        discountPercentage: 10,
+      },
     ];
 
     await Product.insertMany(products);
@@ -811,5 +1465,7 @@ async function seed() {
     process.exit(1);
   }
 }
+
+
 
 seed();

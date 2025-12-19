@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
 import { FaPlus, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 import SingleImageUpload from '../../../components/SingleImageUpload';
@@ -23,6 +23,7 @@ export default function BrandsManagement() {
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -31,15 +32,14 @@ export default function BrandsManagement() {
     country: ''
   });
 
-  useEffect(() => {
-    fetchBrands();
-  }, [searchTerm]);
-
-  const fetchBrands = async () => {
+  const fetchBrands = useCallback(async (search = '') => {
     try {
-      setLoading(true);
+      // Chỉ set loading cho lần đầu, không set khi search
+      if (isFirstLoad) {
+        setLoading(true);
+      }
       const response = await axios.get('/admin/brands', {
-        params: { limit: 100, search: searchTerm }
+        params: { limit: 100, search }
       });
 
       if (response.data.success) {
@@ -47,11 +47,23 @@ export default function BrandsManagement() {
       }
     } catch (error) {
       console.error('Error fetching brands:', error);
-      alert('Không thể tải thương hiệu!');
+      if (isFirstLoad) {
+        alert('Không thể tải thương hiệu!');
+      }
     } finally {
-      setLoading(false);
+      if (isFirstLoad) {
+        setLoading(false);
+        setIsFirstLoad(false);
+      }
     }
-  };
+  }, [isFirstLoad]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchBrands(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, fetchBrands]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +86,7 @@ export default function BrandsManagement() {
       setShowModal(false);
       setEditingBrand(null);
       setFormData({ name: '', description: '', logo: '', website: '', country: '' });
-      fetchBrands();
+      fetchBrands(searchTerm);
     } catch (error: any) {
       console.error('Error saving brand:', error);
       alert(error.response?.data?.message || 'Có lỗi xảy ra!');
@@ -99,7 +111,7 @@ export default function BrandsManagement() {
     try {
       await axios.delete(`/admin/brands/${id}`);
       alert('Xóa thương hiệu thành công!');
-      fetchBrands();
+      fetchBrands(searchTerm);
     } catch (error: any) {
       console.error('Error deleting brand:', error);
       alert(error.response?.data?.message || 'Không thể xóa thương hiệu!');
@@ -120,7 +132,7 @@ export default function BrandsManagement() {
       });
       alert('Xóa thương hiệu thành công!');
       setSelectedBrands([]);
-      fetchBrands();
+      fetchBrands(searchTerm);
     } catch (error: any) {
       console.error('Error deleting brands:', error);
       alert(error.response?.data?.message || 'Không thể xóa thương hiệu!');

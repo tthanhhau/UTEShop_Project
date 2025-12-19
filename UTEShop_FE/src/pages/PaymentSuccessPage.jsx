@@ -10,8 +10,10 @@ const PaymentSuccessPage = () => {
     const dispatch = useDispatch();
     const [searchParams] = useSearchParams();
     const [paymentInfo, setPaymentInfo] = useState(null);
+    const [orderInfo, setOrderInfo] = useState(null);
     const [isProcessingOrder, setIsProcessingOrder] = useState(false);
     const [orderError, setOrderError] = useState('');
+    const [createdOrderId, setCreatedOrderId] = useState(null);
     const { user } = useSelector((state) => state.auth);
 
     // Xử lý tạo order từ MoMo callback
@@ -66,6 +68,11 @@ const PaymentSuccessPage = () => {
             const result = await dispatch(createOrder(orderData)).unwrap();
             console.log('✅ Order created successfully:', result);
 
+            // Lưu orderId từ MongoDB để sử dụng cho navigation
+            if (result?.order?._id) {
+                setCreatedOrderId(result.order._id);
+            }
+
             // Xóa dữ liệu localStorage sau khi tạo order thành công
             localStorage.removeItem('momoPaymentSuccess');
             console.log('🗑️ Removed localStorage data');
@@ -78,11 +85,8 @@ const PaymentSuccessPage = () => {
 
             console.log('✅ Order created, notifying checkout page');
 
-            // Chuyển đến trang orders sau 1 giây
-            setTimeout(() => {
-                console.log('🚀 Navigating to /orders now');
-                navigate('/orders');
-            }, 1000);
+            // Không tự động chuyển hướng, để người dùng chọn nút
+            console.log('✅ Order created successfully, waiting for user action');
 
         } catch (error) {
             console.error('Order Creation Error from MoMo callback:', error);
@@ -93,12 +97,32 @@ const PaymentSuccessPage = () => {
     }, [user, dispatch, navigate]);
 
     useEffect(() => {
-        // Lấy thông tin thanh toán từ URL params
+        // Kiểm tra xem có thông tin đơn hàng từ MoMoPaymentForm không
+        const savedOrderInfo = localStorage.getItem('momoPaymentSuccess');
+        if (savedOrderInfo) {
+            try {
+                const orderData = JSON.parse(savedOrderInfo);
+                setOrderInfo(orderData);
+                console.log('📦 Loaded order info from localStorage:', orderData);
+
+                // Lưu orderId nếu có
+                if (orderData?.orderId) {
+                    setCreatedOrderId(orderData.orderId);
+                }
+
+                // Xóa localStorage sau khi đã load
+                localStorage.removeItem('momoPaymentSuccess');
+            } catch (error) {
+                console.error('Error parsing order info:', error);
+            }
+        }
+
+        // Lấy thông tin thanh toán từ URL params (cho trường hợp callback từ MoMo)
         const partnerCode = searchParams.get('partnerCode');
         const orderId = searchParams.get('orderId');
         const requestId = searchParams.get('requestId');
         const amount = searchParams.get('amount');
-        const orderInfo = searchParams.get('orderInfo');
+        const orderInfoParam = searchParams.get('orderInfo');
         const resultCode = searchParams.get('resultCode');
         const message = searchParams.get('message');
 
@@ -108,7 +132,7 @@ const PaymentSuccessPage = () => {
                 orderId,
                 requestId,
                 amount: parseInt(amount),
-                orderInfo: decodeURIComponent(orderInfo || ''),
+                orderInfo: decodeURIComponent(orderInfoParam || ''),
                 resultCode,
                 message: decodeURIComponent(message || '')
             });
@@ -126,24 +150,27 @@ const PaymentSuccessPage = () => {
                 }));
 
                 console.log('✅ Signaled checkout page');
-
-                // Chuyển về checkout để xử lý
-                setTimeout(() => {
-                    window.close(); // Đóng tab PaymentSuccess nếu có thể
-                }, 1000);
+                console.log('✅ Payment successful, showing success page');
             }
         }
     }, [searchParams, handleCreateOrderFromCallback]);
 
-    const handleGoToOrders = () => {
-        navigate('/orders');
+    const handleViewDetails = () => {
+        // Điều hướng đến trang theo dõi đơn hàng
+        if (createdOrderId) {
+            // Nếu có orderId từ order vừa tạo, navigate với highlight
+            navigate(`/orders-tracking?highlight=${createdOrderId}`);
+        } else {
+            // Nếu không có orderId, chỉ navigate đến trang order tracking
+            navigate('/orders-tracking');
+        }
     };
 
     const handleGoHome = () => {
         navigate('/');
     };
 
-    const isSuccess = paymentInfo?.resultCode === '0' || paymentInfo?.message?.includes('success');
+    const isSuccess = paymentInfo?.resultCode === '0' || paymentInfo?.message?.includes('success') || orderInfo !== null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -156,14 +183,14 @@ const PaymentSuccessPage = () => {
                     )}
 
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">
-                        {isSuccess ? 'Thanh toán thành công!' : 'Thanh toán thất bại'}
+                        {isSuccess ? 'Bạn đã thanh toán thành công!' : 'Thanh toán thất bại'}
                     </h1>
 
                     <p className="text-gray-600">
                         {isSuccess
                             ? (isProcessingOrder
                                 ? 'Đang tạo đơn hàng...'
-                                : 'Cảm ơn bạn đã thanh toán. Đơn hàng của bạn đang được xử lý.')
+                                : 'Cảm ơn bạn đã thanh toán. Đơn hàng của bạn đã được xác nhận.')
                             : 'Có lỗi xảy ra trong quá trình thanh toán. Vui lòng thử lại.'
                         }
                     </p>
@@ -183,21 +210,39 @@ const PaymentSuccessPage = () => {
                     </div>
                 )}
 
-                {paymentInfo && (
+                {(paymentInfo || orderInfo) && (
                     <div className="mb-6 p-4 bg-gray-50 rounded-lg text-left">
                         <h3 className="font-semibold mb-2">Thông tin giao dịch:</h3>
                         <div className="space-y-1 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Mã đơn hàng:</span>
-                                <span className="font-medium">{paymentInfo.orderId}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Số tiền:</span>
-                                <span className="font-medium text-green-600">
-                                    {paymentInfo.amount?.toLocaleString()}₫
-                                </span>
-                            </div>
-                            {paymentInfo.orderInfo && (
+                            {orderInfo?.orderId && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Mã đơn hàng:</span>
+                                    <span className="font-medium">{orderInfo.orderId}</span>
+                                </div>
+                            )}
+                            {paymentInfo?.orderId && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Mã giao dịch:</span>
+                                    <span className="font-medium">{paymentInfo.orderId}</span>
+                                </div>
+                            )}
+                            {orderInfo?.orderData?.totalPrice && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Số tiền:</span>
+                                    <span className="font-medium text-green-600">
+                                        {orderInfo.orderData.totalPrice?.toLocaleString()}₫
+                                    </span>
+                                </div>
+                            )}
+                            {paymentInfo?.amount && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Số tiền:</span>
+                                    <span className="font-medium text-green-600">
+                                        {paymentInfo.amount?.toLocaleString()}₫
+                                    </span>
+                                </div>
+                            )}
+                            {paymentInfo?.orderInfo && (
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Nội dung:</span>
                                     <span className="font-medium text-xs">
@@ -205,7 +250,7 @@ const PaymentSuccessPage = () => {
                                     </span>
                                 </div>
                             )}
-                            {paymentInfo.message && (
+                            {paymentInfo?.message && (
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Trạng thái:</span>
                                     <span className={`font-medium ${isSuccess ? 'text-green-600' : 'text-red-600'
@@ -220,10 +265,10 @@ const PaymentSuccessPage = () => {
 
                 <div className="space-y-3">
                     <Button
-                        onClick={handleGoToOrders}
+                        onClick={handleViewDetails}
                         className="w-full"
                     >
-                        Xem đơn hàng của tôi
+                        Xem chi tiết
                     </Button>
 
                     <Button
@@ -231,7 +276,7 @@ const PaymentSuccessPage = () => {
                         variant="outline"
                         className="w-full"
                     >
-                        Về trang chủ
+                        Trang chủ
                     </Button>
                 </div>
 

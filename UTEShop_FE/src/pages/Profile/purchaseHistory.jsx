@@ -1,71 +1,153 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Package, Calendar, DollarSign } from "lucide-react";
+import {
+  Search,
+  Package,
+  Calendar,
+  DollarSign,
+  Star,
+  CheckCircle,
+  ShoppingCart,
+} from "lucide-react";
 import api from "@/api/axiosConfig";
-
-// Mock data for order history
-const mockorders = [
-  {
-    id: "ORD-001",
-    date: "2024-01-15",
-    items: [
-      {
-        name: "Áo thun nam basic",
-        price: 299000,
-        quantity: 2,
-        image: "/men-s-basic-t-shirt.png",
-      },
-      {
-        name: "Quần jeans slim fit",
-        price: 599000,
-        quantity: 1,
-        image: "/slim-fit-jeans.png",
-      },
-    ],
-    total: 1197000,
-    status: "Đã giao thành công",
-  },
-];
+import { checkOrderReviewed } from "../../api/reviewApi";
+import { useDispatch } from "react-redux";
+import { addToCart } from "../../features/cart/cartSlice";
 
 export function PurchaseHistory() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
-  //fetch api load du lieu
+  const [reviewStatus, setReviewStatus] = useState({});
+  const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState(null);
+  const [highlightOrderId, setHighlightOrderId] = useState(null);
+  const orderRefs = useRef({});
+
+  // Xử lý điều hướng đến trang đánh giá sản phẩm
+  const handleReviewProduct = (productId, orderId) => {
+    navigate(`/products/${productId}?review=true&orderId=${orderId}#reviews`);
+  };
+
   useEffect(() => {
     const fetchOrdersData = async () => {
       try {
         const response = await api.get("/orders");
-        const filteredOrdersStatus = response.data.orders.filter(
-          (order) => order.status === 5
+        const completedOrders = response.data.orders.filter(
+          (order) => order.status === 'delivered'
         );
-        setOrdersData(filteredOrdersStatus);
+        setOrdersData(completedOrders);
+
+        // Check review status for each completed order
+        const reviewStatusMap = {};
+        await Promise.all(
+          completedOrders.map(async (order) => {
+            try {
+              const reviewCheck = await checkOrderReviewed(order._id);
+              reviewStatusMap[order._id] = reviewCheck.hasReview;
+            } catch (error) {
+              console.error(
+                `Error checking review for order ${order._id}:`,
+                error
+              );
+              reviewStatusMap[order._id] = false;
+            }
+          })
+        );
+        setReviewStatus(reviewStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
-        setError(err.message);
+        setError(err?.message || 'Lỗi không xác định');
       }
     };
 
     fetchOrdersData();
   }, []);
 
-  const filteredorders = orders.filter(
-    (order) =>
-      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.items.some((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-  );
+  // Xử lý highlight và scroll đến đơn hàng từ chatbot
+  useEffect(() => {
+    const orderId = searchParams.get("highlight");
+    if (orderId && orders.length > 0) {
+      setHighlightOrderId(orderId);
+      
+      // Scroll đến đơn hàng sau khi render
+      setTimeout(() => {
+        const orderElement = orderRefs.current[orderId];
+        if (orderElement) {
+          orderElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
 
-  // Đã xóa ": number" khỏi tham số price
+      // Xóa highlight sau 5 giây
+      setTimeout(() => {
+        setHighlightOrderId(null);
+        // Xóa query param khỏi URL
+        navigate("/purchase-history", { replace: true });
+      }, 5000);
+    }
+  }, [searchParams, orders, navigate]);
+
+  // ===== PHẦN TÌM KIẾM ĐÃ ĐƯỢC CẬP NHẬT TỪ ĐOẠN CODE 1 =====
+  const filteredorders = (Array.isArray(orders) ? orders : []).filter((order) => {
+    const term = (searchTerm || '').toString().toLowerCase();
+    const orderId = (order?._id || '').toString().toLowerCase();
+    const items = Array.isArray(order?.items) ? order.items : [];
+
+    const itemMatch = items.some((item) => {
+      // Tìm kiếm theo tên sản phẩm (ở 2 vị trí có thể có) và mã sản phẩm
+      const name = (item?.name || item?.product?.name || '').toString().toLowerCase();
+      const pid = (item?.product?._id || '').toString().toLowerCase();
+      return name.includes(term) || pid.includes(term);
+    });
+
+    return orderId.includes(term) || itemMatch;
+  });
+  // ==========================================================
+
+  // Xử lý logic mua lại
+  const handleRepurchase = async (order) => {
+    setIsAdding(true);
+    try {
+      // Thêm từng sản phẩm vào giỏ hàng
+      for (const item of order.items) {
+        await dispatch(
+          addToCart({
+            productId: item.product._id,
+            quantity: item.quantity,
+          })
+        ).unwrap();
+      }
+      navigate("/cart");
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng:", error);
+      alert("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
   };
+
+  // Thêm phần hiển thị lỗi
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <h2 className="text-xl font-semibold mb-2">Có lỗi xảy ra</h2>
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -78,7 +160,6 @@ export function PurchaseHistory() {
         </p>
       </div>
 
-      {/* Search Bar */}
       <div className="mb-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -91,7 +172,6 @@ export function PurchaseHistory() {
         </div>
       </div>
 
-      {/* order History List */}
       <div className="space-y-6">
         {filteredorders.length === 0 ? (
           <Card>
@@ -107,7 +187,15 @@ export function PurchaseHistory() {
           </Card>
         ) : (
           filteredorders.map((order) => (
-            <Card key={order.id} className="overflow-hidden bg-white rounded-xl border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <Card
+              key={order._id}
+              ref={(el) => (orderRefs.current[order._id] = el)}
+              className={`overflow-hidden bg-white rounded-xl border-2 shadow-lg transition-all duration-500 ${
+                highlightOrderId === order._id
+                  ? "border-yellow-400 ring-4 ring-yellow-200 scale-[1.02] shadow-2xl animate-pulse"
+                  : "border-gray-200 hover:shadow-xl"
+              }`}
+            >
               <CardHeader className=" bg-white ">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
@@ -142,7 +230,7 @@ export function PurchaseHistory() {
                     >
                       <img
                         src={item.product?.images?.[0] || "/placeholder.svg"}
-                        alt={item.name}
+                        alt={item.product?.name}
                         className="w-16 h-16 object-cover rounded-md bg-muted"
                       />
                       <div className="flex-1 min-w-0">
@@ -154,23 +242,60 @@ export function PurchaseHistory() {
                           <span>Giá: {formatPrice(item.price)}</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-4">
                         <div className="font-semibold text-foreground">
                           {formatPrice(item.price * item.quantity)}
+                        </div>
+                        <div className="flex-shrink-0">
+                          {reviewStatus[order._id] ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              className="bg-green-50 border-green-200 text-green-700"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Đã đánh giá
+                            </Button>
+                          ) : (
+                            <Button
+                              className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+                              size="sm"
+                              onClick={() =>
+                                handleReviewProduct(
+                                  item.product._id,
+                                  order._id
+                                )
+                              }
+                            >
+                              <Star className="w-4 h-4 mr-2" />
+                              Đánh giá
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
-                  <Button variant="outline" className="flex-1 bg-blue-500 text-white hover:bg-blue-600">
-                    Mua lại
-                  </Button>
-                  <Button variant="outline" className="flex-1 bg-transparent hover:bg-gray-100">
-                    Xem chi tiết
-                  </Button>
-                  <Button variant="outline" className="flex-1 bg-transparent hover:bg-gray-100">
-                    Đánh giá sản phẩm
+                <div className="flex justify-end mt-6 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-blue-500 text-white hover:bg-blue-600 px-4"
+                    onClick={() => handleRepurchase(order)}
+                    disabled={isAdding}
+                  >
+                    {isAdding ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Mua lại
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>

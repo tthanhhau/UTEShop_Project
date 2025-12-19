@@ -1,6 +1,7 @@
 import Product from "../models/product.js";
 import Category from "../models/category.js";
 import Brand from "../models/brand.js";
+import Review from "../models/review.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 // Lấy tất cả products với phân trang và tìm kiếm
@@ -28,30 +29,94 @@ export const getProducts = asyncHandler(async (req, res) => {
     if (category) filter.category = category;
     if (brand) filter.brand = brand;
 
+    // Check if we need to sort by price (which requires aggregation)
+    const isPriceSort = sort === 'price-asc' || sort === 'price-desc';
+
     // Sort options
     const sortMap = {
         newest: { createdAt: -1 },
         'best-selling': { soldCount: -1 },
         'most-viewed': { viewCount: -1 },
         'top-discount': { discountPercentage: -1 },
-        'price-asc': { price: 1 },
-        'price-desc': { price: -1 },
         'name-asc': { name: 1 },
         'name-desc': { name: -1 }
     };
 
     const sortOption = sortMap[sort] || sortMap.newest;
 
-    const [products, total] = await Promise.all([
-        Product.find(filter)
-            .populate('category', 'name')
-            .populate('brand', 'name')
-            .sort(sortOption)
-            .skip((pageNum - 1) * pageSize)
-            .limit(pageSize)
-            .lean(),
-        Product.countDocuments(filter)
-    ]);
+    let products, total;
+
+    if (isPriceSort) {
+        // Use aggregation pipeline for price sorting to calculate final price
+        const pipeline = [
+            { $match: filter },
+            {
+                $addFields: {
+                    finalPrice: {
+                        $multiply: [
+                            "$price",
+                            { $subtract: [1, { $divide: ["$discountPercentage", 100] }] }
+                        ]
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "category"
+                }
+            },
+            {
+                $lookup: {
+                    from: "brands",
+                    localField: "brand",
+                    foreignField: "_id",
+                    as: "brand"
+                }
+            },
+            {
+                $addFields: {
+                    category: { $arrayElemAt: ["$category", 0] },
+                    brand: { $arrayElemAt: ["$brand", 0] }
+                }
+            },
+            {
+                $sort: sort === 'price-asc' ? { finalPrice: 1 } : { finalPrice: -1 }
+            }
+        ];
+
+        const [aggregationResult, countResult] = await Promise.all([
+            Product.aggregate([
+                ...pipeline,
+                { $skip: (pageNum - 1) * pageSize },
+                { $limit: pageSize }
+            ]),
+            Product.aggregate([
+                { $match: filter },
+                { $count: "total" }
+            ])
+        ]);
+
+        products = aggregationResult;
+        total = countResult[0]?.total || 0;
+    } else {
+        // Regular query for non-price sorting
+        const [productsResult, totalResult] = await Promise.all([
+            Product.find(filter)
+                .populate('category', 'name')
+                .populate('brand', 'name')
+                .sort(sortOption)
+                .skip((pageNum - 1) * pageSize)
+                .limit(pageSize)
+                .lean(),
+            Product.countDocuments(filter)
+        ]);
+
+        products = productsResult;
+        total = totalResult;
+    }
 
     // Tính giá sau giảm cho mỗi sản phẩm
     const productsWithDiscount = products.map(product => ({
@@ -141,7 +206,9 @@ export const createProduct = asyncHandler(async (req, res) => {
         images: images || [],
         category,
         brand,
-        discountPercentage
+        discountPercentage,
+        isActive: true,  // Mặc định là active khi tạo mới
+        isVisible: true  // Mặc định là visible khi tạo mới
     });
 
     const populatedProduct = await Product.findById(product._id)
@@ -231,6 +298,10 @@ export const deleteProduct = asyncHandler(async (req, res) => {
         });
     }
 
+    // First, delete all reviews associated with this product
+    await Review.deleteMany({ product: req.params.id });
+
+    // Then delete the product
     await Product.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -250,6 +321,10 @@ export const deleteMultipleProducts = asyncHandler(async (req, res) => {
         });
     }
 
+    // First, delete all reviews associated with these products
+    await Review.deleteMany({ product: { $in: ids } });
+
+    // Then delete the products
     const result = await Product.deleteMany({ _id: { $in: ids } });
 
     res.status(200).json({
@@ -282,7 +357,7 @@ export const toggleDiscount = asyncHandler(async (req, res) => {
     });
 });
 
-// Toggle visibility status (có thể thêm field isVisible vào schema sau)
+// Toggle visibility status
 export const toggleVisibility = asyncHandler(async (req, res) => {
     const product = await Product.findById(req.params.id);
 
@@ -293,16 +368,20 @@ export const toggleVisibility = asyncHandler(async (req, res) => {
         });
     }
 
-    // Tạm thời dùng stock > 0 để đại diện cho visibility
+    // Toggle visibility status - đồng bộ cả hai trường isActive và isVisible
+    const newVisibilityStatus = !product.isVisible;
     const updatedProduct = await Product.findByIdAndUpdate(
         req.params.id,
-        { stock: product.stock > 0 ? 0 : 10 }, // Toggle stock between 0 and 10
+        {
+            isVisible: newVisibilityStatus,
+            isActive: newVisibilityStatus  // Đồng bộ hóa với isActive
+        },
         { new: true }
     ).populate('category', 'name').populate('brand', 'name');
 
     res.status(200).json({
         success: true,
         data: updatedProduct,
-        message: `Đã ${updatedProduct.stock > 0 ? 'hiển thị' : 'ẩn'} sản phẩm`
+        message: `Đã ${updatedProduct.isVisible ? 'hiển thị' : 'ẩn'} sản phẩm`
     });
 });

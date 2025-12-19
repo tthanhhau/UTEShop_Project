@@ -14,10 +14,10 @@ export const orderApi = {
     return response.data;
   },
 
-  // Get order by ID
+  // Get order by ID for current user
   getOrderById: async (orderId) => {
-    const response = await api.get(`/orders/admin/${orderId}`);
-    return response.data;
+    const response = await api.get(`/orders/${orderId}`);
+    return response.data; // API trả về { success: true, order: {...} }
   },
 
   // Update order status and payment status
@@ -39,6 +39,12 @@ export const orderApi = {
 
   cancelOrder: async (orderId) => {
     const response = await api.delete(`/orders/${orderId}`);
+    return response.data;
+  },
+
+  // Handle delivery confirmation
+  handleDeliveryConfirmation: async (orderId, action) => {
+    const response = await api.post(`/orders/${orderId}/delivery-confirmation`, { action });
     return response.data;
   }
 };

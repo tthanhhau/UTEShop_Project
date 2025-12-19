@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "../api/axiosConfig";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
+import SearchAutocomplete from '../components/SearchAutocomplete';
 
 export default function ProductListPage() {
     const [products, setProducts] = useState([]);
@@ -11,7 +12,10 @@ export default function ProductListPage() {
     const [error, setError] = useState(null);
     const [pagination, setPagination] = useState({});
     const [searchParams, setSearchParams] = useSearchParams();
+    const [showBackToTop, setShowBackToTop] = useState(false);
+    const [isImageSearch, setIsImageSearch] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Get current filters from URL
     const page = searchParams.get('page') || '1';
@@ -19,6 +23,14 @@ export default function ProductListPage() {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const brand = searchParams.get('brand') || '';
+    const minPrice = searchParams.get('minPrice') || '';
+    const maxPrice = searchParams.get('maxPrice') || '';
+    const minRating = searchParams.get('minRating') || '';
+
+    // Local UI state to avoid input cursor jump while typing
+    const [priceMinInput, setPriceMinInput] = useState(minPrice);
+    const [priceMaxInput, setPriceMaxInput] = useState(maxPrice);
+    const [ratingInput, setRatingInput] = useState(minRating);
 
     // Fetch categories and brands
     useEffect(() => {
@@ -37,29 +49,115 @@ export default function ProductListPage() {
         fetchFilters();
     }, []);
 
+    // Handle scroll for back to top button
     useEffect(() => {
+        const handleScroll = () => {
+            setShowBackToTop(window.scrollY > 400);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // Xử lý khi chọn sản phẩm từ autocomplete
+    const handleProductSelect = (product) => {
+        // Điều hướng đến trang chi tiết sản phẩm
+        navigate(`/product/${product._id}`);
+    };
+
+    // Handle image search results from navigation state
+    useEffect(() => {
+        if (location.state?.isImageSearch && location.state?.imageSearchResults) {
+            setProducts(location.state.imageSearchResults);
+            setPagination({
+                page: 1,
+                totalPages: 1,
+                total: location.state.imageSearchResults.length,
+                limit: location.state.imageSearchResults.length
+            });
+            setIsImageSearch(true);
+            setLoading(false);
+            // Clear the state to prevent reusing on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
+
+    useEffect(() => {
+        // Skip if we're showing image search results
+        if (location.state?.isImageSearch && location.state?.imageSearchResults) {
+            return;
+        }
+
         const fetchProducts = async () => {
             try {
                 setLoading(true);
                 setError(null);
+                setIsImageSearch(false);
 
-                const params = new URLSearchParams({
-                    page,
-                    limit: '12',
-                    sort,
-                    ...(search && { search }),
-                    ...(category && { category }),
-                    ...(brand && { brand })
-                });
+                // Kiểm tra nếu có search query, sử dụng Elasticsearch
+                if (search) {
+                    try {
+                        const params = new URLSearchParams({
+                            q: search,
+                            page,
+                            limit: '12',
+                            sort,
+                            ...(category && { category }),
+                            ...(brand && { brand }),
+                            ...(minPrice && { minPrice }),
+                            ...(maxPrice && { maxPrice }),
+                            ...(minRating && { minRating })
+                        });
 
-                const res = await axios.get(`/products?${params}`);
-                setProducts(res.data.items || []);
-                setPagination({
-                    page: res.data.page,
-                    totalPages: res.data.totalPages,
-                    total: res.data.total,
-                    limit: res.data.limit
-                });
+                        const res = await axios.get(`/elasticsearch/search?${params}`);
+                        setProducts(res.data.data || []);
+                        setPagination(res.data.pagination || {});
+                    } catch (elasticsearchError) {
+                        console.log("Elasticsearch error, falling back to regular API:", elasticsearchError);
+                        // Fallback to regular API if Elasticsearch fails
+                        const params = new URLSearchParams({
+                            page,
+                            limit: '12',
+                            sort,
+                            ...(search && { search }),
+                            ...(category && { category }),
+                            ...(brand && { brand }),
+                            ...(minPrice && { minPrice }),
+                            ...(maxPrice && { maxPrice }),
+                            ...(minRating && { minRating })
+                        });
+
+                        const res = await axios.get(`/products?${params}`);
+                        setProducts(res.data.items || []);
+                        setPagination({
+                            page: res.data.page,
+                            totalPages: res.data.totalPages,
+                            total: res.data.total,
+                            limit: res.data.limit
+                        });
+                    }
+                } else {
+                    // Sử dụng API thông thường khi không có search
+                    const params = new URLSearchParams({
+                        page,
+                        limit: '12',
+                        sort,
+                        ...(search && { search }),
+                        ...(category && { category }),
+                        ...(brand && { brand }),
+                        ...(minPrice && { minPrice }),
+                        ...(maxPrice && { maxPrice }),
+                        ...(minRating && { minRating })
+                    });
+
+                    const res = await axios.get(`/products?${params}`);
+                    setProducts(res.data.items || []);
+                    setPagination({
+                        page: res.data.page,
+                        totalPages: res.data.totalPages,
+                        total: res.data.total,
+                        limit: res.data.limit
+                    });
+                }
             } catch (err) {
                 console.error("Lỗi khi lấy sản phẩm:", err);
                 setError("Không thể tải danh sách sản phẩm");
@@ -68,14 +166,17 @@ export default function ProductListPage() {
             }
         };
         fetchProducts();
-    }, [page, sort, search, category, brand]);
+    }, [page, sort, search, category, brand, minPrice, maxPrice, minRating]);
 
     const handlePageChange = (newPage) => {
         setSearchParams(prev => ({ ...Object.fromEntries(prev), page: newPage.toString() }));
+        // Scroll to top when changing page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSortChange = (newSort) => {
         setSearchParams(prev => ({ ...Object.fromEntries(prev), sort: newSort, page: '1' }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSearch = (searchTerm) => {
@@ -84,6 +185,7 @@ export default function ProductListPage() {
             search: searchTerm,
             page: '1'
         }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleCategoryChange = (categoryId) => {
@@ -92,6 +194,7 @@ export default function ProductListPage() {
             category: categoryId,
             page: '1'
         }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleBrandChange = (brandId) => {
@@ -100,6 +203,28 @@ export default function ProductListPage() {
             brand: brandId,
             page: '1'
         }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const commitPriceChange = (field, value) => {
+        setSearchParams(prev => {
+            const next = { ...Object.fromEntries(prev), page: '1' };
+            if (value === '' || value === null) {
+                delete next[field];
+            } else {
+                next[field] = value;
+            }
+            return next;
+        });
+    };
+
+    const handleRatingChange = (value) => {
+        setRatingInput(value);
+        setSearchParams(prev => {
+            const next = { ...Object.fromEntries(prev), page: '1' };
+            if (!value) delete next.minRating; else next.minRating = value;
+            return next;
+        });
     };
 
     if (loading) {
@@ -125,130 +250,367 @@ export default function ProductListPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-4">
+        <div className="max-w-7xl mx-auto px-4 py-6">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-800 mb-4">Tất cả sản phẩm</h1>
-
-                {/* Search and Filter Bar */}
-
-                <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                    {/*
-                    <div className="relative flex-1 max-w-md">
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm sản phẩm..."
-                            value={search}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <svg className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-gray-800 mb-3">
+                        {isImageSearch ? 'Kết quả tìm kiếm bằng hình ảnh' : 'Tất cả sản phẩm'}
+                    </h1>
+                    <div className="w-24 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto rounded-full"></div>
+                </div>
+                
+                {/* Image Search Banner */}
+                {isImageSearch && products.length > 0 && (
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                <div>
+                                    <p className="text-blue-700 text-sm font-medium">
+                                        Sản phẩm tìm thấy từ hình ảnh của bạn
+                                    </p>
+                                    {products[0]?.similarity && (
+                                        <p className="text-blue-600 text-xs mt-1">
+                                            Độ tương đồng: {(products[0].similarity * 100).toFixed(1)}%
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            {products[0]?.stock > 0 ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                                    Còn hàng
+                                </span>
+                            ) : (
+                                <span className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-medium">
+                                    Hết hàng
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    */}
+                )}
 
-                    {/* Category Filter */}
-                    <select
-                        value={category}
-                        onChange={(e) => handleCategoryChange(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                        <option value="">Tất cả danh mục</option>
-                        {categories.map(cat => (
-                            <option key={cat._id} value={cat._id}>
-                                {cat.name}
-                            </option>
-                        ))}
-                    </select>
+                {/* Filter Section */}
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 mb-6 shadow-sm">
+                    {/* Row 1: Dropdowns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        {/* Category Filter */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-tags mr-2 text-purple-600"></i>
+                                Danh mục
+                            </label>
+                            <select
+                                value={category}
+                                onChange={(e) => handleCategoryChange(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all cursor-pointer hover:border-purple-300"
+                            >
+                                <option value="">Tất cả danh mục</option>
+                                {categories.map(cat => (
+                                    <option key={cat._id} value={cat._id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                    {/* Brand Filter */}
-                    <select
-                        value={brand}
-                        onChange={(e) => handleBrandChange(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                        <option value="">Tất cả thương hiệu</option>
-                        {brands.map(br => (
-                            <option key={br._id} value={br._id}>
-                                {br.name}
-                            </option>
-                        ))}
-                    </select>
+                        {/* Brand Filter */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-star mr-2 text-pink-600"></i>
+                                Thương hiệu
+                            </label>
+                            <select
+                                value={brand}
+                                onChange={(e) => handleBrandChange(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all cursor-pointer hover:border-purple-300"
+                            >
+                                <option value="">Tất cả thương hiệu</option>
+                                {brands.map(br => (
+                                    <option key={br._id} value={br._id}>
+                                        {br.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Price Range */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-dollar-sign mr-2 text-green-600"></i>
+                                Khoảng giá
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="0"
+                                    step="1000"
+                                    value={priceMinInput}
+                                    onChange={(e) => setPriceMinInput(e.target.value)}
+                                    onBlur={() => commitPriceChange('minPrice', priceMinInput)}
+                                    placeholder="Giá từ"
+                                    className="w-full px-3 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+                                />
+                                <span className="text-gray-400">-</span>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min="0"
+                                    step="1000"
+                                    value={priceMaxInput}
+                                    onChange={(e) => setPriceMaxInput(e.target.value)}
+                                    onBlur={() => commitPriceChange('maxPrice', priceMaxInput)}
+                                    placeholder="đến"
+                                    className="w-full px-3 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Rating Filter */}
+                        <div className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-star mr-2 text-yellow-500"></i>
+                                Đánh giá
+                            </label>
+                            <select
+                                value={ratingInput}
+                                onChange={(e) => handleRatingChange(e.target.value)}
+                                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all cursor-pointer hover:border-purple-300"
+                            >
+                                <option value="">Tất cả số sao</option>
+                                <option value="4.5">⭐ Từ 4.5 sao</option>
+                                <option value="4">⭐ Từ 4 sao</option>
+                                <option value="3.5">⭐ Từ 3.5 sao</option>
+                                <option value="3">⭐ Từ 3 sao</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Sort Options */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    {[
-                        { value: 'newest', label: 'Mới nhất' },
-                        { value: 'best-selling', label: 'Bán chạy' },
-                        { value: 'most-viewed', label: 'Xem nhiều' },
-                        { value: 'top-discount', label: 'Khuyến mãi' },
-                        { value: 'price-asc', label: 'Giá tăng dần' },
-                        { value: 'price-desc', label: 'Giá giảm dần' }
-                    ].map(option => (
-                        <button
-                            key={option.value}
-                            onClick={() => handleSortChange(option.value)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${sort === option.value
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                <div className="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-100">
+                    <div className="flex flex-wrap gap-3">
+                        {[
+                            { value: 'newest', label: 'Mới nhất', icon: 'fa-sparkles' },
+                            { value: 'best-selling', label: 'Bán chạy', icon: 'fa-fire' },
+                            { value: 'most-viewed', label: 'Khuyến mãi', icon: 'fa-tags' },
+                            { value: 'price-asc', label: 'Giá tăng dần', icon: 'fa-arrow-up' },
+                            { value: 'price-desc', label: 'Giá giảm dần', icon: 'fa-arrow-down' },
+                            { value: 'alpha-asc', label: 'A → Z', icon: 'fa-sort-alpha-down' },
+                            { value: 'alpha-desc', label: 'Z → A', icon: 'fa-sort-alpha-up' }
+                        ].map(option => (
+                            <button
+                                key={option.value}
+                                onClick={() => handleSortChange(option.value)}
+                                className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 transform hover:scale-105 flex items-center gap-2 ${
+                                    sort === option.value
+                                        ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
+                            >
+                                <i className={`fas ${option.icon} text-xs`}></i>
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Results Info */}
-                <div className="flex justify-between items-center mb-4">
-                    <p className="text-gray-600">
-                        Hiển thị {products.length} trong tổng số {pagination.total} sản phẩm
+                <div className="flex justify-between items-center mb-6 px-2">
+                    <p className="text-gray-700 font-medium">
+                        Hiển thị <span className="text-purple-600 font-bold">{products.length}</span> trong tổng số <span className="text-purple-600 font-bold">{pagination.total}</span> sản phẩm
                     </p>
                 </div>
             </div>
 
             {/* Products Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                {products.map((product) => (
-                    <ProductCard key={product._id} product={product} />
-                ))}
-            </div>
+            {products.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                    <svg className="w-24 h-24 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Không tìm thấy sản phẩm</h3>
+                    <p className="text-gray-500 mb-4">Thử thay đổi bộ lọc hoặc tìm kiếm với từ khóa khác</p>
+                    <button
+                        onClick={() => {
+                            setSearchParams({});
+                            window.location.reload();
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        Xóa bộ lọc
+                    </button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                    {products.map((product) => (
+                        <ProductCard key={product._id} product={product} />
+                    ))}
+                </div>
+            )}
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-                <div className="flex justify-center items-center space-x-2">
-                    <button
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        disabled={pagination.page <= 1}
-                        className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                    >
-                        Trước
-                    </button>
+                <div className="flex flex-col items-center space-y-4">
+                    {/* Page Info */}
+                    <div className="text-sm text-gray-600">
+                        Trang <span className="font-semibold text-gray-900">{pagination.page}</span> / <span className="font-semibold text-gray-900">{pagination.totalPages}</span>
+                    </div>
 
-                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(pageNum => (
+                    {/* Pagination Buttons */}
+                    <div className="flex items-center space-x-1 sm:space-x-2 flex-wrap justify-center">
+                        {/* First Page Button - Hidden on mobile */}
                         <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={`px-3 py-2 border rounded-lg ${pageNum === pagination.page
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'border-gray-300 hover:bg-gray-50'
-                                }`}
+                            onClick={() => handlePageChange(1)}
+                            disabled={pagination.page === 1}
+                            className="hidden sm:flex px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                            title="Trang đầu"
                         >
-                            {pageNum}
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                            </svg>
                         </button>
-                    ))}
 
-                    <button
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        disabled={pagination.page >= pagination.totalPages}
-                        className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                    >
-                        Sau
-                    </button>
+                        {/* Previous Page Button */}
+                        <button
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            disabled={pagination.page <= 1}
+                            className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors font-medium text-sm sm:text-base"
+                        >
+                            Trước
+                        </button>
+
+                        {/* Page Numbers */}
+                        {(() => {
+                            const currentPage = pagination.page;
+                            const totalPages = pagination.totalPages;
+                            const pages = [];
+
+                            if (totalPages <= 7) {
+                                // Show all pages if 7 or fewer
+                                for (let i = 1; i <= totalPages; i++) {
+                                    pages.push(i);
+                                }
+                            } else {
+                                // Always show first page
+                                pages.push(1);
+
+                                if (currentPage > 3) {
+                                    pages.push('...');
+                                }
+
+                                // Show pages around current page
+                                const start = Math.max(2, currentPage - 1);
+                                const end = Math.min(totalPages - 1, currentPage + 1);
+
+                                for (let i = start; i <= end; i++) {
+                                    pages.push(i);
+                                }
+
+                                if (currentPage < totalPages - 2) {
+                                    pages.push('...');
+                                }
+
+                                // Always show last page
+                                pages.push(totalPages);
+                            }
+
+                            return pages.map((pageNum, index) => {
+                                if (pageNum === '...') {
+                                    return (
+                                        <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-400">
+                                            ...
+                                        </span>
+                                    );
+                                }
+
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => handlePageChange(pageNum)}
+                                        className={`px-3 sm:px-4 py-2 border rounded-lg font-medium transition-colors text-sm sm:text-base ${pageNum === currentPage
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                                            : 'border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                                            }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            });
+                        })()}
+
+                        {/* Next Page Button */}
+                        <button
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            disabled={pagination.page >= pagination.totalPages}
+                            className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors font-medium text-sm sm:text-base"
+                        >
+                            Sau
+                        </button>
+
+                        {/* Last Page Button - Hidden on mobile */}
+                        <button
+                            onClick={() => handlePageChange(pagination.totalPages)}
+                            disabled={pagination.page === pagination.totalPages}
+                            className="hidden sm:flex px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                            title="Trang cuối"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Jump to Page - Hidden on small mobile */}
+                    <div className="hidden xs:flex items-center space-x-2">
+                        <span className="text-sm text-gray-600">Đến trang:</span>
+                        <input
+                            type="number"
+                            min="1"
+                            max={pagination.totalPages}
+                            defaultValue={pagination.page}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    const page = parseInt(e.target.value);
+                                    if (page >= 1 && page <= pagination.totalPages) {
+                                        handlePageChange(page);
+                                    }
+                                }
+                            }}
+                            className="w-16 sm:w-20 px-2 sm:px-3 py-1 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder={pagination.page}
+                        />
+                        <button
+                            onClick={(e) => {
+                                const input = e.target.previousElementSibling;
+                                const page = parseInt(input.value);
+                                if (page >= 1 && page <= pagination.totalPages) {
+                                    handlePageChange(page);
+                                }
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                            Đi
+                        </button>
+                    </div>
                 </div>
+            )}
+
+            {/* Back to Top Button */}
+            {showBackToTop && (
+                <button
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="fixed bottom-8 right-8 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 hover:scale-110 z-50"
+                    title="Lên đầu trang"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                </button>
             )}
         </div>
     );
 }
-

@@ -1,7 +1,7 @@
 // src/controllers/authController.js
 import User from '../models/user.js';
 import Otp from '../models/Otp.js';
-import { sendMail } from '../config/mailer.js';
+import { sendMail } from '../config/mailer_admin_based.js';
 import { otpHtml } from '../utils/emailTemplates.js';
 import generateOtp from '../utils/generateOtp.js';
 import { hash, compare } from '../utils/hash.js';
@@ -17,20 +17,34 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 const addMinutes = (d, mins) => new Date(d.getTime() + mins * 60000);
 
 async function createAndSendOtp(email, type, title) {
-  // clear OTP cũ cùng type
-  await Otp.deleteMany({ email, type });
+  try {
+    // clear OTP cũ cùng type
+    await Otp.deleteMany({ email, type });
 
-  const code = generateOtp(); // 6 chữ số
-  const codeHash = await hash(code);
-  const expiresAt = addMinutes(new Date(), 10); // 10 phút
+    const code = generateOtp(); // 6 chữ số
+    const codeHash = await hash(code);
+    const expiresAt = addMinutes(new Date(), 10); // 10 phút
 
-  await Otp.create({ email, codeHash, type, expiresAt, attempts: 0 });
+    await Otp.create({ email, codeHash, type, expiresAt, attempts: 0 });
 
-  await sendMail({
-    to: email,
-    subject: `${title} – Mã OTP`,
-    html: otpHtml({ title, code }),
-  });
+    try {
+      await sendMail({
+        to: email,
+        subject: `${title} – Mã OTP`,
+        html: otpHtml({ title, code }),
+      });
+      console.log(`✅ OTP email sent successfully to ${email} for ${type}`);
+      return { success: true, message: 'OTP đã được gửi' };
+    } catch (emailError) {
+      console.error(`❌ Failed to send OTP email to ${email}:`, emailError);
+      // Xóa OTP đã tạo nếu gửi email thất bại
+      await Otp.deleteMany({ email, type });
+      throw new Error(`Không thể gửi email OTP: ${emailError.message}`);
+    }
+  } catch (error) {
+    console.error(`❌ createAndSendOtp error for ${email}:`, error);
+    throw error;
+  }
 }
 
 /* ---------------------------- Controllers --------------------------- */
@@ -42,11 +56,82 @@ export const registerRequestOtp = asyncHandler(async (req, res) => {
   const exists = await User.findOne({ email }).lean();
   if (exists) return res.status(409).json({ message: 'Email đã tồn tại' });
 
-  await createAndSendOtp(email, 'register', 'Xác thực đăng ký');
-  return res.json({ message: 'OTP đã được gửi' });
+  try {
+    await createAndSendOtp(email, 'register', 'Xác thực đăng ký');
+    return res.json({ message: 'OTP đã được gửi' });
+  } catch (error) {
+    console.error('❌ Register OTP error:', error);
+    return res.status(500).json({
+      message: 'Không thể gửi OTP đăng ký',
+      error: error.message
+    });
+  }
 });
 
-// 2) Xác minh OTP & tạo tài khoản
+// 2a) Chỉ xác minh OTP (không tạo tài khoản)
+export const verifyOtpOnly = asyncHandler(async (req, res) => {
+  const { email, code } = req.body;
+
+  const otp = await Otp.findOne({ email, type: 'register' });
+  if (!otp) return res.status(400).json({ message: 'OTP không tồn tại hoặc đã dùng' });
+
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn' });
+  }
+
+  const ok = await compare(code, otp.codeHash);
+  if (!ok) {
+    otp.attempts = (otp.attempts || 0) + 1;
+    await otp.save();
+    return res.status(400).json({ message: 'Mã OTP không đúng' });
+  }
+
+  // Đánh dấu OTP đã được xác minh (thêm field verified)
+  otp.verified = true;
+  await otp.save();
+
+  return res.json({ 
+    message: 'Xác minh OTP thành công',
+    verified: true 
+  });
+});
+
+// 2b) Hoàn tất đăng ký (sau khi OTP đã được verify)
+export const completeRegistration = asyncHandler(async (req, res) => {
+  const { email, name, password } = req.body;
+
+  // Kiểm tra OTP đã được verify chưa
+  const otp = await Otp.findOne({ email, type: 'register', verified: true });
+  if (!otp) {
+    return res.status(400).json({ 
+      message: 'Vui lòng xác minh OTP trước khi hoàn tất đăng ký' 
+    });
+  }
+
+  // Kiểm tra OTP còn hạn không
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn, vui lòng đăng ký lại' });
+  }
+
+  // Tạo tài khoản
+  const user = await User.create({ email, username: name, password });
+
+  // Xóa OTP sau khi tạo tài khoản thành công
+  await Otp.deleteMany({ email, type: 'register' });
+
+  return res.status(201).json({
+    message: 'Đăng ký thành công',
+    user: {
+      id: user._id,
+      email: user.email,
+      name: user.name || user.username,
+    },
+  });
+});
+
+// 2c) Xác minh OTP & tạo tài khoản (giữ lại để tương thích)
 export const registerVerify = asyncHandler(async (req, res) => {
   const { email, code, name, password } = req.body;
 
@@ -87,11 +172,78 @@ export const resetRequestOtp = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email }).lean();
   if (!user) return res.status(404).json({ message: 'Email không tồn tại' });
 
-  await createAndSendOtp(email, 'reset', 'Đặt lại mật khẩu');
-  return res.json({ message: 'OTP đã được gửi' });
+  try {
+    await createAndSendOtp(email, 'reset', 'Đặt lại mật khẩu');
+    return res.json({ message: 'OTP đã được gửi' });
+  } catch (error) {
+    console.error('❌ Reset OTP error:', error);
+    return res.status(500).json({
+      message: 'Không thể gửi OTP đặt lại mật khẩu',
+      error: error.message
+    });
+  }
 });
 
-// 4) Xác minh OTP & đổi mật khẩu
+// 4a) Chỉ xác minh OTP reset (không đổi mật khẩu)
+export const verifyResetOtpOnly = asyncHandler(async (req, res) => {
+  const { email, code } = req.body;
+
+  const otp = await Otp.findOne({ email, type: 'reset' });
+  if (!otp) return res.status(400).json({ message: 'OTP không tồn tại hoặc đã dùng' });
+
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn' });
+  }
+
+  const ok = await compare(code, otp.codeHash);
+  if (!ok) {
+    otp.attempts = (otp.attempts || 0) + 1;
+    await otp.save();
+    return res.status(400).json({ message: 'Mã OTP không đúng' });
+  }
+
+  // Đánh dấu OTP đã được xác minh
+  otp.verified = true;
+  await otp.save();
+
+  return res.json({ 
+    message: 'Xác minh OTP thành công',
+    verified: true 
+  });
+});
+
+// 4b) Đổi mật khẩu (sau khi OTP đã được verify)
+export const completePasswordReset = asyncHandler(async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  // Kiểm tra OTP đã được verify chưa
+  const otp = await Otp.findOne({ email, type: 'reset', verified: true });
+  if (!otp) {
+    return res.status(400).json({ 
+      message: 'Vui lòng xác minh OTP trước khi đổi mật khẩu' 
+    });
+  }
+
+  // Kiểm tra OTP còn hạn không
+  if (otp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: otp._id });
+    return res.status(400).json({ message: 'OTP đã hết hạn, vui lòng thử lại' });
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'Email không tồn tại' });
+
+  user.password = newPassword; // pre-save hook sẽ hash
+  await user.save();
+
+  // Xóa OTP sau khi đổi mật khẩu thành công
+  await Otp.deleteMany({ email, type: 'reset' });
+
+  return res.json({ message: 'Đổi mật khẩu thành công' });
+});
+
+// 4c) Xác minh OTP & đổi mật khẩu (giữ lại để tương thích)
 export const resetVerify = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body;
 
@@ -138,7 +290,7 @@ export const login = asyncHandler(async (req, res) => {
   if (!user) {
     console.log('❌ LOGIN - User not found:', email);
     return res.status(401).json({
-      message: 'Sai email hoặc mật khẩu',
+      message: 'Sai email ',
       code: 'INVALID_CREDENTIALS'
     });
   }
@@ -148,7 +300,7 @@ export const login = asyncHandler(async (req, res) => {
   if (!ok) {
     console.log('❌ LOGIN - Wrong password for:', email);
     return res.status(401).json({
-      message: 'Sai email hoặc mật khẩu',
+      message: 'Sai  mật khẩu',
       code: 'INVALID_CREDENTIALS'
     });
   }
@@ -159,7 +311,8 @@ export const login = asyncHandler(async (req, res) => {
     id: user._id, // Thêm id để tương thích
     email: user.email,
     name: user.name,
-    role: user.role
+    role: user.role,
+    loyaltyPoints: user.loyaltyPoints.balance
   };
 
   console.log('🔑 LOGIN - Creating token with payload:', payload);
@@ -212,4 +365,137 @@ export const refreshTokenController = asyncHandler(async (req, res) => {
 // Hiện tại không lưu server-side -> chỉ trả OK để FE xoá local
 export const logout = asyncHandler(async (_req, res) => {
   res.json({ message: 'Logged out successfully' });
+});
+
+// 9) Facebook Login
+export const facebookLogin = asyncHandler(async (req, res) => {
+  const { accessToken, userID, name, email, picture } = req.body;
+
+  if (!accessToken || !userID) {
+    return res.status(400).json({
+      message: 'Facebook access token và userID là bắt buộc',
+      code: 'MISSING_FACEBOOK_DATA'
+    });
+  }
+
+  try {
+    // Verify Facebook token với Facebook Graph API (với retry logic)
+    const axios = (await import('axios')).default;
+    let fbResponse;
+    let retries = 3;
+
+    while (retries > 0) {
+      try {
+        console.log(`🔍 Verifying Facebook token (attempts left: ${retries})...`);
+        fbResponse = await axios.get(
+          `https://graph.facebook.com/v18.0/me`,
+          {
+            params: {
+              access_token: accessToken,
+              fields: 'id,name,email'
+            },
+            timeout: 10000, // 10 second timeout
+            headers: {
+              'Accept': 'application/json'
+            }
+          }
+        );
+        console.log('✅ Facebook token verified successfully');
+        break; // Success, exit retry loop
+      } catch (verifyError) {
+        retries--;
+        if (retries === 0) {
+          // Nếu verify thất bại sau 3 lần thử, vẫn cho phép login
+          // nhưng log warning (trust client-side verification)
+          console.warn('⚠️ Facebook token verification failed, trusting client data:', verifyError.message);
+          fbResponse = { data: { id: userID, name, email } };
+        } else {
+          console.log(`⚠️ Retry Facebook verification (${retries} left)...`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        }
+      }
+    }
+
+    // Kiểm tra userID match (nếu verify thành công)
+    if (fbResponse.data.id !== userID) {
+      console.error('❌ Facebook userID mismatch:', fbResponse.data.id, 'vs', userID);
+      return res.status(401).json({
+        message: 'Facebook token không hợp lệ',
+        code: 'INVALID_FACEBOOK_TOKEN'
+      });
+    }
+
+    // Tìm hoặc tạo user
+    let user = await User.findOne({
+      $or: [
+        { facebookId: userID },
+        { email: email || fbResponse.data.email }
+      ]
+    });
+
+    if (!user) {
+      // Tạo user mới từ Facebook
+      const userEmail = email || fbResponse.data.email || `fb_${userID}@facebook.com`;
+      const userName = name || fbResponse.data.name || `Facebook User ${userID}`;
+
+      user = await User.create({
+        email: userEmail,
+        username: userName,
+        password: Math.random().toString(36).slice(-8) + 'Fb!123', // Random password
+        facebookId: userID,
+        avatarUrl: picture || '',
+        role: 'customer'
+      });
+      console.log('✅ Created new user from Facebook:', user.email);
+    } else if (!user.facebookId) {
+      // Link Facebook account với existing user
+      user.facebookId = userID;
+      if (picture && !user.avatarUrl) {
+        user.avatarUrl = picture;
+      }
+      await user.save();
+      console.log('✅ Linked Facebook account to existing user:', user.email);
+    } else {
+      console.log('✅ Existing Facebook user logged in:', user.email);
+    }
+
+    // Tạo JWT tokens
+    const payload = {
+      _id: user._id,
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      loyaltyPoints: user.loyaltyPoints.balance
+    };
+
+    const token = signToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    console.log('✅ Facebook login successful for:', user.email);
+
+    return res.json({
+      token,
+      refreshToken,
+      user: {
+        _id: user._id,
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phone: user.phone || '',
+        address: user.address || '',
+        avatarUrl: user.avatarUrl || ''
+      },
+      message: 'Đăng nhập Facebook thành công'
+    });
+
+  } catch (error) {
+    console.error('❌ Facebook login error:', error);
+    return res.status(500).json({
+      message: 'Đăng nhập Facebook thất bại. Vui lòng thử lại.',
+      error: error.message,
+      code: 'FACEBOOK_LOGIN_ERROR'
+    });
+  }
 });

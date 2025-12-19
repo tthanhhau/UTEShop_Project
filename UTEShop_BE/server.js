@@ -1,16 +1,27 @@
 // server.js
-import "dotenv/config"; // nạp .env sớm nhất
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env từ thư mục hiện tại của server.js
+dotenv.config({ path: path.join(__dirname, ".env") });
+console.log("MONGODB_URI from server.js:", process.env.MONGODB_URI);
+console.log("GEMINI_API_KEY from server.js:", process.env.GEMINI_API_KEY?.substring(0, 20) + "...");
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { initializeAgenda } from "./src/config/agenda.js";
-import http from 'http'; 
+import http from 'http';
 import { initializeSocket, sendNotificationToUser } from './src/config/socket.js'; // Import từ file socket
 
 // Modules của bạn
 import connectDB from "./src/config/db.js";
 import rateLimiter from "./src/middlewares/rateLimiter.js";
 import authRoutes from "./src/routes/authRoutes.js";
+//import adminAuthRoutes from "./src/routes/adminAuthRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 
 // tạo 4 khoi hien thi san pham
@@ -27,8 +38,14 @@ import favoriteRoutes from "./src/routes/favoriteRoutes.js";
 import viewedProductRoutes from "./src/routes/viewedProductRoutes.js";
 import similarProductRoutes from "./src/routes/similarProductRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
+import elasticsearchRoutes from "./src/routes/elasticsearchRoutes.js";
+import imageSearchRoutes from "./src/routes/imageSearchRoutes.js";
 
 const app = express();
+
+// Trust proxy for Render (required for rate limiter behind reverse proxy)
+app.set('trust proxy', 1);
+
 const httpServer = http.createServer(app);
 
 // Khởi tạo Socket.IO
@@ -43,16 +60,41 @@ app.locals.agenda = agenda;
 
 /* ----------------------------- Middlewares ------------------------------ */
 
-// CORS: hỗ trợ 1 hoặc nhiều origin, cách nhau dấu phẩy trong FRONTEND_URL
-const origins = (process.env.FRONTEND_URL || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+// CORS: hỗ trợ 1 hoặc nhiều origin
+const allowedOrigins = [
+  'http://localhost:5173',      // Frontend User (Vite dev)
+  'http://localhost:3000',      // Frontend Admin (Next.js dev)
+  'http://localhost:3002',      // Backend Admin (NestJS dev)
+  process.env.FRONTEND_URL,     // Frontend User production
+  process.env.ADMIN_FRONTEND_URL, // Frontend Admin production
+].filter(Boolean); // Remove undefined values
+
+// Thêm origins từ FRONTEND_URL nếu có nhiều (phân cách bằng dấu phẩy)
+if (process.env.FRONTEND_URL) {
+  const extraOrigins = process.env.FRONTEND_URL
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  allowedOrigins.push(...extraOrigins);
+}
 
 app.use(
   cors({
-    origin: true, // Allow all origins in development
-    credentials: false, // nếu dùng cookie/session hãy chuyển true và cấu hình lại
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin) return callback(null, true);
+
+      // Check if origin is in whitelist
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️  CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true, // Allow cookies and authorization headers
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 
@@ -67,6 +109,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.get("/", (req, res) => res.send("UTEShop API running..."));
 
 app.use("/api/auth", rateLimiter, authRoutes);
+// app.use("/api/auth/admin", rateLimiter, adminAuthRoutes); // ❌ File không tồn tại
 app.use("/api/user", userRoutes);
 
 // thêm 4 khối sản phẩm trang chủ
@@ -79,11 +122,17 @@ app.use('/api/cart', cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payment", paymentRoutes);
 
+// Internal routes (for communication between backends)
+import internalRoutes from "./src/routes/internalRoutes.js";
+app.use("/api/internal", internalRoutes);
+
 // Routes mới
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/viewed-products", viewedProductRoutes);
 app.use("/api/similar-products", similarProductRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/elasticsearch", elasticsearchRoutes);
+app.use("/api/image-search", imageSearchRoutes);
 
 // Admin routes
 import voucherRoutes from "./src/routes/voucherRoutes.js";
@@ -104,6 +153,9 @@ app.use("/api/admin/brands", adminBrandRoutes);
 app.use("/api/vouchers", voucherRoutes);
 app.use("/api/points", pointsRoutes);
 
+// Chatbot AI routes
+import chatbotRoutes from "./src/chatbot/chatbotRoutes.js";
+app.use("/api/chatbot", chatbotRoutes);
 
 /* ------------------------------- 404 & Err ------------------------------ */
 
@@ -129,7 +181,7 @@ const PORT = Number(process.env.PORT) || 5000;
 const serverStart = async () => {
   try {
     await connectDB(); // chỉ start server sau khi DB OK
-    
+
     // Start agenda với error handling
     try {
       await agenda.start();
@@ -138,7 +190,7 @@ const serverStart = async () => {
       console.warn("⚠️  Agenda failed to start, but server will continue:", agendaError.message);
       // Server vẫn tiếp tục chạy ngay cả khi Agenda lỗi
     }
-    
+
     httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (e) {
     console.error("❌ Failed to start server:", e);

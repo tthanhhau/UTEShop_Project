@@ -7,6 +7,7 @@ const otpSchema = new Schema(
     type: { type: String, enum: ["register", "reset"], required: true },
     expiresAt: { type: Date, required: true },
     attempts: { type: Number, default: 0 },
+    verified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

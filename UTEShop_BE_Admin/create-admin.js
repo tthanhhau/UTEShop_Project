@@ -30,11 +30,11 @@ async function createAdmin() {
         console.log('✅ Kết nối MongoDB thành công!');
 
         // Kiểm tra xem đã có admin chưa
-        const existingAdmin = await User.findOne({ email: 'admin@shop.com' });
+        const existingAdmin = await User.findOne({ email: 'admin@uteshop.com' });
 
         if (existingAdmin) {
             console.log('⚠️  Tài khoản admin đã tồn tại!');
-            console.log('📧 Email: admin@shop.com');
+            console.log('📧 Email: admin@uteshop.com');
             console.log('🔐 Password: 123456');
 
             // Cập nhật mật khẩu nếu cần
@@ -49,7 +49,7 @@ async function createAdmin() {
 
             const admin = new User({
                 name: 'Administrator',
-                email: 'admin@shop.com',
+                email: 'admin@uteshop.com',
                 password: hashedPassword,
                 phone: '0123456789',
                 role: 'admin',
@@ -58,7 +58,7 @@ async function createAdmin() {
 
             await admin.save();
             console.log('✅ Tạo tài khoản admin thành công!');
-            console.log('📧 Email: admin@shop.com');
+            console.log('📧 Email: admin@uteshop.com');
             console.log('🔐 Password: 123456');
         }
 

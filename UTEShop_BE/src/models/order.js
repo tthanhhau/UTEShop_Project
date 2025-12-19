@@ -12,6 +12,8 @@ const statusToNumberMap = {
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    customerName: { type: String, required: true },
+    customerPhone: { type: String, required: true },
     items: [
       {
         product: {
@@ -20,10 +22,12 @@ const orderSchema = new mongoose.Schema(
           required: true,
         },
         quantity: { type: Number, required: true },
+        size: { type: String }, // Size được chọn (nếu có)
         originalPrice: { type: Number, required: true }, // Giá gốc tại thời điểm đặt hàng
         discountPercentage: { type: Number, default: 0 }, // % giảm giá tại thời điểm đặt hàng
         discountedPrice: { type: Number, required: true }, // Giá đã giảm tại thời điểm đặt hàng
         price: { type: Number, required: true }, // Giá cuối cùng (đã giảm) - để tương thích với code cũ
+        //price: { type: Number, required: true }, // Giá cuối cùng (đã giảm) để tương thích với code cũ
       },
     ],
     totalPrice: { type: Number, required: true },
@@ -66,16 +70,44 @@ const orderSchema = new mongoose.Schema(
       paidAt: { type: Date },
       amount: { type: Number },
     },
+    // Thêm trường cho voucher và điểm tích lũy
+    voucher: {
+      code: { type: String },
+      description: { type: String },
+    },
+    voucherDiscount: { type: Number, default: 0 },
+    usedPoints: { type: Number, default: 0 },
+    usedPointsAmount: { type: Number, default: 0 },
+    // Thêm trường để theo dõi trạng thái đánh giá
+    reviewStatus: {
+      type: String,
+      enum: ["pending", "reviewed", "review_deleted"],
+      default: "pending"
+    },
+    reviewedAt: { type: Date },
+    reviewDeletedAt: { type: Date },
   },
   { timestamps: true }
 );
 
 orderSchema.set("toJSON", {
   transform: function (doc, ret) {
-    // 'ret' là object sắp được gửi đi.
-    // Dòng này sẽ tìm giá trị chữ của status (ví dụ: "pending")
-    // và thay thế nó bằng giá trị số tương ứng (ví dụ: 1)
-    ret.status = statusToNumberMap[ret.status];
+    // CHỈ đảm bảo các trường voucher và điểm tồn tại
+    // KHÔNG transform status để tránh conflict với frontend
+
+    if (ret.voucherDiscount === undefined || ret.voucherDiscount === null) {
+      ret.voucherDiscount = 0;
+    }
+    if (ret.usedPoints === undefined || ret.usedPoints === null) {
+      ret.usedPoints = 0;
+    }
+    if (ret.usedPointsAmount === undefined || ret.usedPointsAmount === null) {
+      ret.usedPointsAmount = 0;
+    }
+    if (!ret.voucher) {
+      ret.voucher = null;
+    }
+
     return ret;
   },
 });

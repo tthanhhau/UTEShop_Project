@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt, 
-  FaStar, FaChartLine, FaCog, FaBars, FaBell, FaSignOutAlt,
-  FaChevronLeft, FaChevronRight, FaAngleRight
+import {
+  FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt,
+  FaStar, FaChartLine, FaCog, FaBars, FaSignOutAlt,
+  FaChevronLeft, FaChevronRight, FaAngleRight, FaComments
 } from 'react-icons/fa';
+import NotificationBell from './NotificationBell';
 
 interface MenuItem {
   path?: string;
@@ -33,11 +34,10 @@ const menuStructure: MenuItem[] = [
     ],
   },
   { path: '/admin/orders', icon: FaShoppingCart, label: 'Quản lý đơn hàng' },
-  { path: '/admin/customers', icon: FaUsers, label: 'Khách hàng' },
-  { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Voucher' },
-  { path: '/admin/points', icon: FaStar, label: 'Điểm tích lũy' },
-  { path: '/admin/reports', icon: FaChartLine, label: 'Báo cáo' },
-  { path: '/admin/settings', icon: FaCog, label: 'Cài đặt' },
+  { path: '/admin/customers', icon: FaUsers, label: 'Quản lý khách hàng' },
+  { path: '/admin/comments', icon: FaComments, label: 'Quản lý Đánh giá' },
+  { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Quản lý Voucher' },
+  { path: '/admin/points', icon: FaStar, label: 'Quản lý Điểm tích lũy' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -52,12 +52,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('adminToken');
       const storedUser = localStorage.getItem('adminUser');
+
+      // Check if token exists, if not redirect to login
+      if (!storedToken) {
+        router.push('/login');
+        return;
+      }
+
       if (storedUser) {
         setUser(JSON.parse(storedUser));
       }
     }
   }, []);
+
+  // Listen for storage changes to handle logout from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'adminToken' && !e.newValue) {
+        // Token was removed, redirect to login
+        router.push('/login');
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
+  }, [router]);
 
   // Auto-expand menu when accessing submenu items
   useEffect(() => {
@@ -120,18 +143,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="bg-gray-50 min-h-screen">
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? 'w-16' : 'w-64'
-        } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'w-16' : 'w-64'
+          } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex items-center justify-center h-16 bg-gradient-to-r from-purple-600 to-indigo-600 relative">
-          {!sidebarCollapsed && (
-            <h1 className="text-xl font-bold text-white">Fashion Admin</h1>
-          )}
-          {sidebarCollapsed && (
+          {/* Logo area: Chỉ hiện icon logo khi thu gọn, hiện cả chữ khi mở rộng */}
+          {sidebarCollapsed ? (
             <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg hover:bg-white/30 transition-all duration-200 border border-white/20">
-              <FaCube className="text-white" />
+              <FaCube className="text-white text-2xl" />
             </div>
+          ) : (
+            <h1 className="text-xl font-bold text-white">Fashion Admin</h1>
           )}
 
           <button
@@ -143,28 +165,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
         </div>
 
+        {/* Menu dưới header, luôn hiển thị đủ icon các tab khi thu gọn */}
         <nav className="mt-8">
-          <div className="px-4 space-y-1">
+          <div className="px-2 space-y-1">
             {menuStructure.map((item, index) => (
               <div key={item.key || item.path || index}>
                 {item.hasSubmenu ? (
                   <button
                     onClick={() => !sidebarCollapsed && item.key && toggleSubmenu(item.key)}
-                    className={`w-full flex items-center ${
-                      sidebarCollapsed ? 'justify-center' : 'justify-between'
-                    } px-4 py-3 rounded-lg transition-colors duration-200 ${
-                      isMenuItemActive(item)
-                        ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                    title={sidebarCollapsed ? item.label : ''}
+                    className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-2 py-3 rounded-lg transition-colors duration-200 ${isMenuItemActive(item)
+                      ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                    title={item.label}
                   >
-                    <div className="flex items-center">
-                      <item.icon
-                        className={`${sidebarCollapsed ? '' : 'mr-3'} ${
-                          isMenuItemActive(item) ? 'text-purple-600' : ''
-                        }`}
-                      />
+                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
+                      <item.icon className={`text-2xl ${sidebarCollapsed ? '' : 'mr-3'} ${isMenuItemActive(item) ? 'text-purple-600' : ''}`} />
                       {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                     </div>
                     {!sidebarCollapsed && item.key && (
@@ -182,20 +197,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 ) : (
                   <Link
                     href={item.path || '#'}
-                    className={`flex items-center ${
-                      sidebarCollapsed ? 'justify-center' : ''
-                    } px-4 py-3 rounded-lg transition-colors duration-200 ${
-                      isActive(item.path, item.exact)
-                        ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                    title={sidebarCollapsed ? item.label : ''}
+                    className={`flex items-center ${sidebarCollapsed ? 'justify-center' : ''} px-2 py-3 rounded-lg transition-colors duration-200 ${isActive(item.path, item.exact)
+                      ? 'bg-purple-50 text-purple-700 border-r-4 border-purple-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                    title={item.label}
                   >
-                    <item.icon
-                      className={`${sidebarCollapsed ? '' : 'mr-3'} ${
-                        isActive(item.path, item.exact) ? 'text-purple-600' : ''
-                      }`}
-                    />
+                    <item.icon className={`text-2xl ${sidebarCollapsed ? '' : 'mr-3'} ${isActive(item.path, item.exact) ? 'text-purple-600' : ''}`} />
                     {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                   </Link>
                 )}
@@ -206,11 +213,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <Link
                         key={subItem.path}
                         href={subItem.path}
-                        className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${
-                          isActive(subItem.path)
-                            ? 'bg-purple-100 text-purple-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
+                        className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${isActive(subItem.path)
+                          ? 'bg-purple-100 text-purple-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
                       >
                         <FaAngleRight className="mr-2 text-xs text-gray-400" />
                         <span className="text-sm">{subItem.label}</span>
@@ -226,9 +232,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <div
-        className={`min-h-screen transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-        }`}
+        className={`min-h-screen transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          }`}
       >
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
@@ -244,34 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-                <svg
-                  className="w-5 h-5 absolute left-3 top-3 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-
-              <button className="relative p-2 text-gray-600 hover:text-purple-600 rounded-full hover:bg-gray-100">
-                <FaBell className="text-xl" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
-              </button>
+              <NotificationBell />
 
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">

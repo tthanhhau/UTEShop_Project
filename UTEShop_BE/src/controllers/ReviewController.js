@@ -24,16 +24,19 @@ export const createReview = async (req, res) => {
       return res.status(404).json({ message: "Sản phẩm không tồn tại" });
     }
 
-    // Kiểm tra đơn hàng này đã được review chưa (nếu có orderId)
+    // LOGIC MỚI: Kiểm tra SẢN PHẨM trong đơn hàng đã được review chưa
     if (orderId) {
-      const existingOrderReview = await Review.findOne({
+      // Tìm review của SẢN PHẨM NÀY trong ĐƠN HÀNG NÀY (không phải toàn bộ order)
+      const existingReview = await Review.findOne({
         order: orderId,
+        product: productId,
+        user: userId
       });
 
-      if (existingOrderReview) {
-        console.log("❌ Order already reviewed:", orderId);
+      if (existingReview) {
+        console.log("❌ Sản phẩm này trong đơn hàng đã có review:", existingReview._id);
         return res.status(400).json({
-          message: "Đơn hàng này đã được đánh giá rồi",
+          message: "Bạn đã đánh giá sản phẩm này trong đơn hàng rồi, không thể đánh giá lại"
         });
       }
     }
@@ -53,9 +56,15 @@ export const createReview = async (req, res) => {
       const order = await Order.findOne({
         _id: orderId,
         user: userId,
-        status: "delivered", // status trong DB là string, không phải số
-        "items.product": productObjectId,
+        status: "delivered",
       });
+
+      if (!order) {
+        return res.status(400).json({ message: "Bạn cần mua và nhận hàng trước khi đánh giá" });
+      }
+
+      // Không cần check reviewStatus của order nữa vì mỗi sản phẩm có thể review riêng
+
 
       console.log("- Found order with orderId:", order ? "YES" : "NO");
       if (order) {
@@ -125,47 +134,51 @@ export const createReview = async (req, res) => {
     await review.save();
     console.log("✅ Review saved successfully:", review);
 
-    // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và đang "HOẠT ĐỘNG"
+    // Không cập nhật reviewStatus của order nữa vì mỗi sản phẩm có review riêng
+    console.log("✅ Review created for product", productId, "in order", orderId);
+
+    // TÌM TẤT CẢ voucher loại "ĐÁNH GIÁ" và "CHUNG" đang "HOẠT ĐỘNG"
     const now = new Date();
-    
-    // 1. Tìm tất cả voucher REVIEW đang hoạt động
+
+    // 1. Tìm tất cả voucher REVIEW và GENERAL đang hoạt động
     const allReviewVouchers = await Voucher.find({
-      rewardType: 'REVIEW',
+      isActive: true,
+      rewardType: { $in: ['REVIEW', 'GENERAL'] }, // Lấy cả voucher REVIEW và GENERAL
       startDate: { $lte: now },
       endDate: { $gt: now },
       $expr: { $lt: ["$claimsCount", "$maxIssued"] },
     }).sort({ createdAt: 1 });
 
-    console.log('🔍 Found all active REVIEW vouchers:', allReviewVouchers.length);
+    console.log('🔍 Found all active vouchers (REVIEW + GENERAL):', allReviewVouchers.length);
 
     // 2. ĐẾM SỐ LẦN user đã nhận mỗi voucher (dùng UserVoucher collection - đáng tin cậy)
     console.log('🔍 Counting voucher claims from UserVoucher collection...');
-    const userClaimedVouchers = await UserVoucher.find({ 
-      user: userId 
+    const userClaimedVouchers = await UserVoucher.find({
+      user: userId
     }).select('voucherCode').lean();
-    
+
     const userVoucherCounts = {};
     userClaimedVouchers.forEach(uv => {
       userVoucherCounts[uv.voucherCode] = (userVoucherCounts[uv.voucherCode] || 0) + 1;
     });
-    
+
     console.log('🔍 User voucher claim counts (from UserVoucher DB):', userVoucherCounts);
 
     // 3. Lọc voucher dựa trên SỐ LẦN ĐÃ NHẬN so với GIỚI HẠN
     const availableVouchers = allReviewVouchers.filter(voucher => {
       const userClaimCount = userVoucherCounts[voucher.code] || 0; // Số lần đã nhận
       const maxAllowed = voucher.maxUsesPerUser || 1; // Giới hạn cho phép
-      
+
       // Chỉ hiển thị nếu chưa đạt giới hạn
       const canClaimMore = userClaimCount < maxAllowed;
-      
+
       console.log(`📋 ${voucher.code}: claimed=${userClaimCount}/${maxAllowed}, canClaim=${canClaimMore}`);
-      
+
       return canClaimMore;
     });
 
     console.log('🎯 Available vouchers for user:', availableVouchers.length);
-    
+
     availableVouchers.forEach((voucher, index) => {
       console.log(`✅ Voucher ${index + 1}: ${voucher.code}`, {
         description: voucher.description,
@@ -176,17 +189,23 @@ export const createReview = async (req, res) => {
     });
 
     const reviewVouchers = availableVouchers; // Rename để giữ tương thích code bên dưới
+    let loyalPoints = 0;
+
+    if (orderId) {
+      const orderUser = await Order.findById(orderId);
+      loyalPoints = orderUser.totalPrice ? Math.floor(orderUser.totalPrice / 100) : 0;
+    }
 
     // 2. Định nghĩa phần thưởng điểm tích lũy
     const pointsReward = {
       type: "POINTS",
-      description: "Nhận 100 điểm tích lũy",
-      value: 100, // Số điểm sẽ nhận
+      description: `Nhận ${loyalPoints || 100} điểm tích lũy cho đánh giá`,
+      value: loyalPoints || 100, // Số điểm sẽ nhận
     };
 
     // 3. Tạo danh sách phần thưởng
     const availableRewards = [pointsReward];
-    
+
     // THÊM TẤT CẢ voucher loại "ĐÁNH GIÁ" đang "HOẠT ĐỘNG"
     if (reviewVouchers && reviewVouchers.length > 0) {
       reviewVouchers.forEach((voucher, index) => {
@@ -195,8 +214,8 @@ export const createReview = async (req, res) => {
           description: `Nhận voucher: ${voucher.description}`,
           voucherCode: voucher.code,
           discountType: voucher.discountType,
-          discountValue: voucher.discountValue,
-          minOrderAmount: voucher.minOrderAmount,
+          value: voucher.discountValue,
+          minOrder: voucher.minOrderAmount,
           endDate: voucher.endDate
         };
         availableRewards.push(voucherReward);
@@ -207,9 +226,9 @@ export const createReview = async (req, res) => {
         });
       });
     } else {
-      console.log('❌ Không có voucher ĐÁNH GIÁ nào hoạt động - chỉ tặng điểm thưởng');
+      console.log('❌ Không có voucher nào hoạt động - chỉ tặng điểm thưởng');
     }
-    
+
     console.log('📝 Tổng số phần thưởng gửi về frontend:', availableRewards.length);
     console.log('🎯 Chi tiết tất cả phần thưởng:', availableRewards.map(r => ({
       type: r.type,
@@ -243,7 +262,10 @@ export const getProductReviews = async (req, res) => {
 
     // Build filter - convert productId to ObjectId
     const productObjectId = new mongoose.Types.ObjectId(productId);
-    const filter = { product: productObjectId };
+    const filter = {
+      product: productObjectId,
+      isDeleted: { $ne: true } // Không lấy các review đã bị xóa
+    };
     if (rating) {
       filter.rating = parseInt(rating);
     }
@@ -258,6 +280,7 @@ export const getProductReviews = async (req, res) => {
     const [reviews, total, stats] = await Promise.all([
       Review.find(filter)
         .populate("user", "name avatarUrl")
+        .populate("adminReply.admin", "name email") // Populate admin reply info
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize)
@@ -352,9 +375,52 @@ export const deleteReview = async (req, res) => {
       return res.status(404).json({ message: "Review không tồn tại" });
     }
 
+    // Cập nhật trạng thái review trong đơn hàng khi user xóa review
+    if (review.order) {
+      await Order.findByIdAndUpdate(review.order, {
+        reviewStatus: "review_deleted",
+        reviewDeletedAt: new Date()
+      });
+      console.log("✅ Order review status updated to 'review_deleted'");
+    }
+
     res.json({ message: "Xóa đánh giá thành công" });
   } catch (error) {
     console.error("Error in deleteReview:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Admin xóa review
+export const adminDeleteReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const adminId = req.user.id;
+
+    const review = await Review.findById(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ message: "Review không tồn tại" });
+    }
+
+    // Đánh dấu review là đã xóa thay vì xóa vĩnh viễn
+    review.isDeleted = true;
+    review.deletedBy = adminId;
+    review.deletedAt = new Date();
+    await review.save();
+
+    // Cập nhật trạng thái review trong đơn hàng khi admin xóa review
+    if (review.order) {
+      await Order.findByIdAndUpdate(review.order, {
+        reviewStatus: "review_deleted",
+        reviewDeletedAt: new Date()
+      });
+      console.log("✅ Order review status updated to 'review_deleted' by admin");
+    }
+
+    res.json({ message: "Xóa đánh giá thành công" });
+  } catch (error) {
+    console.error("Error in adminDeleteReview:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -378,25 +444,78 @@ export const checkOrderReviewed = async (req, res) => {
       });
     }
 
-    // Check if order has been reviewed
+    // Check if order has been reviewed (kể cả đã bị xóa)
     const review = await Review.findOne({
       order: orderId,
     });
 
+    // Kiểm tra trạng thái review trong đơn hàng
+    const orderReviewStatus = order.reviewStatus || "pending";
+
+    // User đã review nếu:
+    // 1. Có review trong DB (kể cả đã bị xóa) HOẶC
+    // 2. reviewStatus là "reviewed" hoặc "review_deleted"
+    const hasReviewed = !!review || orderReviewStatus === "reviewed" || orderReviewStatus === "review_deleted";
+
     res.json({
-      hasReview: !!review,
-      review: review
+      hasReview: hasReviewed,
+      review: review && !review.isDeleted
         ? {
-            _id: review._id,
-            rating: review.rating,
-            comment: review.comment,
-            createdAt: review.createdAt,
-          }
+          _id: review._id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+        }
         : null,
+      orderReviewStatus: orderReviewStatus
     });
   } catch (error) {
     console.error("Error in checkOrderReviewed:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Check if a specific product in an order has been reviewed
+export const checkProductReviewed = async (req, res) => {
+  try {
+    const { orderId, productId } = req.params;
+    const userId = req.user.id;
+
+    // Verify order belongs to user and is delivered
+    const order = await Order.findOne({
+      _id: orderId,
+      user: userId,
+      status: "delivered",
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Đơn hàng không tồn tại hoặc chưa được giao",
+        hasReview: false
+      });
+    }
+
+    // Check if this specific product in this order has been reviewed
+    const review = await Review.findOne({
+      order: orderId,
+      product: productId,
+      user: userId
+    });
+
+    res.json({
+      hasReview: !!review,
+      review: review && !review.isDeleted
+        ? {
+          _id: review._id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+        }
+        : null
+    });
+  } catch (error) {
+    console.error("Error in checkProductReviewed:", error);
+    res.status(500).json({ message: "Server error", hasReview: false });
   }
 };
 
@@ -415,5 +534,49 @@ export const getUserReview = async (req, res) => {
   } catch (error) {
     console.error("Error in getUserReview:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Lấy các đánh giá mới nhất cho trang chủ
+export const getLatestReviews = async (req, res) => {
+  try {
+    const { limit = 6 } = req.query;
+    const reviewLimit = parseInt(limit);
+
+    console.log("🔍 Getting latest reviews for homepage, limit:", reviewLimit);
+
+    // Lấy các đánh giá mới nhất, populate thông tin user và product
+    const reviews = await Review.find({ isDeleted: { $ne: true } }) // Không lấy các review đã bị xóa
+      .populate("user", "name avatarUrl")
+      .populate("product", "name images")
+      .sort({ createdAt: -1 })
+      .limit(reviewLimit)
+      .lean();
+
+    // Format dữ liệu để phù hợp với frontend
+    const formattedReviews = reviews.map(review => ({
+      _id: review._id,
+      name: review.user?.name || "Khách hàng",
+      image: review.user?.avatarUrl || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
+      rating: review.rating,
+      comment: review.comment,
+      product: review.product?.name || "Sản phẩm",
+      productId: review.product?._id,
+      createdAt: review.createdAt
+    }));
+
+    console.log("✅ Returning latest reviews:", formattedReviews.length);
+
+    res.json({
+      success: true,
+      reviews: formattedReviews
+    });
+  } catch (error) {
+    console.error("Error in getLatestReviews:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
   }
 };

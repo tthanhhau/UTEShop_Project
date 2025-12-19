@@ -86,10 +86,11 @@ export default function PointsManagement() {
 
   const fetchTransactions = async (page = 1) => {
     try {
+      setLoading(true);
       const response = await axios.get('/admin/points', {
         params: {
           page,
-          limit: 10,
+          limit: 50, // Hiển thị 50 giao dịch mỗi trang
           search: filters.search,
           type: filters.transactionType === 'all' ? undefined : filters.transactionType
         }
@@ -97,12 +98,17 @@ export default function PointsManagement() {
       
       if (response.data.success) {
         setTransactions(response.data.data || []);
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
+        }
       } else {
         setTransactions([]);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
       setTransactions([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -211,11 +217,11 @@ export default function PointsManagement() {
 
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
-      case 'EARNED': return 'bg-green-100 text-green-800';
-      case 'REDEEMED': return 'bg-red-100 text-red-800';
-      case 'EXPIRED': return 'bg-gray-100 text-gray-800';
-      case 'ADJUSTMENT': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'EARNED': return 'text-green-600';
+      case 'REDEEMED': return 'text-red-600';
+      case 'EXPIRED': return 'text-gray-600';
+      case 'ADJUSTMENT': return 'text-blue-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -246,13 +252,7 @@ export default function PointsManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Quản lý Điểm tích lũy</h1>
-        <button
-          onClick={() => openPointsModal()}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200"
-        >
-          <i className="fas fa-plus"></i>
-          <span>Điều chỉnh điểm</span>
-        </button>
+        {/* Đã xoá nút Điều chỉnh điểm */}
       </div>
 
       {/* Stats Cards */}
@@ -512,7 +512,7 @@ export default function PointsManagement() {
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionTypeColor(transaction.type)}`}>
+                        <span className={`text-sm font-medium ${getTransactionTypeColor(transaction.type)}`}>
                           {getTransactionTypeText(transaction.type)}
                         </span>
                       </td>
@@ -524,7 +524,9 @@ export default function PointsManagement() {
                       <td className="py-4 px-4">
                         <div className="text-sm text-gray-900">{transaction.description}</div>
                         {transaction.order && (
-                          <div className="text-xs text-gray-500">Đơn hàng: {transaction.order}</div>
+                          <div className="text-xs text-gray-500">
+                            Đơn hàng: {typeof transaction.order === 'object' ? transaction.order._id : transaction.order}
+                          </div>
                         )}
                       </td>
                       <td className="py-4 px-4 text-gray-600">
@@ -534,6 +536,31 @@ export default function PointsManagement() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-6">
+              <button
+                onClick={() => activeTab === 'customers' ? fetchCustomers(pagination.current - 1) : fetchTransactions(pagination.current - 1)}
+                disabled={pagination.current === 1}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              
+              <span className="text-sm text-gray-600">
+                Trang {pagination.current} / {pagination.pages} (Tổng: {pagination.total})
+              </span>
+              
+              <button
+                onClick={() => activeTab === 'customers' ? fetchCustomers(pagination.current + 1) : fetchTransactions(pagination.current + 1)}
+                disabled={pagination.current === pagination.pages}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
             </div>
           )}
         </div>

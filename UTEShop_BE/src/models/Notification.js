@@ -16,10 +16,23 @@ const notificationSchema = new mongoose.Schema(
     link: { 
       type: String,
     },
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+    },
     read: {
       type: Boolean,
       default: false,
       index: true,
+    },
+    type: {
+      type: String,
+      enum: ['normal', 'order_delivery_confirmation'],
+      default: 'normal',
+    },
+    actions: {
+      confirm: { type: String },
+      cancel: { type: String },
     },
   },
   {

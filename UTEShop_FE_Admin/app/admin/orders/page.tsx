@@ -1,16 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '../../../lib/axios';
 
-export default function OrderManagement() {
+interface Order {
+  _id: string;
+  paymentMethod?: string;
+  status?: string;
+  paymentStatus?: string;
+  [key: string]: any;
+}
+
+// Wrapper component to handle Suspense for useSearchParams
+function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string | null }) {
   const router = useRouter();
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalOrders: 0
+  });
   const [filters, setFilters] = useState({
     status: 'all',
     paymentStatus: 'all',
+    paymentMethod: 'all',
     search: '',
     dateFrom: '',
     dateTo: ''
@@ -27,25 +44,36 @@ export default function OrderManagement() {
     confirmedRevenue: 0
   });
 
-  useEffect(() => {
-    fetchOrders();
-    fetchStats();
-  }, [filters]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async (search = '', status = 'all', paymentStatus = 'all', paymentMethod = 'all', page = 1, pageSize = 10) => {
     try {
-      setLoading(true);
+      if (isFirstLoad) {
+        setLoading(true);
+      }
       const params: any = {
-        status: filters.status !== 'all' ? filters.status : undefined,
-        paymentStatus: filters.paymentStatus !== 'all' ? filters.paymentStatus : undefined,
-        search: filters.search || undefined,
-        limit: 50
+        status: status !== 'all' ? status : undefined,
+        paymentStatus: paymentStatus !== 'all' ? paymentStatus : undefined,
+        paymentMethod: paymentMethod !== 'all' ? paymentMethod : undefined,
+        search: search || undefined,
+        page: page,
+        limit: pageSize
       };
 
+      console.log('🔍 FETCH ORDERS - params:', params);
       const response = await axios.get('/admin/orders', { params });
-      
+
       if (response.data.success) {
-        setOrders(response.data.data || []);
+        const ordersData = response.data.data || [];
+        const paginationData = response.data.pagination || {};
+
+        setOrders(ordersData);
+
+        // Cập nhật pagination từ backend
+        setPagination({
+          currentPage: paginationData.currentPage || page,
+          pageSize: paginationData.itemsPerPage || pageSize,
+          totalPages: paginationData.totalPages || 1,
+          totalOrders: paginationData.totalItems || ordersData.length || 0
+        });
       } else {
         setOrders([]);
       }
@@ -53,14 +81,51 @@ export default function OrderManagement() {
       console.error('Error fetching orders:', error);
       setOrders([]);
     } finally {
-      setLoading(false);
+      if (isFirstLoad) {
+        setLoading(false);
+        setIsFirstLoad(false);
+      }
     }
-  };
+  }, [isFirstLoad]);
+
+  // Debounce cho search và pagination
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders(
+        filters.search,
+        filters.status,
+        filters.paymentStatus,
+        filters.paymentMethod,
+        pagination.currentPage,
+        pagination.pageSize
+      );
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search, filters.status, filters.paymentStatus, filters.paymentMethod, pagination.currentPage, pagination.pageSize, fetchOrders]);
+
+  // Scroll to highlighted order from notification
+  useEffect(() => {
+    if (highlightOrderId && orders.length > 0) {
+      const element = document.getElementById(`order-${highlightOrderId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Remove highlight after 5 seconds
+        setTimeout(() => {
+          router.replace('/admin/orders', { scroll: false });
+        }, 5000);
+      }
+    }
+  }, [highlightOrderId, orders, router]);
+
+  // Fetch stats khi filters thay đổi
+  useEffect(() => {
+    fetchStats();
+  }, [filters.status, filters.paymentStatus]);
 
   const fetchStats = async () => {
     try {
       const response = await axios.get('/admin/orders/stats');
-      
+
       if (response.data.success) {
         const data = response.data.data;
         setStats({
@@ -81,14 +146,21 @@ export default function OrderManagement() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await axios.put(`/admin/orders/${orderId}/status`, { status: newStatus });
-      
-      setOrders(prev => prev.map((order: any) => 
-        order._id === orderId 
-          ? { ...order, status: newStatus, ...(newStatus === 'delivered' ? { deliveredAt: new Date().toISOString() } : {}) }
-          : order
-      ));
+      // Tìm order hiện tại để kiểm tra paymentMethod
+      const currentOrder = orders.find((o) => o._id === orderId);
+      const isCOD = currentOrder?.paymentMethod === 'COD';
 
+      await axios.put(`/admin/orders/${orderId}/status`, { status: newStatus });
+
+      // Nếu chuyển sang "delivered" với COD, backend sẽ tự động set paymentStatus = 'paid'
+      // Reload trang để đảm bảo hiển thị đúng trạng thái mới nhất
+      if (newStatus === 'delivered' && isCOD) {
+        window.location.reload();
+        return;
+      }
+
+      // Các trường hợp khác: fetch lại data từ server
+      await fetchOrders(filters.search, filters.status, filters.paymentStatus, filters.paymentMethod, pagination.currentPage, pagination.pageSize);
       await fetchStats();
       alert('Cập nhật trạng thái đơn hàng thành công!');
     } catch (error) {
@@ -98,9 +170,9 @@ export default function OrderManagement() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { 
-      style: 'currency', 
-      currency: 'VND' 
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
     }).format(amount);
   };
 
@@ -117,7 +189,7 @@ export default function OrderManagement() {
   const getStatusColor = (status: string) => {
     const colors: any = {
       pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800', 
+      processing: 'bg-blue-100 text-blue-800',
       prepared: 'bg-purple-100 text-purple-800',
       shipped: 'bg-indigo-100 text-indigo-800',
       delivered: 'bg-green-100 text-green-800',
@@ -237,13 +309,16 @@ export default function OrderManagement() {
 
       {/* Bộ lọc */}
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="w-full md:w-auto md:flex-1 md:max-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái đơn hàng</label>
-            <select 
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.status}
-              onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+              onChange={(e) => {
+                setFilters(prev => ({ ...prev, status: e.target.value }));
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}
             >
               <option value="all">Tất cả</option>
               <option value="pending">Chờ xử lý</option>
@@ -255,12 +330,15 @@ export default function OrderManagement() {
             </select>
           </div>
 
-          <div>
+          <div className="w-full md:w-auto md:flex-1 md:max-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái thanh toán</label>
-            <select 
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.paymentStatus}
-              onChange={(e) => setFilters(prev => ({...prev, paymentStatus: e.target.value}))}
+              onChange={(e) => {
+                setFilters(prev => ({ ...prev, paymentStatus: e.target.value }));
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}
             >
               <option value="all">Tất cả</option>
               <option value="paid">Đã thanh toán</option>
@@ -269,21 +347,41 @@ export default function OrderManagement() {
             </select>
           </div>
 
-          <div>
+          <div className="w-full md:w-auto md:flex-1 md:max-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Phương thức thanh toán</label>
+            <select
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              value={filters.paymentMethod}
+              onChange={(e) => {
+                setFilters(prev => ({ ...prev, paymentMethod: e.target.value }));
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}
+            >
+              <option value="all">Tất cả</option>
+              <option value="COD">COD</option>
+              <option value="MOMO">MoMo</option>
+            </select>
+          </div>
+
+          <div className="w-full md:flex-1 md:min-w-0">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
-            <input 
+            <input
               type="text"
               placeholder="Tên khách hàng hoặc mã đơn..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.search}
-              onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             />
           </div>
 
-          <div className="flex items-end">
-            <button 
-              onClick={() => setFilters({ status: 'all', paymentStatus: 'all', search: '', dateFrom: '', dateTo: '' })}
-              className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+          <div className="w-full md:w-auto">
+            <label className="block text-sm font-medium text-gray-700 mb-2 invisible">Đặt lại</label>
+            <button
+              onClick={() => {
+                setFilters({ status: 'all', paymentStatus: 'all', paymentMethod: 'all', search: '', dateFrom: '', dateTo: '' });
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}
+              className="w-full md:w-auto bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors whitespace-nowrap"
             >
               Đặt lại
             </button>
@@ -294,15 +392,9 @@ export default function OrderManagement() {
       {/* Danh sách đơn hàng */}
       <div className="bg-white rounded-xl shadow-sm">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Danh sách đơn hàng ({orders.length})
-            </h3>
-            <div className="text-sm text-gray-500 flex items-center">
-              <span className="mr-2">💡</span>
-              Click vào bất kỳ đơn hàng nào để xem chi tiết
-            </div>
-          </div>
+          <h3 className="text-lg font-semibold text-gray-800">
+            Danh sách đơn hàng ({pagination.totalOrders})
+          </h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -320,9 +412,11 @@ export default function OrderManagement() {
             </thead>
             <tbody>
               {orders.map((order: any) => (
-                <tr 
-                  key={order._id} 
-                  className="border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                <tr
+                  key={order._id}
+                  id={`order-${order._id}`}
+                  className={`border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer ${highlightOrderId === order._id ? 'bg-yellow-100 ring-2 ring-yellow-400 animate-pulse' : ''
+                    }`}
                   onClick={() => router.push(`/admin/orders/${order._id}`)}
                   title="Click để xem chi tiết đơn hàng"
                 >
@@ -344,26 +438,24 @@ export default function OrderManagement() {
                   </td>
                   <td className="py-4 px-6">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
-                      <i className={`fas ${
-                        order.status === 'pending' ? 'fa-clock' :
+                      <i className={`fas ${order.status === 'pending' ? 'fa-clock' :
                         order.status === 'processing' ? 'fa-box' :
-                        order.status === 'shipped' ? 'fa-truck' :
-                        order.status === 'delivered' ? 'fa-check-circle' :
-                        'fa-times-circle'
-                      } mr-2`}></i>
+                          order.status === 'shipped' ? 'fa-truck' :
+                            order.status === 'delivered' ? 'fa-check-circle' :
+                              'fa-times-circle'
+                        } mr-2`}></i>
                       <span>{getStatusText(order.status)}</span>
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.paymentStatus === 'paid' 
-                        ? 'bg-green-100 text-green-800' 
-                        : order.paymentStatus === 'unpaid'
+                    <span className={`px-2 py-1 rounded-full text-xs ${order.paymentStatus === 'paid'
+                      ? 'bg-green-100 text-green-800'
+                      : order.paymentStatus === 'unpaid'
                         ? 'bg-red-100 text-red-800'
                         : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 
-                       order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
+                      }`}>
+                      {order.paymentStatus === 'paid' ? 'Đã thanh toán' :
+                        order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
                     </span>
                     <div className="text-xs text-gray-500 mt-1">{order.paymentMethod}</div>
                   </td>
@@ -372,16 +464,32 @@ export default function OrderManagement() {
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/admin/orders/${order._id}`);
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Xem chi tiết"
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
+                      {/* Nút chuyển trạng thái tuần tự */}
+                      {(() => {
+                        // Ánh xạ trạng thái tiếp theo
+                        const statusFlow: any = {
+                          processing: "prepared",
+                          prepared: "shipped",
+                          shipped: "delivered"
+                        };
+                        const nextStatus = statusFlow[order.status];
+                        // Chỉ hiện với các trạng thái trong flow, không hiện khi đã delivered hoặc cancelled hoặc pending
+                        if (nextStatus && order.status !== 'delivered' && order.status !== 'cancelled') {
+                          return (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await updateOrderStatus(order._id, nextStatus);
+                              }}
+                              className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-700 transition-colors text-xs"
+                              title="Chuyển trạng thái tiếp theo"
+                            >
+                              Chuyển trạng thái
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </td>
                 </tr>
@@ -389,7 +497,88 @@ export default function OrderManagement() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="p-6 border-t border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Hiển thị:</span>
+              <select
+                className="border border-gray-300 rounded px-2 py-1 text-sm"
+                value={pagination.pageSize}
+                onChange={(e) => {
+                  setPagination(prev => ({ ...prev, pageSize: Number(e.target.value), currentPage: 1 }));
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-600">
+                / {pagination.totalOrders} đơn hàng
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPagination(prev => ({ ...prev, currentPage: Math.max(1, prev.currentPage - 1) }))}
+                disabled={pagination.currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Trước
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (pagination.currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i;
+                  } else {
+                    pageNum = pagination.currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPagination(prev => ({ ...prev, currentPage: pageNum }))}
+                      className={`px-3 py-1 border border-gray-300 rounded text-sm ${pagination.currentPage === pageNum
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'hover:bg-gray-50'
+                        }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setPagination(prev => ({ ...prev, currentPage: Math.min(prev.totalPages, prev.currentPage + 1) }))}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+// Main export with Suspense wrapper for useSearchParams
+function OrderSearchParamsWrapper() {
+  const searchParams = useSearchParams();
+  const highlightOrderId = searchParams.get('orderId');
+  return <OrderManagementContent highlightOrderId={highlightOrderId} />;
+}
+
+export default function OrderManagement() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div>}>
+      <OrderSearchParamsWrapper />
+    </Suspense>
   );
 }

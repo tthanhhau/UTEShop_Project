@@ -3,36 +3,43 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { HttpModule } from '@nestjs/axios';
+import { join } from 'path';
 
 // Modules
-import { AuthModule } from './AUTH/AuthModule';
-import { BrandModule } from './BRAND/BrandModule';
-import { CategoryModule } from './CATEGORY/CategoryModule';
-import { ProductModule } from './PRODUCT/ProductModule';
-import { OrderModule } from './ORDER/OrderModule';
-import { CustomerModule } from './CUSTOMER/CustomerModule';
-import { VoucherModule } from './VOUCHER/VoucherModule';
-import { PointsModule } from './POINTS/PointsModule';
-import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
+import { AuthModule } from './auth/AuthModule';
+import { BrandModule } from './brand/BrandModule';
+import { CategoryModule } from './category/CategoryModule';
+import { ProductModule } from './product/ProductModule';
+import { OrderModule } from './order/OrderModule';
+import { CustomerModule } from './customer/CustomerModule';
+import { VoucherModule } from './voucher/VoucherModule';
+import { PointsModule } from './points/PointsModule';
+import { AnalyticsModule } from './analytics/AnalyticsModule';
+import { ReviewModule } from './review/ReviewModule';
+import { PublicModule } from './public/PublicModule';
+import { MailerModule } from './config/mailer.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
     // Config Module
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
 
     // MongoDB Connection
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const uri = configService.get<string>('MONGODB_URI') || 
-                    configService.get<string>('MONGO_URI') ||
-                    'mongodb://127.0.0.1:27017/fashion_store';
+        const uri = configService.get<string>('MONGODB_URI') ||
+          configService.get<string>('MONGO_URI') ||
+          'mongodb://127.0.0.1:27017/shop';
         console.log('🔗 Connecting to MongoDB:', uri);
         return {
           uri,
-          directConnection: true,
+          directConnection: false,
           family: 4, // Force IPv4
         };
       },
@@ -50,6 +57,12 @@ import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
       inject: [ConfigService],
     }),
 
+    // HTTP Module for internal API calls
+    HttpModule.register({
+      timeout: 5000,
+      maxRedirects: 5,
+    }),
+
     // Feature Modules
     AuthModule,
     BrandModule,
@@ -60,7 +73,11 @@ import { AnalyticsModule } from './ANALYTICS/AnalyticsModule';
     VoucherModule,
     PointsModule,
     AnalyticsModule,
+    ReviewModule,
+    PublicModule,
+    MailerModule,
+    NotificationModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
 

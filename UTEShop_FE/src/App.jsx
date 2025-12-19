@@ -12,13 +12,15 @@ import MainLayout from "./layouts/MainLayout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/Register";
+import VerifyOtpPage from "./pages/VerifyOtp";
+import CompleteRegistrationPage from "./pages/CompleteRegistration";
 import ProductListPage from "./pages/ProductListPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ForgotPassword from "./pages/ForgotPassword";
+import VerifyResetOtpPage from "./pages/VerifyResetOtp";
+import ResetPasswordPage from "./pages/ResetPassword";
 import UserProfile from "./pages/Profile/Profile";
 import CartPage from "./pages/CartPage";
-import NewArrivalsPage from "./pages/NewArrivalsPage";
-import OrderPage from "./pages/OrderPage";
 import CheckoutPage from "./pages/CheckoutPage";
 
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -29,6 +31,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 import { OrderTracking } from "./pages/Profile/orderTracking";
 import { PurchaseHistory } from "./pages/Profile/purchaseHistory";
+import OrderDetail from "./pages/OrderDetail";
 
 // Admin components
 import AdminLogin from "./pages/Admin/AdminLogin";
@@ -46,6 +49,7 @@ import ProductManagement from "./pages/Admin/ProductManagement";
 
 import PrivateRoute from "./components/utils/PrivateRoute";
 import AdminRoute from "./components/utils/AdminRoute";
+import VouchersPage from "./pages/VouchersPage";
 Modal.setAppElement("#root");
 
 function App() {
@@ -62,19 +66,44 @@ function App() {
               <Route index element={<HomePage />} />
               <Route path="login" element={<LoginPage />} />
               <Route path="register" element={<RegisterPage />} />
+              <Route path="verify-otp" element={<VerifyOtpPage />} />
+              <Route path="complete-registration" element={<CompleteRegistrationPage />} />
               <Route path="forgot" element={<ForgotPassword />} />
+              <Route path="verify-reset-otp" element={<VerifyResetOtpPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route path="products" element={<ProductListPage />} />
               <Route path="products/:id" element={<ProductDetailPage />} />
-              <Route path="new-arrivals" element={<NewArrivalsPage />} />
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
 
               <Route path="payment/success" element={<PaymentSuccessPage />} />
               <Route path="payment/failure" element={<PaymentFailurePage />} />
 
-              <Route path="orders" element={<OrderPage />} />
-              <Route path="orders-tracking" element={<OrderTracking />} />
-              <Route path="purchase-history" element={<PurchaseHistory />} />
+              <Route
+                path="orders-tracking"
+                element={
+                  <PrivateRoute>
+                    <OrderTracking />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="orders/:orderId"
+                element={
+                  <PrivateRoute>
+                    <OrderDetail />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="purchase-history"
+                element={
+                  <PrivateRoute>
+                    <PurchaseHistory />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="vouchers" element={<VouchersPage />} />
 
               {/* Protected routes for favorites and viewed products */}
               <Route

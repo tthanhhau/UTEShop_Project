@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Star, MessageCircle, ThumbsUp, Edit, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
+import { FaReply } from "react-icons/fa";
 import {
   getProductReviewsAsync,
   getUserReviewAsync,
@@ -91,9 +92,9 @@ const ReviewSection = ({
       // window.location.reload();
       if (resultPayload.rewards && resultPayload.rewards.length > 0) {
         setRewards(resultPayload.rewards); // Lưu danh sách phần thưởng vào state
-        setIsModalOpen(true); 
+        setIsModalOpen(true);
       }
-      
+
     } catch (error) {
       console.error("Error submitting review:", error);
       const errorMessage = error || "Có lỗi xảy ra khi gửi đánh giá";
@@ -104,8 +105,8 @@ const ReviewSection = ({
       ) {
         alert(
           "❌ " +
-            errorMessage +
-            "\n\n💡 Bạn cần mua sản phẩm này và nhận hàng thành công trước khi có thể đánh giá."
+          errorMessage +
+          "\n\n💡 Bạn cần mua sản phẩm này và nhận hàng thành công trước khi có thể đánh giá."
         );
       } else {
         alert("❌ " + errorMessage);
@@ -118,7 +119,7 @@ const ReviewSection = ({
     setRating(review.rating);
     setComment(review.comment || "");
     setShowReviewForm(true);
-    
+
   };
 
   const handleDeleteReview = async (reviewId) => {
@@ -138,9 +139,8 @@ const ReviewSection = ({
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`w-5 h-5 ${
-              star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
-            } ${interactive ? "cursor-pointer hover:scale-110" : ""}`}
+            className={`w-5 h-5 ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
+              } ${interactive ? "cursor-pointer hover:scale-110" : ""}`}
             onClick={
               interactive && onRatingChange
                 ? () => onRatingChange(star)
@@ -215,7 +215,7 @@ const ReviewSection = ({
     content: {
       top: "50%",
       left: "50%",
-      right: "auto", 
+      right: "auto",
       bottom: "auto",
       marginRight: "-50%",
       transform: "translate(-50%, -50%)",
@@ -261,7 +261,7 @@ const ReviewSection = ({
               </svg>
             </button>
           </div>
-          
+
           {/* Scrollable content */}
           <div className="p-6 max-h-96 overflow-y-auto space-y-4">
             {rewards.map((reward, index) => (
@@ -275,37 +275,37 @@ const ReviewSection = ({
                       {reward.type === 'VOUCHER' ? '🎟️ Voucher Giảm Giá' : '💎 Điểm Tích Lũy'}
                     </h3>
                     <p className="text-gray-700 mb-3 font-medium">{reward.description}</p>
-                  
-                  {reward.type === 'VOUCHER' && (
-                    <div className="space-y-1 text-sm text-gray-500">
-                      <div>📋 Mã: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{reward.voucherCode}</span></div>
-                      {reward.discountType === 'PERCENTAGE' && (
-                        <div>💰 Giảm: {reward.discountValue}%</div>
-                      )}
-                      {reward.discountType === 'FIXED_AMOUNT' && (
-                        <div>💰 Giảm: {reward.discountValue?.toLocaleString()}₫</div>
-                      )}
-                      {reward.discountType === 'FREE_SHIP' && (
-                        <div>🚚 Miễn phí vận chuyển</div>
-                      )}
-                      {reward.minOrderAmount > 0 && (
-                        <div>📦 Đơn tối thiểu: {reward.minOrderAmount?.toLocaleString()}₫</div>
-                      )}
-                      {reward.endDate && (
-                        <div>⏰ Hạn đến: {new Date(reward.endDate).toLocaleDateString('vi-VN')}</div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {reward.type === 'POINTS' && (
-                    <div className="text-sm text-gray-500">
-                      💎 Nhận ngay {reward.value} điểm tích lũy
-                    </div>
-                  )}
-                </div>
-                
-                  <Button 
-                    size="lg" 
+
+                    {reward.type === 'VOUCHER' && (
+                      <div className="space-y-1 text-sm text-gray-500">
+                        <div>📋 Mã: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{reward.voucherCode}</span></div>
+                        {reward.discountType === 'PERCENTAGE' && (
+                          <div>💰 Giảm: {reward.value}%</div>
+                        )}
+                        {reward.discountType === 'FIXED_AMOUNT' && (
+                          <div>💰 Giảm: {reward.value?.toLocaleString()}₫</div>
+                        )}
+                        {reward.discountType === 'FREE_SHIP' && (
+                          <div>🚚 Miễn phí vận chuyển</div>
+                        )}
+                        {reward.minOrderAmount > 0 && (
+                          <div>📦 Đơn tối thiểu: {reward.minOrderAmount?.toLocaleString()}₫</div>
+                        )}
+                        {reward.endDate && (
+                          <div>⏰ Hạn đến: {new Date(reward.endDate).toLocaleDateString('vi-VN')}</div>
+                        )}
+                      </div>
+                    )}
+
+                    {reward.type === 'POINTS' && (
+                      <div className="text-sm text-gray-500">
+                        💎 Nhận ngay {reward.value} điểm tích lũy
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    size="lg"
                     onClick={() => handleClaimReward(reward)}
                     className="ml-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                   >
@@ -315,7 +315,7 @@ const ReviewSection = ({
               </div>
             ))}
           </div>
-          
+
           {/* Footer */}
           <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
             <p className="text-sm text-gray-500 text-center">
@@ -500,13 +500,13 @@ const ReviewSection = ({
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  {/*<button
+                  <button
                     onClick={() => handleDeleteReview(review._id)}
                     className="text-red-500 hover:text-red-700 p-1"
                     title="Xóa"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>*/}
+                  </button>
                 </div>
               )}
             </div>
@@ -515,6 +515,23 @@ const ReviewSection = ({
 
             {review.comment && (
               <p className="text-gray-700">{review.comment}</p>
+            )}
+
+            {/* Admin Reply */}
+            {review.adminReply && (
+              <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FaReply className="text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Phản hồi từ quản trị viên</span>
+                  <span className="text-xs text-blue-600">
+                    ({new Date(review.adminReply.repliedAt).toLocaleDateString("vi-VN")})
+                  </span>
+                </div>
+                <p className="text-gray-700">{review.adminReply.comment}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  bởi {review.adminReply.admin?.name || 'Admin'}
+                </p>
+              </div>
             )}
           </div>
         ))}
