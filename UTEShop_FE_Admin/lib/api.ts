@@ -108,6 +108,18 @@ export const reviewApi = {
   delete: (id: string) => axios.delete(`/admin/reviews/${id}`),
 };
 
+// Return API
+export const returnApi = {
+  getAll: (params?: { status?: string }) =>
+    axios.get('/returns', { params }),
+  getById: (id: string) => axios.get(`/returns/${id}`),
+  getStats: () => axios.get('/returns/stats'),
+  approve: (id: string, adminNote?: string) =>
+    axios.post(`/returns/${id}/approve`, { adminNote }),
+  reject: (id: string, adminNote: string) =>
+    axios.post(`/returns/${id}/reject`, { adminNote }),
+};
+
 export default {
   auth: authApi,
   analytics: analyticsApi,
@@ -119,4 +131,5 @@ export default {
   voucher: voucherApi,
   points: pointsApi,
   review: reviewApi,
+  return: returnApi,
 };

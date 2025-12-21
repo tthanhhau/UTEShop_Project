@@ -2,6 +2,7 @@ import express from 'express';
 import { sendNotificationToUser } from '../config/socket.js';
 import Review from '../models/review.js';
 import Order from '../models/order.js';
+import User from '../models/user.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
 
@@ -149,4 +150,80 @@ router.delete('/reviews/product/:productId', asyncHandler(async (req, res) => {
 }));
 
 export default router;
+
+// Internal route để cộng điểm cho user (từ admin khi duyệt hoàn trả)
+router.post('/add-points', asyncHandler(async (req, res) => {
+  const { userId, points, reason } = req.body;
+
+  console.log(`💰 [INTERNAL] Adding ${points} points to user: ${userId}`);
+  console.log(`💰 [INTERNAL] Reason: ${reason}`);
+
+  if (!userId || !points) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing userId or points',
+    });
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
+
+  // Cộng điểm
+  if (!user.loyaltyPoints) {
+    user.loyaltyPoints = { balance: 0, tier: 'BRONZE' };
+  }
+  user.loyaltyPoints.balance += points;
+
+  await user.save();
+
+  console.log(`✅ [INTERNAL] Points added successfully. New balance: ${user.loyaltyPoints.balance}`);
+
+  res.status(200).json({
+    success: true,
+    message: 'Points added successfully',
+    newBalance: user.loyaltyPoints.balance,
+  });
+}));
+
+// Internal route để gửi thông báo cho user (từ admin)
+router.post('/send-notification', asyncHandler(async (req, res) => {
+  const { userId, title, message, type, data } = req.body;
+
+  console.log(`📤 [INTERNAL] Sending notification to user: ${userId}`);
+  console.log(`📤 [INTERNAL] Title: ${title}`);
+  console.log(`📤 [INTERNAL] Type: ${type}`);
+
+  const io = req.app.locals.io;
+  const sendNotificationToUserFn = req.app.locals.sendNotificationToUser;
+
+  if (!io || !sendNotificationToUserFn) {
+    console.error('❌ [INTERNAL] Socket.IO not initialized');
+    return res.status(500).json({
+      success: false,
+      message: 'Socket.IO not initialized',
+    });
+  }
+
+  const notification = {
+    title,
+    message,
+    type,
+    data,
+    createdAt: new Date(),
+  };
+
+  await sendNotificationToUserFn(io, userId, 'new_notification', notification);
+
+  console.log(`✅ [INTERNAL] Notification sent successfully`);
+
+  res.status(200).json({
+    success: true,
+    message: 'Notification sent successfully',
+  });
+}));
 

@@ -20,6 +20,7 @@ import { ReviewModule } from './review/ReviewModule';
 import { PublicModule } from './public/PublicModule';
 import { MailerModule } from './config/mailer.module';
 import { NotificationModule } from './notification/notification.module';
+import { ReturnModule } from './return/return.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { NotificationModule } from './notification/notification.module';
     PublicModule,
     MailerModule,
     NotificationModule,
+    ReturnModule,
   ],
 })
 export class AppModule { }
