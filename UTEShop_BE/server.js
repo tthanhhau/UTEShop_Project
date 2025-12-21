@@ -157,6 +157,10 @@ app.use("/api/points", pointsRoutes);
 import chatbotRoutes from "./src/chatbot/chatbotRoutes.js";
 app.use("/api/chatbot", chatbotRoutes);
 
+// Return/Refund routes
+import returnRoutes from "./src/routes/returnRoutes.js";
+app.use("/api/returns", returnRoutes);
+
 /* ------------------------------- 404 & Err ------------------------------ */
 
 // 404 JSON thay vì HTML
