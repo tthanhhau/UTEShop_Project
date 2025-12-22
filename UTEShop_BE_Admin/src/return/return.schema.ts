@@ -43,6 +43,12 @@ export class ReturnRequest {
     refundAmount: number;
 
     @Prop({ type: Number, default: 0 })
+    pointsUsed: number; // Số điểm đã dùng để mua đơn hàng này
+
+    @Prop({ type: Number, default: 0 })
+    voucherDiscount: number; // Số tiền giảm từ voucher
+
+    @Prop({ type: Number, default: 0 })
     pointsAwarded: number;
 
     @Prop({ type: String, default: '' })

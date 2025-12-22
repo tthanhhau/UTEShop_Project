@@ -139,8 +139,11 @@ export default function ProductsManagement() {
       try {
         await axios.delete(`/admin/Products/${id}`);
         fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
-      } catch (error) {
+        alert('Xóa sản phẩm thành công!');
+      } catch (error: any) {
         console.error('Error deleting product:', error);
+        const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi xóa sản phẩm';
+        alert(errorMessage);
       }
     }
   };
@@ -166,8 +169,11 @@ export default function ProductsManagement() {
         });
         setSelectedProducts([]);
         fetchProducts(pagination.currentPage, filters.category, filters.brand, filters.search);
-      } catch (error) {
+        alert('Xóa các sản phẩm thành công!');
+      } catch (error: any) {
         console.error('Error deleting products:', error);
+        const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi xóa các sản phẩm';
+        alert(errorMessage);
       }
     }
   };
@@ -212,16 +218,16 @@ export default function ProductsManagement() {
   // Check if category is clothing (quần áo)
   const isClothingCategory = (): boolean => {
     const category = getSelectedCategory();
-    return category?.name?.toLowerCase().includes('quần') || 
-           category?.name?.toLowerCase().includes('áo') ||
-           category?.name?.toLowerCase().includes('clothing');
+    return category?.name?.toLowerCase().includes('quần') ||
+      category?.name?.toLowerCase().includes('áo') ||
+      category?.name?.toLowerCase().includes('clothing');
   };
 
   // Check if category is shoes (giày)
   const isShoesCategory = (): boolean => {
     const category = getSelectedCategory();
-    return category?.name?.toLowerCase().includes('giày') || 
-           category?.name?.toLowerCase().includes('shoe');
+    return category?.name?.toLowerCase().includes('giày') ||
+      category?.name?.toLowerCase().includes('shoe');
   };
 
   // Add size
@@ -409,8 +415,8 @@ export default function ProductsManagement() {
                     {product.sizes && product.sizes.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {product.sizes.map((sizeItem: any, idx: number) => (
-                          <span 
-                            key={idx} 
+                          <span
+                            key={idx}
                             className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded whitespace-nowrap"
                             title={`Số lượng: ${sizeItem.stock}`}
                           >
@@ -601,7 +607,7 @@ export default function ProductsManagement() {
                       + Thêm {isClothingCategory() ? 'size' : 'số'}
                     </button>
                   </div>
-                  
+
                   {formData.sizes.length === 0 ? (
                     <div className="text-sm text-gray-500 italic p-3 bg-gray-50 rounded">
                       Chưa có {isClothingCategory() ? 'size' : 'số giày'} nào. Nhấn "Thêm {isClothingCategory() ? 'size' : 'số'}" để thêm.
@@ -652,7 +658,7 @@ export default function ProductsManagement() {
                       ))}
                     </div>
                   )}
-                  
+
                   {formData.sizes.length > 0 && (
                     <div className="mt-2 text-sm text-gray-600">
                       Tổng số lượng: {formData.sizes.reduce((sum, item) => sum + (item.stock || 0), 0)}

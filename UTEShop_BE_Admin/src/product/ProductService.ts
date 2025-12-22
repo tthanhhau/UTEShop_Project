@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from '../schemas/ProductSchema';
 import { Review, ReviewDocument } from '../schemas/ReviewSchema';
+import { Order, OrderDocument } from '../schemas/OrderSchema';
+import { ReturnRequest, ReturnRequestDocument } from '../return/return.schema';
 import { CreateProductDto } from './dto/CreateProductDto';
 import { UpdateProductDto } from './dto/UpdateProductDto';
 import { HttpService } from '@nestjs/axios';
@@ -12,6 +14,8 @@ export class ProductService {
   constructor(
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Review.name) private reviewModel: Model<ReviewDocument>,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(ReturnRequest.name) private returnRequestModel: Model<ReturnRequestDocument>,
     private httpService: HttpService,
   ) { }
 
@@ -60,7 +64,7 @@ export class ProductService {
         .exec(),
       this.productModel.countDocuments(query),
     ]);
-    
+
     console.log(`📊 Found ${total} products, returning ${products.length}`);
 
     return {
@@ -89,7 +93,7 @@ export class ProductService {
       category: new Types.ObjectId(createProductDto.category),
       brand: new Types.ObjectId(createProductDto.brand)
     };
-    
+
     const product = new this.productModel(productData);
     return product.save();
   }
@@ -103,7 +107,7 @@ export class ProductService {
     if (updateData.brand) {
       updateData.brand = new Types.ObjectId(updateData.brand);
     }
-    
+
     return this.productModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('category')
@@ -114,26 +118,88 @@ export class ProductService {
   async delete(id: string) {
     console.log(`🔍 [ADMIN-PRODUCT] Starting delete for product: ${id}`);
 
-    // First, delete all reviews associated with this product
+    // === RÀNG BUỘC XÓA SẢN PHẨM ===
+
+    // 1. Kiểm tra sản phẩm có trong đơn hàng chưa hoàn thành không
+    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const ordersWithProduct = await this.orderModel.countDocuments({
+      'items.product': new Types.ObjectId(id),
+      status: { $in: pendingStatuses }
+    });
+
+    if (ordersWithProduct > 0) {
+      throw new BadRequestException(
+        `Không thể xóa sản phẩm này vì đang có ${ordersWithProduct} đơn hàng chưa hoàn thành chứa sản phẩm này. Vui lòng chờ các đơn hàng hoàn thành hoặc hủy trước khi xóa.`
+      );
+    }
+
+    // 2. Kiểm tra sản phẩm có yêu cầu hoàn trả đang chờ xử lý không
+    const pendingReturns = await this.returnRequestModel.countDocuments({
+      status: 'pending'
+    }).populate({
+      path: 'order',
+      match: { 'items.product': new Types.ObjectId(id) }
+    });
+
+    // Cách khác: tìm các order có product này, rồi check return request
+    const ordersWithThisProduct = await this.orderModel.find({
+      'items.product': new Types.ObjectId(id)
+    }).select('_id');
+
+    const orderIds = ordersWithThisProduct.map(o => o._id);
+    const pendingReturnRequests = await this.returnRequestModel.countDocuments({
+      order: { $in: orderIds },
+      status: 'pending'
+    });
+
+    if (pendingReturnRequests > 0) {
+      throw new BadRequestException(
+        `Không thể xóa sản phẩm này vì đang có ${pendingReturnRequests} yêu cầu hoàn trả chờ xử lý liên quan đến sản phẩm này.`
+      );
+    }
+
+    // 3. Kiểm tra sản phẩm có trong giỏ hàng của user không (gọi API user backend)
+    try {
+      const userBackendUrl = process.env.USER_BACKEND_URL || 'http://localhost:5000';
+      const checkCartUrl = `${userBackendUrl}/api/internal/check-product-in-carts/${id}`;
+      const cartResponse = await this.httpService.get(checkCartUrl).toPromise();
+
+      if (cartResponse?.data?.count > 0) {
+        throw new BadRequestException(
+          `Không thể xóa sản phẩm này vì đang có ${cartResponse?.data?.count} giỏ hàng chứa sản phẩm này.`
+        );
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      console.log('⚠️ Could not check cart status, proceeding with delete');
+    }
+
+    // === XÓA CÁC DỮ LIỆU LIÊN QUAN ===
+
+    // Xóa reviews
     const deleteResult = await this.reviewModel.deleteMany({ product: id });
     console.log(`🗑️ [ADMIN-PRODUCT] Deleted ${deleteResult.deletedCount} reviews from admin database for product: ${id}`);
 
-    // Gọi đến backend user để xóa các review đó cũng
+    // Gọi đến backend user để xóa reviews và cleanup
     try {
       const userBackendUrl = process.env.USER_BACKEND_URL || 'http://localhost:5000';
-      const deleteUrl = `${userBackendUrl}/api/internal/reviews/product/${id}`;
-      console.log(`📡 [ADMIN-PRODUCT] Calling user backend at: ${deleteUrl}`);
 
-      const response = await this.httpService.delete(deleteUrl).toPromise();
+      // Xóa reviews
+      const deleteUrl = `${userBackendUrl}/api/internal/reviews/product/${id}`;
+      await this.httpService.delete(deleteUrl).toPromise();
       console.log(`✅ [ADMIN-PRODUCT] Successfully deleted reviews for product ${id} from user backend`);
-      console.log(`📊 [ADMIN-PRODUCT] User backend response:`, response?.data);
+
+      // Xóa khỏi favorites và viewed products
+      const cleanupUrl = `${userBackendUrl}/api/internal/cleanup-product/${id}`;
+      await this.httpService.delete(cleanupUrl).toPromise();
+      console.log(`✅ [ADMIN-PRODUCT] Successfully cleaned up product ${id} from user favorites and viewed`);
     } catch (error) {
-      console.error(`❌ [ADMIN-PRODUCT] Failed to delete reviews for product ${id} from user backend:`, error.message);
-      console.error(`❌ [ADMIN-PRODUCT] Full error:`, error);
-      // Không throw error vì admin backend đã xóa thành công
+      console.error(`❌ [ADMIN-PRODUCT] Failed to cleanup product ${id} from user backend:`, error.message);
     }
 
-    // Then delete the product
+    // Xóa sản phẩm
     const deletedProduct = await this.productModel.findByIdAndDelete(id).exec();
     console.log(`✅ [ADMIN-PRODUCT] Deleted product: ${id}`);
 
@@ -141,22 +207,53 @@ export class ProductService {
   }
 
   async deleteMultiple(ids: string[]) {
-    // First, delete all reviews associated with these products
+    // === RÀNG BUỘC XÓA NHIỀU SẢN PHẨM ===
+    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const objectIds = ids.map(id => new Types.ObjectId(id));
+
+    // 1. Kiểm tra sản phẩm có trong đơn hàng chưa hoàn thành không
+    const ordersWithProducts = await this.orderModel.countDocuments({
+      'items.product': { $in: objectIds },
+      status: { $in: pendingStatuses }
+    });
+
+    if (ordersWithProducts > 0) {
+      throw new BadRequestException(
+        `Không thể xóa các sản phẩm này vì đang có ${ordersWithProducts} đơn hàng chưa hoàn thành chứa các sản phẩm này.`
+      );
+    }
+
+    // 2. Kiểm tra yêu cầu hoàn trả đang chờ
+    const ordersWithTheseProducts = await this.orderModel.find({
+      'items.product': { $in: objectIds }
+    }).select('_id');
+
+    const orderIds = ordersWithTheseProducts.map(o => o._id);
+    const pendingReturnRequests = await this.returnRequestModel.countDocuments({
+      order: { $in: orderIds },
+      status: 'pending'
+    });
+
+    if (pendingReturnRequests > 0) {
+      throw new BadRequestException(
+        `Không thể xóa các sản phẩm này vì đang có ${pendingReturnRequests} yêu cầu hoàn trả chờ xử lý.`
+      );
+    }
+
+    // === XÓA DỮ LIỆU LIÊN QUAN ===
     await this.reviewModel.deleteMany({ product: { $in: ids } });
 
-    // Gọi đến backend user để xóa các review đó cũng
+    // Gọi đến backend user để xóa các review và cleanup
     try {
       const userBackendUrl = process.env.USER_BACKEND_URL || 'http://localhost:5000';
       for (const id of ids) {
         await this.httpService.delete(`${userBackendUrl}/api/internal/reviews/product/${id}`).toPromise();
-        console.log(`✅ Successfully deleted reviews for product ${id} from user backend`);
+        await this.httpService.delete(`${userBackendUrl}/api/internal/cleanup-product/${id}`).toPromise();
       }
     } catch (error) {
-      console.error(`❌ Failed to delete reviews for products from user backend:`, error.message);
-      // Không throw error vì admin backend đã xóa thành công
+      console.error(`❌ Failed to cleanup products from user backend:`, error.message);
     }
 
-    // Then delete the products
     return this.productModel.deleteMany({ _id: { $in: ids } }).exec();
   }
 

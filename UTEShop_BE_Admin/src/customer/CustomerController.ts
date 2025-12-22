@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Delete,
   Param,
   Body,
   Query,
@@ -72,6 +73,15 @@ export class CustomerController {
     return {
       success: true,
       data: customer,
+    };
+  }
+
+  @Delete(':id')
+  async deleteCustomer(@Param('id') id: string) {
+    await this.customerService.deleteCustomer(id);
+    return {
+      success: true,
+      message: 'Đã xóa khách hàng thành công',
     };
   }
 }

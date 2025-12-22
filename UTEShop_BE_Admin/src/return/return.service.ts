@@ -64,19 +64,23 @@ export class ReturnService {
             throw new BadRequestException('Yêu cầu này đã được xử lý');
         }
 
-        // Cộng điểm cho user thông qua API internal của UTEShop_BE
-        const pointsToAdd = returnRequest.refundAmount; // 1 điểm = 1 VNĐ
+        // Hoàn lại giá gốc của đơn hàng (refundAmount = giá sản phẩm trước voucher/điểm)
+        // Đây là giá trị thực tế của sản phẩm, không phụ thuộc vào voucher hay điểm đã dùng
+        const pointsToAdd = returnRequest.refundAmount;
 
-        try {
-            const userBackendUrl = process.env.USER_BACKEND_URL || 'http://localhost:5000';
-            await axios.post(`${userBackendUrl}/api/internal/add-points`, {
-                userId: returnRequest.user.toString(),
-                points: pointsToAdd,
-                reason: `Hoàn trả đơn hàng - ${returnRequest.order.toString()}`,
-            });
-        } catch (error) {
-            console.error('Error adding points to user:', error);
-            throw new BadRequestException('Không thể cộng điểm cho khách hàng');
+        // Chỉ gọi API cộng điểm nếu có điểm cần cộng
+        if (pointsToAdd > 0) {
+            try {
+                const userBackendUrl = process.env.USER_BACKEND_URL || 'http://localhost:5000';
+                await axios.post(`${userBackendUrl}/api/internal/add-points`, {
+                    userId: returnRequest.user.toString(),
+                    points: pointsToAdd,
+                    reason: `Hoàn trả đơn hàng - ${returnRequest.order.toString()}`,
+                });
+            } catch (error) {
+                console.error('Error adding points to user:', error);
+                throw new BadRequestException('Không thể cộng điểm cho khách hàng');
+            }
         }
 
         // Cập nhật trạng thái yêu cầu
