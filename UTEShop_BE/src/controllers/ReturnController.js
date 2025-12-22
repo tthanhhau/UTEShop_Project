@@ -53,6 +53,12 @@ export const createReturnRequest = async (req, res) => {
             other: "Lý do khác"
         };
 
+        // Tính giá bán của đơn hàng (giá đã giảm theo % sản phẩm, trước khi áp dụng voucher/điểm)
+        // Đây là giá bán thực tế của sản phẩm mà user sẽ được hoàn lại
+        const sellingPrice = order.items.reduce((total, item) => {
+            return total + (item.discountedPrice || item.price) * item.quantity;
+        }, 0);
+
         // Tạo yêu cầu hoàn trả
         const returnRequest = new ReturnRequest({
             order: orderId,
@@ -60,7 +66,9 @@ export const createReturnRequest = async (req, res) => {
             reason,
             reasonText: reasonMap[reason] || reason,
             customReason: reason === "other" ? customReason : "",
-            refundAmount: order.totalPrice,
+            refundAmount: sellingPrice, // Giá bán sản phẩm (đã giảm %, trước voucher/điểm)
+            pointsUsed: order.usedPoints || 0, // Số điểm đã dùng
+            voucherDiscount: order.voucherDiscount || 0, // Số tiền giảm từ voucher
         });
 
         await returnRequest.save();

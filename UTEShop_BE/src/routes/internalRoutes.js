@@ -3,6 +3,7 @@ import { sendNotificationToUser } from '../config/socket.js';
 import Review from '../models/review.js';
 import Order from '../models/order.js';
 import User from '../models/user.js';
+import Cart from '../models/cart.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
 
@@ -158,10 +159,20 @@ router.post('/add-points', asyncHandler(async (req, res) => {
   console.log(`💰 [INTERNAL] Adding ${points} points to user: ${userId}`);
   console.log(`💰 [INTERNAL] Reason: ${reason}`);
 
-  if (!userId || !points) {
+  if (!userId) {
     return res.status(400).json({
       success: false,
-      message: 'Missing userId or points',
+      message: 'Missing userId',
+    });
+  }
+
+  // Nếu points = 0 hoặc không có, không cần cộng điểm
+  if (!points || points <= 0) {
+    console.log(`⚠️ [INTERNAL] Points is 0 or negative, skipping`);
+    return res.status(200).json({
+      success: true,
+      message: 'No points to add (points = 0)',
+      newBalance: null,
     });
   }
 
@@ -227,3 +238,82 @@ router.post('/send-notification', asyncHandler(async (req, res) => {
   });
 }));
 
+
+// === INTERNAL ROUTES CHO RÀNG BUỘC XÓA ===
+
+// Kiểm tra sản phẩm có trong giỏ hàng không
+router.get('/check-product-in-carts/:productId', asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+
+  console.log(`🔍 [INTERNAL] Checking if product ${productId} is in any cart`);
+
+  // Tìm tất cả cart có sản phẩm này (Cart là collection riêng)
+  const cartsWithProduct = await Cart.countDocuments({
+    'items.product': new mongoose.Types.ObjectId(productId)
+  });
+
+  console.log(`📊 [INTERNAL] Found ${cartsWithProduct} carts containing product ${productId}`);
+
+  res.status(200).json({
+    success: true,
+    count: cartsWithProduct,
+  });
+}));
+
+// Xóa sản phẩm khỏi favorites và viewed products của tất cả users
+router.delete('/cleanup-product/:productId', asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+
+  console.log(`🧹 [INTERNAL] Cleaning up product ${productId} from user data`);
+
+  const productObjectId = new mongoose.Types.ObjectId(productId);
+
+  // Xóa khỏi favorites
+  const favoritesResult = await User.updateMany(
+    { favorites: productObjectId },
+    { $pull: { favorites: productObjectId } }
+  );
+  console.log(`✅ [INTERNAL] Removed from ${favoritesResult.modifiedCount} users' favorites`);
+
+  // Xóa khỏi viewedProducts
+  const viewedResult = await User.updateMany(
+    { 'viewedProducts.product': productObjectId },
+    { $pull: { viewedProducts: { product: productObjectId } } }
+  );
+  console.log(`✅ [INTERNAL] Removed from ${viewedResult.modifiedCount} users' viewed products`);
+
+  // Xóa khỏi cart (Cart là collection riêng)
+  const cartResult = await Cart.updateMany(
+    { 'items.product': productObjectId },
+    { $pull: { items: { product: productObjectId } } }
+  );
+  console.log(`✅ [INTERNAL] Removed from ${cartResult.modifiedCount} carts`);
+
+  res.status(200).json({
+    success: true,
+    message: 'Product cleaned up from user data',
+    removedFromFavorites: favoritesResult.modifiedCount,
+    removedFromViewed: viewedResult.modifiedCount,
+    removedFromCarts: cartResult.modifiedCount,
+  });
+}));
+
+// Xóa tất cả dữ liệu liên quan đến user (khi xóa user)
+router.delete('/cleanup-user/:userId', asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  console.log(`🧹 [INTERNAL] Cleaning up all data for user ${userId}`);
+
+  // Xóa reviews của user
+  const reviewsResult = await Review.deleteMany({ user: userId });
+  console.log(`✅ [INTERNAL] Deleted ${reviewsResult.deletedCount} reviews`);
+
+  // Xóa notifications của user (nếu có model)
+  // const notificationsResult = await Notification.deleteMany({ user: userId });
+
+  res.status(200).json({
+    success: true,
+    message: 'User data cleaned up',
+    deletedReviews: reviewsResult.deletedCount,
+  });
+}));

@@ -1,25 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Voucher, VoucherDocument } from '../schemas/VoucherSchema';
 import { UserVoucher, UserVoucherDocument } from '../schemas/UserVoucherSchema';
+import { Order, OrderDocument } from '../schemas/OrderSchema';
 
 @Injectable()
 export class VoucherService {
   constructor(
     @InjectModel(Voucher.name) private voucherModel: Model<VoucherDocument>,
     @InjectModel(UserVoucher.name) private userVoucherModel: Model<UserVoucherDocument>,
-  ) {}
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+  ) { }
 
   async findAll(page = 1, limit = 10, search = '') {
     const skip = (page - 1) * limit;
     const query = search
       ? {
-          $or: [
-            { code: { $regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } },
-          ],
-        }
+        $or: [
+          { code: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+        ],
+      }
       : {};
 
     const [vouchers, total] = await Promise.all([
@@ -62,7 +64,7 @@ export class VoucherService {
             { _id: voucher._id },
             { $set: updateData }
           );
-          
+
           // Update local voucher object to reflect changes
           Object.assign(voucher, updateData);
         }
@@ -99,6 +101,24 @@ export class VoucherService {
   }
 
   async delete(id: string) {
+    // === RÀNG BUỘC XÓA VOUCHER ===
+
+    // Kiểm tra voucher có đang được sử dụng trong đơn hàng chưa hoàn thành không
+    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const ordersWithVoucher = await this.orderModel.countDocuments({
+      voucher: id,
+      status: { $in: pendingStatuses }
+    });
+
+    if (ordersWithVoucher > 0) {
+      throw new BadRequestException(
+        `Không thể xóa voucher này vì đang có ${ordersWithVoucher} đơn hàng chưa hoàn thành sử dụng voucher này.`
+      );
+    }
+
+    // Xóa các UserVoucher liên quan
+    await this.userVoucherModel.deleteMany({ voucher: id });
+
     return this.voucherModel.findByIdAndDelete(id).exec();
   }
 
