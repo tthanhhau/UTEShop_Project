@@ -7,10 +7,18 @@ import { sendMail } from "./mailer.js";
 const userSocketMap = new Map();
 
 export const initializeSocket = (httpServer) => {
+  // Lấy CORS origin từ environment variable hoặc dùng default cho development
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+    : ["http://localhost:5173"];
+
+  console.log('🔌 Socket.IO CORS origins:', corsOrigins);
+
   const io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:5173", // URL của frontend
+      origin: corsOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 

@@ -15,11 +15,14 @@ export const useSocket = () => {
     return useContext(SocketContext);
 };
 
+// Lấy URL backend từ environment variable
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // Component Provider để bao bọc ứng dụng
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const dispatch = useDispatch();
-    
+
     // 2. Lấy token từ Redux store làm nguồn chân lý duy nhất
     const token = useSelector(selectCurrentToken);
 
@@ -28,10 +31,12 @@ export const SocketProvider = ({ children }) => {
         if (token) {
             // 3. Khởi tạo kết nối đến server WebSocket
             // Truyền token vào phần `auth` để middleware ở backend có thể xác thực
-            const newSocket = io("http://localhost:5000", {
+            console.log('🔌 Connecting to WebSocket server:', SOCKET_URL);
+            const newSocket = io(SOCKET_URL, {
                 auth: {
                     token: token
-                }
+                },
+                transports: ['websocket', 'polling'], // Thử websocket trước, fallback polling
             });
 
             console.log("Attempting to connect to WebSocket server...");
@@ -50,7 +55,7 @@ export const SocketProvider = ({ children }) => {
             // Lắng nghe sự kiện 'new_notification' mà backend gửi
             newSocket.on('new_notification', (notificationData) => {
                 console.log('📬 Received new notification:', notificationData);
-                
+
                 // Hiển thị một pop-up thông báo đẹp mắt cho người dùng
                 // Nếu là delivery confirmation, hiển thị với style đặc biệt
                 if (notificationData.type === 'order_delivery_confirmation') {
@@ -69,7 +74,7 @@ export const SocketProvider = ({ children }) => {
                         }
                     });
                 }
-                
+
                 // Dispatch action `addNotification` để cập nhật Redux store
                 // Giúp icon chuông và danh sách thông báo được cập nhật real-time
                 dispatch(addNotification(notificationData));
@@ -89,9 +94,9 @@ export const SocketProvider = ({ children }) => {
                 setSocket(null);
             }
         }
-    // Mảng phụ thuộc: useEffect sẽ chạy lại mỗi khi `token` thay đổi
-    // - Khi `token` từ null -> có giá trị (login): Tạo kết nối mới
-    // - Khi `token` từ có giá trị -> null (logout): Ngắt kết nối cũ
+        // Mảng phụ thuộc: useEffect sẽ chạy lại mỗi khi `token` thay đổi
+        // - Khi `token` từ null -> có giá trị (login): Tạo kết nối mới
+        // - Khi `token` từ có giá trị -> null (logout): Ngắt kết nối cũ
     }, [token, dispatch]);
 
     return (
