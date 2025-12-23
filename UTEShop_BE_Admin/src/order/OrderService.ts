@@ -136,48 +136,48 @@ export class OrderService {
   async updateStatus(id: string, status: string) {
     // Lấy thông tin đơn hàng hiện tại
     const order = await this.orderModel.findById(id).exec();
-    
+
     if (!order) {
       throw new Error('Order not found');
     }
-    
+
     console.log('🔍 UPDATE STATUS - Order ID:', id);
     console.log('🔍 UPDATE STATUS - Current status:', order.status);
     console.log('🔍 UPDATE STATUS - New status:', status);
     console.log('🔍 UPDATE STATUS - Payment method:', order.paymentMethod);
     console.log('🔍 UPDATE STATUS - Current payment status:', order.paymentStatus);
-    
+
     // Chuẩn bị dữ liệu cập nhật
     const updateData: any = { status };
-    
+
     // Nếu chuyển sang "đã giao" và thanh toán COD thì tự động chuyển sang "đã thanh toán"
     if (status === 'delivered' && order.paymentMethod === 'COD') {
       console.log('✅ AUTO UPDATE - Setting paymentStatus to paid');
       updateData.paymentStatus = 'paid';
     }
-    
+
     console.log('🔍 UPDATE STATUS - Update data:', updateData);
-    
+
     // Sử dụng findOneAndUpdate để cập nhật và trả về ngay lập tức
     const updatedOrder = await this.orderModel
       .findOneAndUpdate(
-        { _id: id }, 
-        updateData, 
-        { 
+        { _id: id },
+        updateData,
+        {
           new: true,  // Trả về document sau khi update
           runValidators: true  // Chạy validators khi update
         }
       )
       .exec();
-    
+
     if (!updatedOrder) {
       console.error('❌ ERROR: Could not update order');
       throw new Error('Failed to update order');
     }
-    
+
     console.log('🔍 AFTER UPDATE - Order status:', updatedOrder.status);
     console.log('🔍 AFTER UPDATE - Payment status:', updatedOrder.paymentStatus);
-    
+
     // Gửi notification nếu status = "shipped"
     if (status === 'shipped') {
       console.log('📦 [ADMIN] Status is "shipped", calling sendDeliveryConfirmationNotification...');
@@ -192,7 +192,7 @@ export class OrderService {
     } else {
       console.log(`ℹ️ [ADMIN] Status is "${status}", skipping notification`);
     }
-    
+
     return updatedOrder;
   }
 
@@ -200,7 +200,7 @@ export class OrderService {
     console.log('📦 [ADMIN] sendDeliveryConfirmationNotification called');
     console.log('📦 [ADMIN] Order ID:', order._id);
     console.log('📦 [ADMIN] Order user:', order.user);
-    
+
     try {
       // Lấy Notification model từ database (dùng cùng schema với UTEShop_BE)
       const mongoose = require('mongoose');
@@ -216,7 +216,7 @@ export class OrderService {
           cancel: { type: String },
         },
       }, { timestamps: true });
-      
+
       // Lấy model hoặc tạo mới nếu chưa có
       let NotificationModel;
       try {
@@ -229,7 +229,7 @@ export class OrderService {
 
       const notificationMessage = "Bạn đã nhận đơn hàng chưa?";
       console.log('📦 [ADMIN] Creating notification with message:', notificationMessage);
-      
+
       const newNotification = new NotificationModel({
         user: order.user,
         message: notificationMessage,
@@ -241,7 +241,7 @@ export class OrderService {
           cancel: "Chưa nhận hàng",
         },
       });
-      
+
       await newNotification.save();
       console.log('✅ [ADMIN] Notification saved to database:', newNotification._id);
       console.log('✅ [ADMIN] Notification data:', JSON.stringify(newNotification.toObject(), null, 2));
@@ -249,24 +249,24 @@ export class OrderService {
       // Gửi HTTP request đến UTEShop_BE để trigger WebSocket notification
       const backendUrl = this.configService.get<string>('BACKEND_URL') || 'http://localhost:5000';
       console.log('📤 [ADMIN] Sending HTTP request to:', `${backendUrl}/api/internal/notifications/send`);
-      
+
       try {
         const axios = require('axios');
         const notificationData = {
           ...newNotification.toObject(),
           orderId: order._id.toString(),
         };
-        
+
         console.log('📤 [ADMIN] Notification data to send:', JSON.stringify(notificationData, null, 2));
         console.log('📤 [ADMIN] User ID to send:', order.user.toString());
-        
+
         const response = await axios.post(`${backendUrl}/api/internal/notifications/send`, {
           userId: order.user.toString(),
           notification: notificationData,
         }, {
           timeout: 5000, // 5 seconds timeout
         });
-        
+
         console.log('✅ [ADMIN] HTTP response:', response.data);
         console.log('✅ [ADMIN] Notification sent via HTTP to backend for WebSocket delivery');
       } catch (httpError: any) {

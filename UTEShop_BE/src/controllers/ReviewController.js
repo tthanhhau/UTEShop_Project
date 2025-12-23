@@ -63,6 +63,20 @@ export const createReview = async (req, res) => {
         return res.status(400).json({ message: "Bạn cần mua và nhận hàng trước khi đánh giá" });
       }
 
+      // Kiểm tra đơn hàng đã được hoàn trả chưa
+      const ReturnRequest = (await import("../models/returnRequest.js")).default;
+      const approvedReturn = await ReturnRequest.findOne({
+        order: orderId,
+        status: "approved"
+      });
+
+      if (approvedReturn) {
+        console.log("❌ Đơn hàng đã được hoàn trả, không thể đánh giá");
+        return res.status(400).json({
+          message: "Không thể đánh giá sản phẩm của đơn hàng đã hoàn trả"
+        });
+      }
+
       // Không cần check reviewStatus của order nữa vì mỗi sản phẩm có thể review riêng
 
 

@@ -134,7 +134,8 @@ export function OrderTracking() {
               returnEligibilityMap[order._id] = result;
             } catch (error) {
               console.error(`Error checking return eligibility for order ${order._id}:`, error);
-              returnEligibilityMap[order._id] = { canReturn: false };
+              // Nếu lỗi, mặc định không cho đánh giá để an toàn
+              returnEligibilityMap[order._id] = { canReturn: false, isReturned: false, error: true };
             }
           })
         );
