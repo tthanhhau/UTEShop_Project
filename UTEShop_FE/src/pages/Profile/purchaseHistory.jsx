@@ -12,9 +12,11 @@ import {
   Star,
   CheckCircle,
   ShoppingCart,
+  RotateCcw,
 } from "lucide-react";
 import api from "@/api/axiosConfig";
 import { checkOrderReviewed } from "../../api/reviewApi";
+import { checkReturnEligibility } from "../../api/returnApi";
 import { useDispatch } from "react-redux";
 import { addToCart } from "../../features/cart/cartSlice";
 
@@ -25,6 +27,7 @@ export function PurchaseHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrdersData] = useState([]);
   const [reviewStatus, setReviewStatus] = useState({});
+  const [returnStatus, setReturnStatus] = useState({});
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState(null);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
@@ -61,6 +64,24 @@ export function PurchaseHistory() {
           })
         );
         setReviewStatus(reviewStatusMap);
+
+        // Check return status for each completed order
+        const returnStatusMap = {};
+        await Promise.all(
+          completedOrders.map(async (order) => {
+            try {
+              const returnCheck = await checkReturnEligibility(order._id);
+              returnStatusMap[order._id] = returnCheck;
+            } catch (error) {
+              console.error(
+                `Error checking return status for order ${order._id}:`,
+                error
+              );
+              returnStatusMap[order._id] = { isReturned: false };
+            }
+          })
+        );
+        setReturnStatus(returnStatusMap);
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
         setError(err?.message || 'Lỗi không xác định');
@@ -75,7 +96,7 @@ export function PurchaseHistory() {
     const orderId = searchParams.get("highlight");
     if (orderId && orders.length > 0) {
       setHighlightOrderId(orderId);
-      
+
       // Scroll đến đơn hàng sau khi render
       setTimeout(() => {
         const orderElement = orderRefs.current[orderId];
@@ -190,11 +211,10 @@ export function PurchaseHistory() {
             <Card
               key={order._id}
               ref={(el) => (orderRefs.current[order._id] = el)}
-              className={`overflow-hidden bg-white rounded-xl border-2 shadow-lg transition-all duration-500 ${
-                highlightOrderId === order._id
-                  ? "border-yellow-400 ring-4 ring-yellow-200 scale-[1.02] shadow-2xl animate-pulse"
-                  : "border-gray-200 hover:shadow-xl"
-              }`}
+              className={`overflow-hidden bg-white rounded-xl border-2 shadow-lg transition-all duration-500 ${highlightOrderId === order._id
+                ? "border-yellow-400 ring-4 ring-yellow-200 scale-[1.02] shadow-2xl animate-pulse"
+                : "border-gray-200 hover:shadow-xl"
+                }`}
             >
               <CardHeader className=" bg-white ">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -247,7 +267,13 @@ export function PurchaseHistory() {
                           {formatPrice(item.price * item.quantity)}
                         </div>
                         <div className="flex-shrink-0">
-                          {reviewStatus[order._id] ? (
+                          {/* Nếu đơn hàng đã hoàn trả, hiện badge "Đã hoàn trả" */}
+                          {returnStatus[order._id]?.isReturned ? (
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+                              <RotateCcw className="w-3 h-3 mr-1" />
+                              Đã hoàn trả
+                            </Badge>
+                          ) : reviewStatus[order._id] ? (
                             <Button
                               variant="outline"
                               size="sm"

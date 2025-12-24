@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   FaChartBar, FaCube, FaShoppingCart, FaUsers, FaTicketAlt,
   FaStar, FaChartLine, FaCog, FaBars, FaSignOutAlt,
-  FaChevronLeft, FaChevronRight, FaAngleRight, FaComments
+  FaChevronLeft, FaChevronRight, FaAngleRight, FaComments, FaUndo
 } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
 
@@ -34,6 +34,7 @@ const menuStructure: MenuItem[] = [
     ],
   },
   { path: '/admin/orders', icon: FaShoppingCart, label: 'Quản lý đơn hàng' },
+  { path: '/admin/returns', icon: FaUndo, label: 'Quản lý đổi trả' },
   { path: '/admin/customers', icon: FaUsers, label: 'Quản lý khách hàng' },
   { path: '/admin/comments', icon: FaComments, label: 'Quản lý Đánh giá' },
   { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Quản lý Voucher' },

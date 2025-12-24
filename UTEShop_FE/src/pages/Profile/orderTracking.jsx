@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import api from "@/api/axiosConfig";
 import { checkProductInOrderReviewed } from "../../api/reviewApi";
+import { checkReturnEligibility, createReturnRequest, RETURN_REASONS } from "../../api/returnApi";
 import {
   Search,
   Package,
@@ -15,6 +16,9 @@ import {
   Clock,
   ShoppingBag,
   Star,
+  RotateCcw,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 // Order status mapping (string to number)
@@ -72,6 +76,14 @@ export function OrderTracking() {
   const [highlightedOrderId, setHighlightedOrderId] = useState(null);
   const orderRefs = useRef({});
 
+  // Return request states
+  const [returnEligibility, setReturnEligibility] = useState({});
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [returnLoading, setReturnLoading] = useState(false);
+
   //fetch API
   useEffect(() => {
     const fetchOrdersData = async () => {
@@ -112,6 +124,23 @@ export function OrderTracking() {
         );
 
         setReviewStatus(reviewStatusMap);
+
+        // Check return eligibility for delivered orders
+        const returnEligibilityMap = {};
+        await Promise.all(
+          deliveredOrders.map(async (order) => {
+            try {
+              const result = await checkReturnEligibility(order._id);
+              returnEligibilityMap[order._id] = result;
+            } catch (error) {
+              console.error(`Error checking return eligibility for order ${order._id}:`, error);
+              // Nếu lỗi, mặc định không cho đánh giá để an toàn
+              returnEligibilityMap[order._id] = { canReturn: false, isReturned: false, error: true };
+            }
+          })
+        );
+        setReturnEligibility(returnEligibilityMap);
+
       } catch (err) {
         console.error("Lỗi khi fetch profile:", err);
         // Cập nhật xử lý lỗi an toàn hơn
@@ -224,6 +253,47 @@ export function OrderTracking() {
       ...prev,
       [`${orderId}_${productId}`]: true,
     }));
+  };
+
+  // Handle return request
+  const handleOpenReturnDialog = (order) => {
+    setSelectedOrderForReturn(order);
+    setSelectedReason("");
+    setCustomReason("");
+    setShowReturnDialog(true);
+  };
+
+  const handleSubmitReturn = async () => {
+    if (!selectedReason) {
+      alert("Vui lòng chọn lý do hoàn trả");
+      return;
+    }
+    if (selectedReason === "other" && !customReason.trim()) {
+      alert("Vui lòng nhập lý do hoàn trả");
+      return;
+    }
+
+    setReturnLoading(true);
+    try {
+      await createReturnRequest(
+        selectedOrderForReturn._id,
+        selectedReason,
+        customReason
+      );
+      alert("Yêu cầu hoàn trả đã được gửi thành công! Admin sẽ xem xét và phản hồi sớm nhất.");
+      setShowReturnDialog(false);
+
+      // Update return eligibility
+      setReturnEligibility((prev) => ({
+        ...prev,
+        [selectedOrderForReturn._id]: { canReturn: false, reason: "Đã gửi yêu cầu hoàn trả" },
+      }));
+    } catch (error) {
+      console.error("Error submitting return request:", error);
+      alert(error?.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu hoàn trả");
+    } finally {
+      setReturnLoading(false);
+    }
   };
 
   const renderStatusTimeline = (currentStatus) => {
@@ -389,7 +459,8 @@ export function OrderTracking() {
                             {formatPrice(item.price)}
                           </div>
                         </div>
-                        {statusNumber === 5 && (
+                        {/* Chỉ hiện nút đánh giá khi đơn đã giao VÀ chưa hoàn trả */}
+                        {statusNumber === 5 && !returnEligibility[order._id]?.isReturned && (
                           <div className="flex-shrink-0">
                             {reviewStatus[`${order._id}_${item.product?._id || item.product}`] ? (
                               <Button
@@ -416,6 +487,15 @@ export function OrderTracking() {
                                 Đánh giá
                               </Button>
                             )}
+                          </div>
+                        )}
+                        {/* Hiện badge "Đã hoàn trả" nếu đơn đã được hoàn trả */}
+                        {statusNumber === 5 && returnEligibility[order._id]?.isReturned && (
+                          <div className="flex-shrink-0">
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+                              <RotateCcw className="w-3 h-3 mr-1" />
+                              Đã hoàn trả
+                            </Badge>
                           </div>
                         )}
                       </div>
@@ -473,6 +553,18 @@ export function OrderTracking() {
                           Hủy đơn
                         </Button>
                       )}
+                      {/* Nút hoàn trả - chỉ hiện khi đã giao và trong 24h */}
+                      {statusNumber === 5 && returnEligibility[order._id]?.canReturn && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                          onClick={() => handleOpenReturnDialog(order)}
+                        >
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Hoàn trả ({returnEligibility[order._id]?.hoursRemaining}h còn lại)
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -481,6 +573,94 @@ export function OrderTracking() {
           })
         )}
       </div>
+
+      {/* Return Request Modal - Simple HTML Modal */}
+      {showReturnDialog && selectedOrderForReturn && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-[500px] w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <RotateCcw className="w-5 h-5 text-orange-500" />
+                Yêu cầu hoàn trả hàng
+              </h2>
+              <button
+                onClick={() => setShowReturnDialog(false)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500">
+                Vui lòng cho chúng tôi biết lý do bạn muốn hoàn trả đơn hàng này.
+                Số tiền sẽ được quy đổi thành điểm tích lũy (1 điểm = 1 VNĐ).
+              </p>
+
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">Đơn hàng</p>
+                <p className="font-medium">#{selectedOrderForReturn._id}</p>
+                <p className="text-sm text-green-600 font-medium">
+                  Số tiền hoàn: {formatPrice(selectedOrderForReturn.totalPrice)}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Lý do hoàn trả *</label>
+                <div className="space-y-2">
+                  {RETURN_REASONS.map((reason) => (
+                    <label key={reason.value} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="returnReason"
+                        value={reason.value}
+                        checked={selectedReason === reason.value}
+                        onChange={(e) => setSelectedReason(e.target.value)}
+                        className="w-4 h-4 text-orange-500"
+                      />
+                      <span>{reason.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {selectedReason === "other" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Mô tả chi tiết *</label>
+                  <textarea
+                    placeholder="Vui lòng mô tả lý do hoàn trả..."
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    rows={3}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-yellow-800">
+                  Sau khi gửi yêu cầu, admin sẽ xem xét và phản hồi trong vòng 24-48 giờ.
+                  Nếu được chấp nhận, số tiền sẽ được cộng vào điểm tích lũy của bạn.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowReturnDialog(false)}>
+                Hủy
+              </Button>
+              <Button
+                onClick={handleSubmitReturn}
+                disabled={returnLoading || !selectedReason}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                {returnLoading ? "Đang gửi..." : "Gửi yêu cầu hoàn trả"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
