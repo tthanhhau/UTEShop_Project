@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/JwtAuthGuard';
 @Controller('admin/Categorys')
 @UseGuards(JwtAuthGuard)
 export class CategoryController {
-  constructor(private readonly CategoryService: CategoryService) { }
+  constructor(private readonly CategoryService: CategoryService) {}
 
   @Get()
   async getCategorys(
@@ -28,7 +28,11 @@ export class CategoryController {
     console.log('🔴🔴🔴 CATEGORY Controller - search param:', search);
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    const result = await this.CategoryService.findAll(pageNum, limitNum, search || '');
+    const result = await this.CategoryService.findAll(
+      pageNum,
+      limitNum,
+      search || '',
+    );
 
     return {
       success: true,
@@ -42,6 +46,21 @@ export class CategoryController {
     return this.CategoryService.create(createCategoryDto);
   }
 
+  @Post('can-delete-multiple')
+  async canDeleteMultipleCategories(@Body('ids') ids: string[]) {
+    return this.CategoryService.canDeleteMultiple(ids);
+  }
+
+  @Delete('multiple/delete')
+  async deleteMultipleCategorys(@Body('ids') ids: string[]) {
+    return this.CategoryService.deleteMultiple(ids);
+  }
+
+  @Get('check-delete/:id')
+  async canDeleteCategory(@Param('id') id: string) {
+    return this.CategoryService.canDelete(id);
+  }
+
   @Put(':id')
   async updateCategory(
     @Param('id') id: string,
@@ -53,11 +72,6 @@ export class CategoryController {
   @Delete(':id')
   async deleteCategory(@Param('id') id: string) {
     return this.CategoryService.delete(id);
-  }
-
-  @Delete('multiple/delete')
-  async deleteMultipleCategorys(@Body('ids') ids: string[]) {
-    return this.CategoryService.deleteMultiple(ids);
   }
 }
 
