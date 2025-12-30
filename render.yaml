@@ -30,6 +30,14 @@ services:
         value: production
       - key: PORT
         value: 3001
+      - key: USER_BACKEND_URL
+        value: https://uteshop-project.onrender.com
+      - key: MAILJET_API_KEY
+        value: cec2a5836956f9bac66f3278d83a9059
+      - key: MAILJET_SECRET_KEY
+        value: c9e0b605acb5596cfde9a4dcf20e06c9
+      - key: MAILJET_SENDER_EMAIL
+        value: bachphuc018@gmail.com
 
   # Frontend Admin (Next.js)
   - type: web
