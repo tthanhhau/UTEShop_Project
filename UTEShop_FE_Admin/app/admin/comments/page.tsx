@@ -407,7 +407,7 @@ export default function ReviewManagement() {
                                     className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
                                 >
                                     <i className="fas fa-reply mr-2"></i>
-                                    {review.adminReply ? 'Sửa phản hồi' : 'Phản hồi'}
+                                    {review.adminReply ? 'Phản hồi bình luận' : 'Phản hồi'}
                                 </button>
                                 <button
                                     onClick={() => handleDelete(review._id)}
