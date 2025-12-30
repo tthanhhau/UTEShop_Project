@@ -327,14 +327,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Order Total */}
+          {/* Chi tiết thanh toán */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Tổng tiền đơn hàng</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Chi tiết thanh toán</h3>
             
             <div className="space-y-3">
-              {/* Subtotal */}
+              {/* Tạm tính */}
               <div className="flex justify-between text-gray-600">
-                <span>Tạm tính:</span>
+                <span>Tạm tính</span>
                 <span className="font-medium">{formatCurrency(
                   (order.totalPrice || 0) + 
                   (order.voucherDiscount || 0) + 
@@ -342,31 +342,50 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 )}</span>
               </div>
 
-              {/* Voucher Discount */}
-              {order.voucherDiscount > 0 && (
-                <div className="flex justify-between text-orange-600">
-                  <span className="flex items-center">
-                    <i className="fas fa-ticket-alt mr-2"></i>
-                    Giảm giá voucher:
-                  </span>
-                  <span className="font-medium">-{formatCurrency(order.voucherDiscount)}</span>
-                </div>
-              )}
+              <div className="border-t border-dashed border-gray-200 my-2"></div>
 
-              {/* Points Discount */}
-              {order.usedPoints > 0 && order.usedPointsAmount > 0 && (
-                <div className="flex justify-between text-blue-600">
-                  <span className="flex items-center">
-                    <i className="fas fa-coins mr-2"></i>
-                    Điểm tích lũy ({order.usedPoints} điểm):
-                  </span>
-                  <span className="font-medium">-{formatCurrency(order.usedPointsAmount)}</span>
-                </div>
-              )}
+              {/* Voucher giảm giá */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 flex items-center">
+                  Voucher giảm giá
+                  {!order.voucherDiscount && (
+                    <span className="text-gray-400 text-sm ml-2">(Không áp dụng)</span>
+                  )}
+                </span>
+                {order.voucherDiscount > 0 ? (
+                  <span className="font-medium text-green-600">-{formatCurrency(order.voucherDiscount)}</span>
+                ) : (
+                  <span className="text-gray-400">0 ₫</span>
+                )}
+              </div>
 
-              {/* Total */}
+              {/* Điểm tích lũy */}
+              <div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 flex items-center">
+                    Điểm tích lũy
+                    {order.usedPoints > 0 && (
+                      <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full ml-2">
+                        -{order.usedPoints} điểm
+                      </span>
+                    )}
+                  </span>
+                  {order.usedPointsAmount > 0 ? (
+                    <span className="font-medium text-green-600">-{formatCurrency(order.usedPointsAmount)}</span>
+                  ) : (
+                    <span className="text-gray-400">0 ₫</span>
+                  )}
+                </div>
+                {order.usedPoints > 0 && order.usedPointsAmount > 0 && (
+                  <p className="text-xs text-gray-500 mt-1 italic">
+                    Quy đổi: 1 điểm = 100đ (Đã dùng {order.usedPoints} điểm = {formatCurrency(order.usedPointsAmount)})
+                  </p>
+                )}
+              </div>
+
+              {/* Tổng cộng */}
               <div className="flex justify-between items-center pt-3 border-t-2 border-gray-200">
-                <span className="text-lg font-semibold text-gray-800">Tổng cộng:</span>
+                <span className="text-lg font-semibold text-gray-800">Tổng cộng</span>
                 <span className="text-2xl font-bold text-purple-600">
                   {formatCurrency(order.totalPrice || 0)}
                 </span>
