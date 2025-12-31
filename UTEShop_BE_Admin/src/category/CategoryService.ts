@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Category, CategoryDocument } from '../schemas/CategorySchema';
 import { Product, ProductDocument } from '../schemas/ProductSchema';
 import { CreateCategoryDto } from './dto/CreateCategoryDto';
@@ -52,22 +52,82 @@ export class CategoryService {
       .exec();
   }
 
-  async delete(id: string) {
-    // === RÀNG BUỘC XÓA DANH MỤC ===
-
-    // 1. Kiểm tra danh mục có sản phẩm không
-    const productsInCategory = await this.productModel.countDocuments({ category: id });
-    if (productsInCategory > 0) {
-      throw new BadRequestException(
-        `Không thể xóa danh mục này vì đang có ${productsInCategory} sản phẩm thuộc danh mục này. Vui lòng chuyển hoặc xóa các sản phẩm trước.`
-      );
+  // Kiểm tra xem danh mục có thể xóa được không
+  async canDelete(id: string) {
+    const category = await this.categoryModel.findById(id);
+    if (!category) {
+      return { canDelete: false, message: 'Danh mục không tồn tại' };
     }
 
-    // 2. Kiểm tra danh mục có danh mục con không (nếu có parent field)
-    const childCategories = await this.categoryModel.countDocuments({ parent: id });
-    if (childCategories > 0) {
+    const objectId = new Types.ObjectId(id);
+    const productsInCategory = await this.productModel.countDocuments({
+      $or: [{ category: id }, { category: objectId }],
+    });
+
+    if (productsInCategory > 0) {
+      return {
+        canDelete: false,
+        message: `Không thể xóa danh mục "${category.name}" vì đang có ${productsInCategory} sản phẩm thuộc danh mục này. Vui lòng chuyển hoặc xóa các sản phẩm trước.`,
+        productCount: productsInCategory,
+      };
+    }
+
+    return { canDelete: true, message: 'Có thể xóa danh mục này' };
+  }
+
+  // Kiểm tra xem nhiều danh mục có thể xóa được không
+  async canDeleteMultiple(ids: string[]) {
+    const objectIds = ids.map((id) => new Types.ObjectId(id));
+
+    const productsInCategories = await this.productModel.countDocuments({
+      $or: [{ category: { $in: ids } }, { category: { $in: objectIds } }],
+    });
+
+    if (productsInCategories > 0) {
+      const categoriesWithProducts = await this.productModel.distinct(
+        'category',
+        {
+          $or: [{ category: { $in: ids } }, { category: { $in: objectIds } }],
+        },
+      );
+      const categoryNames = await this.categoryModel
+        .find({ _id: { $in: categoriesWithProducts } })
+        .select('name');
+      const names = categoryNames.map((c) => c.name).join(', ');
+
+      return {
+        canDelete: false,
+        message: `Không thể xóa vì có ${productsInCategories} sản phẩm thuộc các danh mục: ${names}. Vui lòng chuyển hoặc xóa các sản phẩm trước.`,
+        productCount: productsInCategories,
+      };
+    }
+
+    return { canDelete: true, message: 'Có thể xóa các danh mục này' };
+  }
+
+  async delete(id: string) {
+    // === RÀNG BUỘC XÓA DANH MỤC ===
+    
+    // Kiểm tra danh mục có tồn tại không
+    const category = await this.categoryModel.findById(id);
+    if (!category) {
+      throw new BadRequestException('Danh mục không tồn tại');
+    }
+
+    // Kiểm tra danh mục có sản phẩm không (query cả string và ObjectId)
+    const objectId = new Types.ObjectId(id);
+    const productsInCategory = await this.productModel.countDocuments({
+      $or: [
+        { category: id },
+        { category: objectId }
+      ]
+    });
+    
+    console.log(`🔴 Checking category ${id} - Found ${productsInCategory} products`);
+    
+    if (productsInCategory > 0) {
       throw new BadRequestException(
-        `Không thể xóa danh mục này vì đang có ${childCategories} danh mục con. Vui lòng xóa các danh mục con trước.`
+        `Không thể xóa danh mục "${category.name}" vì đang có ${productsInCategory} sản phẩm thuộc danh mục này. Vui lòng chuyển hoặc xóa các sản phẩm trước.`
       );
     }
 
@@ -77,23 +137,34 @@ export class CategoryService {
   async deleteMultiple(ids: string[]) {
     // === RÀNG BUỘC XÓA NHIỀU DANH MỤC ===
 
-    // 1. Kiểm tra các danh mục có sản phẩm không
-    const productsInCategories = await this.productModel.countDocuments({
-      category: { $in: ids }
-    });
-    if (productsInCategories > 0) {
-      throw new BadRequestException(
-        `Không thể xóa các danh mục này vì đang có ${productsInCategories} sản phẩm thuộc các danh mục này.`
-      );
-    }
+    // Convert string ids to ObjectIds
+    const objectIds = ids.map(id => new Types.ObjectId(id));
 
-    // 2. Kiểm tra có danh mục con không
-    const childCategories = await this.categoryModel.countDocuments({
-      parent: { $in: ids }
+    // Kiểm tra các danh mục có sản phẩm không (query cả string và ObjectId)
+    const productsInCategories = await this.productModel.countDocuments({
+      $or: [
+        { category: { $in: ids } },
+        { category: { $in: objectIds } }
+      ]
     });
-    if (childCategories > 0) {
+    
+    console.log(`🔴 Checking categories ${ids.join(', ')} - Found ${productsInCategories} products`);
+    
+    if (productsInCategories > 0) {
+      // Lấy danh sách tên các danh mục có sản phẩm
+      const categoriesWithProducts = await this.productModel.distinct('category', {
+        $or: [
+          { category: { $in: ids } },
+          { category: { $in: objectIds } }
+        ]
+      });
+      const categoryNames = await this.categoryModel.find({
+        _id: { $in: categoriesWithProducts }
+      }).select('name');
+      const names = categoryNames.map(c => c.name).join(', ');
+      
       throw new BadRequestException(
-        `Không thể xóa các danh mục này vì đang có ${childCategories} danh mục con.`
+        `Không thể xóa vì có ${productsInCategories} sản phẩm thuộc các danh mục: ${names}. Vui lòng chuyển hoặc xóa các sản phẩm trước.`
       );
     }
 

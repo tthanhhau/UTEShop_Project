@@ -169,9 +169,15 @@ export function NotificationBell() {
       // Đóng modal
       closeModal();
 
-      // Nếu là confirm, có thể navigate đến trang tracking
+      // Nếu là confirm, navigate đến trang tracking và reload để hiển thị đúng trạng thái
       if (action === 'confirm') {
-        navigate(`/orders-tracking?highlight=${orderId}`);
+        const currentPath = window.location.pathname;
+        // Nếu đang ở trang orders-tracking, reload trang để cập nhật trạng thái
+        if (currentPath === '/orders-tracking') {
+          window.location.href = `/orders-tracking?highlight=${orderId}`;
+        } else {
+          navigate(`/orders-tracking?highlight=${orderId}`);
+        }
       }
     } catch (error) {
       console.error('Error handling delivery confirmation:', error);

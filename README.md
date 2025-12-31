@@ -1,8 +1,8 @@
-# UTEShop - Website Bán Mỹ Phẩm
+# UTEShop - Website Bán hàng thời trang
 
 ## 📋 Giới thiệu
 
-UTEShop là một nền tảng thương mại điện tử chuyên về mỹ phẩm, cung cấp trải nghiệm mua sắm trực tuyến hiện đại và tiện lợi cho khách hàng.
+UTEShop là một nền tảng thương mại điện tử chuyên về thời trang, cung cấp trải nghiệm mua sắm trực tuyến hiện đại và tiện lợi cho khách hàng.
 
 ## 🛠️ Công nghệ sử dụng
 
@@ -192,19 +192,6 @@ Hệ thống sử dụng JWT (JSON Web Token) cho xác thực người dùng và
 
 Mọi đóng góp đều được chào đón! Vui lòng tạo pull request hoặc mở issue để thảo luận.
 
-## 📄 License
 
-MIT License - Xem file LICENSE để biết thêm chi tiết.
-
-## 👥 Tác giả
-
-- **Team UTEShop** - Đại học Sư phạm Kỹ thuật TP.HCM
-
-## 📞 Liên hệ
-
-- Email: support@uteshop.com
-- Website: https://uteshop.com
-
----
 
 **Made with ❤️ by UTEShop Team**

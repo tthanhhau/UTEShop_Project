@@ -13,6 +13,11 @@ interface Category {
   updatedAt: string;
 }
 
+interface Toast {
+  type: 'success' | 'error' | 'warning';
+  message: string;
+}
+
 export default function CategoriesManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +30,21 @@ export default function CategoriesManagement() {
     name: '',
     description: ''
   });
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    id?: string;
+    multiple?: boolean;
+  }>({ show: false });
+  const [alertModal, setAlertModal] = useState<{
+    show: boolean;
+    message: string;
+  }>({ show: false, message: '' });
+
+  const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   const fetchCategories = useCallback(async (search = '') => {
     try {
@@ -64,13 +84,13 @@ export default function CategoriesManagement() {
         // Update
         const response = await axios.put(`/admin/Categorys/${editingCategory._id}`, formData);
         if (response.data) {
-          alert('Cập nhật danh mục thành công!');
+          showToast('success', 'Cập nhật danh mục thành công!');
         }
       } else {
         // Create
         const response = await axios.post('/admin/Categorys', formData);
         if (response.data) {
-          alert('Tạo danh mục thành công!');
+          showToast('success', 'Tạo danh mục thành công!');
         }
       }
 
@@ -80,7 +100,7 @@ export default function CategoriesManagement() {
       fetchCategories(searchTerm);
     } catch (error: any) {
       console.error('Error saving category:', error);
-      alert(error.response?.data?.message || 'Có lỗi xảy ra!');
+      showToast('error', error.response?.data?.message || 'Có lỗi xảy ra!');
     }
   };
 
@@ -94,36 +114,86 @@ export default function CategoriesManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
+    // Kiểm tra trước xem có thể xóa không
+    try {
+      const response = await axios.get(`/admin/Categorys/check-delete/${id}`);
+      if (!response.data.canDelete) {
+        // Hiện modal cảnh báo giữa màn hình
+        setAlertModal({
+          show: true,
+          message: 'Danh mục này đã được thêm sản phẩm, không thể xóa!'
+        });
+        return;
+      }
+      // Chỉ hiện modal xác nhận nếu có thể xóa
+      setDeleteConfirm({ show: true, id, multiple: false });
+    } catch (error: any) {
+      // Nếu API lỗi, hiện modal cảnh báo
+      setAlertModal({
+        show: true,
+        message: 'Danh mục này đã được thêm sản phẩm, không thể xóa!'
+      });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return;
 
     try {
-      await axios.delete(`/admin/Categorys/${id}`);
-      alert('Xóa danh mục thành công!');
+      await axios.delete(`/admin/Categorys/${deleteConfirm.id}`);
+      showToast('success', 'Xóa danh mục thành công!');
       fetchCategories(searchTerm);
     } catch (error: any) {
       console.error('Error deleting category:', error);
-      alert(error.response?.data?.message || 'Không thể xóa danh mục!');
+      showToast('error', error.response?.data?.message || 'Không thể xóa danh mục!');
+    } finally {
+      setDeleteConfirm({ show: false });
     }
   };
 
   const handleDeleteMultiple = async () => {
     if (selectedCategories.length === 0) {
-      alert('Vui lòng chọn ít nhất một danh mục!');
+      showToast('error', 'Vui lòng chọn ít nhất một danh mục!');
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedCategories.length} danh mục?`)) return;
+    // Kiểm tra trước xem có thể xóa không
+    try {
+      const response = await axios.post('/admin/Categorys/can-delete-multiple', {
+        ids: selectedCategories
+      });
+      if (!response.data.canDelete) {
+        // Hiện modal cảnh báo giữa màn hình
+        setAlertModal({
+          show: true,
+          message: 'Một số danh mục đã được thêm sản phẩm, không thể xóa!'
+        });
+        return;
+      }
+      // Chỉ hiện modal xác nhận nếu có thể xóa
+      setDeleteConfirm({ show: true, multiple: true });
+    } catch (error: any) {
+      // Nếu API lỗi, hiện modal cảnh báo
+      setAlertModal({
+        show: true,
+        message: 'Một số danh mục đã được thêm sản phẩm, không thể xóa!'
+      });
+    }
+  };
 
+  const confirmDeleteMultiple = async () => {
     try {
       await axios.delete('/admin/Categorys/multiple/delete', {
         data: { ids: selectedCategories }
       });
-      alert('Xóa danh mục thành công!');
+      showToast('success', 'Xóa danh mục thành công!');
       setSelectedCategories([]);
       fetchCategories(searchTerm);
     } catch (error: any) {
       console.error('Error deleting categories:', error);
-      alert(error.response?.data?.message || 'Không thể xóa danh mục!');
+      showToast('error', error.response?.data?.message || 'Không thể xóa danh mục!');
+    } finally {
+      setDeleteConfirm({ show: false });
     }
   };
 
@@ -159,6 +229,110 @@ export default function CategoriesManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md ${
+          toast.type === 'success' ? 'bg-green-500' : 
+          toast.type === 'warning' ? 'bg-orange-500' : 'bg-red-500'
+        } text-white`}>
+          <div className="flex items-start">
+            <div className="flex-1">
+              <p className="font-medium">
+                {toast.type === 'success' ? 'Thành công' : 
+                 toast.type === 'warning' ? 'Cảnh báo' : 'Lỗi'}
+              </p>
+              <p className="text-sm mt-1">{toast.message}</p>
+            </div>
+            <button 
+              onClick={() => setToast(null)}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <FaTrash className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Xác nhận xóa
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {deleteConfirm.multiple
+                  ? `Bạn có chắc chắn muốn xóa ${selectedCategories.length} danh mục đã chọn?`
+                  : 'Bạn có chắc chắn muốn xóa danh mục này?'}
+              </p>
+              <div className="flex justify-center space-x-3">
+                <button
+                  onClick={() => setDeleteConfirm({ show: false })}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() =>
+                    deleteConfirm.multiple
+                      ? confirmDeleteMultiple()
+                      : confirmDelete()
+                  }
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert Modal - Hiển thị giữa màn hình */}
+      {alertModal.show && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <svg
+                  className="h-8 w-8 text-red-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-red-600 mb-3">
+                Không thể xóa!
+              </h3>
+              <p className="text-gray-700 mb-6">{alertModal.message}</p>
+              <button
+                onClick={() => setAlertModal({ show: false, message: '' })}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Quản lý Danh mục</h1>

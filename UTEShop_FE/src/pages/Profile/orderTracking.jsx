@@ -166,12 +166,12 @@ export function OrderTracking() {
             block: 'center'
           });
 
-          // Bỏ highlight sau 5 giây
+          // Bỏ highlight sau 1 giây (1000ms)
           setTimeout(() => {
             setHighlightedOrderId(null);
             // Xóa query param
             setSearchParams({});
-          }, 5000);
+          }, 1000);
         }
       }, 300);
     }
@@ -407,8 +407,8 @@ export function OrderTracking() {
               <Card
                 key={order._id}
                 ref={(el) => (orderRefs.current[order._id] = el)}
-                className={`overflow-hidden bg-white transition-all duration-500 ${isHighlighted
-                  ? 'ring-4 ring-yellow-400 border-2 border-yellow-400 shadow-2xl scale-[1.02] animate-pulse'
+                className={`overflow-hidden bg-white transition-all duration-200 ${isHighlighted
+                  ? 'border-2 border-black scale-[1.02]'
                   : 'border-2 border-gray-200'
                   }`}
               >
