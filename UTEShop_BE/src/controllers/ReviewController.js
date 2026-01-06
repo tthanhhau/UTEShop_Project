@@ -93,11 +93,9 @@ export const createReview = async (req, res) => {
 
       if (!order) {
         console.log("❌ No delivered order found for orderId:", orderId);
-        // TEMPORARY: Allow review without order for testing
-        console.log("⚠️ BYPASSING ORDER VALIDATION FOR TESTING");
-        // return res.status(400).json({
-        //   message: "Bạn cần mua và nhận hàng trước khi đánh giá",
-        // });
+        return res.status(400).json({
+          message: "Bạn cần mua và nhận hàng trước khi đánh giá",
+        });
       }
     } else {
       // Nếu không có orderId, kiểm tra xem user có đơn hàng delivered với sản phẩm này không
@@ -128,11 +126,9 @@ export const createReview = async (req, res) => {
           "product:",
           productId
         );
-        // TEMPORARY: Allow review without order for testing  
-        console.log("⚠️ BYPASSING ORDER VALIDATION FOR TESTING");
-        // return res.status(400).json({
-        //   message: "Bạn cần mua và nhận hàng trước khi đánh giá",
-        // });
+        return res.status(400).json({
+          message: "Bạn cần mua và nhận hàng trước khi đánh giá",
+        });
       }
     }
 
