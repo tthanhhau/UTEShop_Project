@@ -18,8 +18,8 @@ const MultiImageUpload: React.FC<MultiImageUploadProps> = ({ onImagesChange, ini
         setImages(initialImages);
     }, [initialImages]);
 
-    // Cloudinary config - Thử nhiều preset
-    const CLOUDINARY_PRESETS = ['uteshop', 'ml_default', 'fashion', 'unsigned_preset'];
+    // Cloudinary config - Ưu tiên preset fashion (unsigned)
+    const CLOUDINARY_PRESETS = ['fashion', 'uteshop', 'ml_default', 'unsigned_preset'];
     const CLOUDINARY_CLOUD_NAME = 'dx8ffnhq3';
 
     const uploadToCloudinary = async (file: File): Promise<string> => {
@@ -155,8 +155,8 @@ const MultiImageUpload: React.FC<MultiImageUploadProps> = ({ onImagesChange, ini
             {/* Upload Area */}
             <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragOver
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-300 hover:border-purple-400'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-300 hover:border-purple-400'
                     }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}

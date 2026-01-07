@@ -576,7 +576,7 @@ export function OrderTracking() {
 
       {/* Return Request Modal - Simple HTML Modal */}
       {showReturnDialog && selectedOrderForReturn && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}>
           <div className="bg-white rounded-lg max-w-[500px] w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-xl font-bold flex items-center gap-2">

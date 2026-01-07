@@ -131,6 +131,13 @@ class ElasticsearchService {
                             viewCount: { type: 'integer' },
                             averageRating: { type: 'float' },
                             reviewCount: { type: 'integer' },
+                            sizes: {
+                                type: 'nested',
+                                properties: {
+                                    size: { type: 'keyword' },
+                                    stock: { type: 'integer' }
+                                }
+                            },
                             isActive: { type: 'boolean' },
                             createdAt: { type: 'date' },
                             updatedAt: { type: 'date' }
@@ -157,6 +164,7 @@ class ElasticsearchService {
                 discountPercentage: product.discountPercentage || 0,
                 stock: product.stock,
                 images: product.images || [],
+                sizes: (product.sizes || []).map(s => ({ size: s.size, stock: s.stock })),
                 category: product.category ? {
                     _id: product.category._id.toString(),
                     name: product.category.name,
@@ -202,6 +210,7 @@ class ElasticsearchService {
                     discountPercentage: product.discountPercentage || 0,
                     stock: product.stock,
                     images: product.images || [],
+                    sizes: (product.sizes || []).map(s => ({ size: s.size, stock: s.stock })),
                     category: product.category ? {
                         _id: product.category._id.toString(),
                         name: product.category.name,
@@ -428,7 +437,7 @@ class ElasticsearchService {
                             filter: [{ term: { isActive: true } }]
                         }
                     },
-                    _source: ['name', 'price', 'discountedPrice', 'images', 'category', 'brand'],
+                    _source: ['name', 'price', 'discountedPrice', 'images', 'category', 'brand', 'sizes'],
                     size: limit,
                     sort: [{ _score: 'desc' }, { soldCount: 'desc' }]
                 }

@@ -535,6 +535,22 @@ def search():
                     # Simple scoring without color detection
                     final_score = similarity_score + (0.1 if is_in_stock else 0.0)
                 
+                # Process sizes to convert ObjectId to string
+                raw_sizes = product.get("sizes", [])
+                processed_sizes = []
+                for size_item in raw_sizes:
+                    if isinstance(size_item, dict):
+                        processed_size = {
+                            "size": size_item.get("size", ""),
+                            "stock": size_item.get("stock", 0)
+                        }
+                        # Convert _id if exists
+                        if "_id" in size_item:
+                            processed_size["_id"] = str(size_item["_id"])
+                        processed_sizes.append(processed_size)
+                    else:
+                        processed_sizes.append(size_item)
+
                 product_data = {
                     "_id": product_id,
                     "productId": product_id,
@@ -545,6 +561,7 @@ def search():
                     "price": product.get("price", 0),
                     "stock": stock,
                     "images": product.get("images", []),
+                    "sizes": processed_sizes,
                     "category": category_info or str(product.get("category", "")),
                     "brand": brand_info or str(product.get("brand", "")),
                     "discountPercentage": product.get("discountPercentage", 0),
