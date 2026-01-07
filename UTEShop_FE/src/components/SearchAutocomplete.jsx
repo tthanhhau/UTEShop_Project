@@ -1,7 +1,24 @@
 // src/components/SearchAutocomplete.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import axios from 'axios';
+
+// Custom debounce hook
+function useDebounce(value, delay) {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+}
 
 const SearchAutocomplete = ({ onProductSelect, placeholder = "Tìm kiếm sản phẩm..." }) => {
     const [query, setQuery] = useState('');
@@ -13,23 +30,26 @@ const SearchAutocomplete = ({ onProductSelect, placeholder = "Tìm kiếm sản 
     const inputRef = useRef(null);
     const suggestionsRef = useRef(null);
 
-    // Fetch suggestions khi query thay đổi
+    // Debounce query với 200ms delay - giảm số lần gọi API
+    const debouncedQuery = useDebounce(query, 200);
+
+    // Fetch suggestions khi debouncedQuery thay đổi
     useEffect(() => {
-        if (query.length >= 1) {
-            fetchSuggestions();
+        if (debouncedQuery.length >= 1) {
+            fetchSuggestions(debouncedQuery);
         } else {
             setSuggestions([]);
             setIsOpen(false);
         }
-    }, [query]);
+    }, [debouncedQuery]);
 
-    const fetchSuggestions = async () => {
-        if (!query.trim()) return;
+    const fetchSuggestions = async (searchQuery) => {
+        if (!searchQuery.trim()) return;
 
         try {
             setLoading(true);
-            const response = await axios.get('/api/elasticsearch/autocomplete', {
-                params: { q: query.trim(), limit: 8 }
+            const response = await axios.get('/api/elasticsearch/suggest', {
+                params: { q: searchQuery.trim(), limit: 8 }
             });
 
             setSuggestions(response.data.data || []);
@@ -146,8 +166,8 @@ const SearchAutocomplete = ({ onProductSelect, placeholder = "Tìm kiếm sản 
                         <div
                             key={product._id}
                             className={`flex items-center px-4 py-3 cursor-pointer transition-colors ${index === selectedIndex
-                                    ? 'bg-blue-50 text-blue-600'
-                                    : 'hover:bg-gray-50'
+                                ? 'bg-blue-50 text-blue-600'
+                                : 'hover:bg-gray-50'
                                 }`}
                             onClick={() => handleSelectProduct(product)}
                         >
