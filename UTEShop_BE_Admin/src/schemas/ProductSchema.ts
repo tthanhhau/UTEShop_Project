@@ -41,8 +41,14 @@ export class Product {
   @Prop({ default: true })
   isVisible: boolean;
 
-  @Prop({ type: [String] })
-  sizes?: string[];
+  @Prop({
+    type: [{
+      size: { type: String, required: true },
+      stock: { type: Number, required: true, default: 0 }
+    }],
+    default: []
+  })
+  sizes?: Array<{ size: string; stock: number }>;
 
   @Prop({ type: Array })
   variants?: Array<{

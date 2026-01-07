@@ -84,6 +84,13 @@ async function resync() {
                         viewCount: { type: 'integer' },
                         averageRating: { type: 'float' },
                         reviewCount: { type: 'integer' },
+                        sizes: {
+                            type: 'nested',
+                            properties: {
+                                size: { type: 'keyword' },
+                                stock: { type: 'integer' }
+                            }
+                        },
                         isActive: { type: 'boolean' },
                         createdAt: { type: 'date' },
                         updatedAt: { type: 'date' }
@@ -109,6 +116,7 @@ async function resync() {
                 discountPercentage: product.discountPercentage || 0,
                 stock: product.stock,
                 images: product.images || [],
+                sizes: (product.sizes || []).map(s => ({ size: s.size, stock: s.stock })),
                 category: product.category ? {
                     _id: product.category._id.toString(),
                     name: product.category.name,
@@ -134,6 +142,12 @@ async function resync() {
 
         if (resultBody.errors) {
             console.error('❌ Có lỗi khi bulk index');
+            // Log chi tiết lỗi
+            const errorItems = resultBody.items.filter(item => item.index?.error);
+            errorItems.slice(0, 5).forEach((item, i) => {
+                console.error(`  Lỗi ${i + 1}:`, JSON.stringify(item.index.error, null, 2));
+            });
+            console.log(`  Tổng số lỗi: ${errorItems.length}/${products.length}`);
         } else {
             console.log(`✅ Đã sync ${products.length} sản phẩm thành công!`);
         }
