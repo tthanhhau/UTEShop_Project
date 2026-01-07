@@ -17,6 +17,7 @@
   "dependencies": {
     "@elastic/elasticsearch": "^7.17.0",
     "@google/generative-ai": "^0.24.1",
+    "@opensearch-project/opensearch": "^2.5.0",
     "agenda": "^5.0.0",
     "axios": "^1.12.1",
     "bcrypt": "^6.0.0",
