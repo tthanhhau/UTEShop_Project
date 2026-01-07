@@ -28,8 +28,8 @@ const PointsManagement = () => {
   });
 
   const [pointsConfig, setPointsConfig] = useState({
-    pointsPerOrder: 1, // 1 điểm cho mỗi 1000đ
-    pointsValue: 1000, // 1000đ = 1 điểm
+    pointsPerOrder: 1, // 1 điểm cho mỗi 1đ
+    pointsValue: 1, // 1đ = 1 điểm
     bronzeThreshold: 0,
     silverThreshold: 1000,
     goldThreshold: 5000
@@ -75,7 +75,7 @@ const PointsManagement = () => {
         search: filters.search,
         tier: filters.tier === 'all' ? undefined : filters.tier
       });
-      
+
       setCustomers(response.data.customers);
       setPagination(response.data.pagination);
     } catch (error) {
@@ -95,7 +95,7 @@ const PointsManagement = () => {
         search: filters.search,
         type: filters.transactionType === 'all' ? undefined : filters.transactionType
       });
-      
+
       setTransactions(response.data.transactions);
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -153,7 +153,7 @@ const PointsManagement = () => {
         points: parseInt(pointsForm.points),
         description: pointsForm.description
       });
-      
+
       setShowModal(false);
       setPointsForm({
         userId: '',
@@ -161,12 +161,12 @@ const PointsManagement = () => {
         points: '',
         description: ''
       });
-      
+
       // Refresh data
       fetchCustomers();
       fetchTransactions();
       fetchStats();
-      
+
       alert('Điều chỉnh điểm thành công!');
     } catch (error) {
       console.error('Error adjusting points:', error);
@@ -364,7 +364,7 @@ const PointsManagement = () => {
             />
           </div>
         </div>
-        <button 
+        <button
           onClick={savePointsConfig}
           className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
         >
@@ -378,21 +378,19 @@ const PointsManagement = () => {
           <nav className="-mb-px flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('customers')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'customers'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'customers'
                   ? 'border-purple-500 text-purple-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Khách hàng ({customers.length})
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'transactions'
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'transactions'
                   ? 'border-purple-500 text-purple-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Lịch sử giao dịch ({transactions.length})
             </button>
@@ -564,7 +562,7 @@ const PointsManagement = () => {
 
       {/* Points Adjustment Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{backgroundColor: 'rgba(128, 128, 128, 0.3)'}}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}>
           <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-full max-w-md relative">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900">Điều chỉnh điểm</h2>

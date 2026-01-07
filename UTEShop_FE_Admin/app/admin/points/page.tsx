@@ -31,10 +31,10 @@ export default function PointsManagement() {
 
   const [pointsConfig, setPointsConfig] = useState({
     pointsPerOrder: 1,
-    pointsValue: 1000,
+    pointsValue: 1, // 1đ = 1 điểm
     bronzeThreshold: 0,
-    silverThreshold: 1000,
-    goldThreshold: 5000
+    silverThreshold: 100000,
+    goldThreshold: 500000
   });
 
   const [pagination, setPagination] = useState({
@@ -69,7 +69,7 @@ export default function PointsManagement() {
           tier: filters.tier === 'all' ? undefined : filters.tier
         }
       });
-      
+
       if (response.data.success) {
         setCustomers(response.data.data || []);
         setPagination(response.data.pagination || { current: 1, pages: 1, total: 0 });
@@ -95,7 +95,7 @@ export default function PointsManagement() {
           type: filters.transactionType === 'all' ? undefined : filters.transactionType
         }
       });
-      
+
       if (response.data.success) {
         setTransactions(response.data.data || []);
         if (response.data.pagination) {
@@ -134,7 +134,7 @@ export default function PointsManagement() {
       // TODO: Implement API endpoint for config
       setPointsConfig({
         pointsPerOrder: 1,
-        pointsValue: 1000,
+        pointsValue: 1, // 1đ = 1 điểm
         bronzeThreshold: 0,
         silverThreshold: 1000,
         goldThreshold: 5000
@@ -166,7 +166,7 @@ export default function PointsManagement() {
         points: '',
         description: ''
       });
-      
+
       fetchCustomers();
       fetchTransactions();
       fetchStats();
@@ -359,7 +359,7 @@ export default function PointsManagement() {
             />
           </div>
         </div>
-        <button 
+        <button
           onClick={savePointsConfig}
           className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
         >
@@ -373,21 +373,19 @@ export default function PointsManagement() {
           <nav className="-mb-px flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('customers')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'customers'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'customers'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Khách hàng ({customers.length})
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'transactions'
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'transactions'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               Lịch sử giao dịch ({transactions.length})
             </button>
@@ -549,11 +547,11 @@ export default function PointsManagement() {
               >
                 <i className="fas fa-chevron-left"></i>
               </button>
-              
+
               <span className="text-sm text-gray-600">
                 Trang {pagination.current} / {pagination.pages} (Tổng: {pagination.total})
               </span>
-              
+
               <button
                 onClick={() => activeTab === 'customers' ? fetchCustomers(pagination.current + 1) : fetchTransactions(pagination.current + 1)}
                 disabled={pagination.current === pagination.pages}
@@ -568,7 +566,7 @@ export default function PointsManagement() {
 
       {/* Points Adjustment Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{backgroundColor: 'rgba(128, 128, 128, 0.3)'}}>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}>
           <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-6 w-full max-w-md relative">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900">Điều chỉnh điểm</h2>

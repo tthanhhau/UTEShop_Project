@@ -11,7 +11,7 @@ import Configuration from "../models/Configuration.js";
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
-    const POINT_TO_VND = 100;
+    const POINT_TO_VND = 1; // 1 điểm = 1 VND
     console.log("🛒 ORDER CREATE - req.user:", req.user);
     console.log("🛒 ORDER CREATE - req.body:", req.body);
     const { agenda, io, sendNotificationToUser } = req.app.locals;
@@ -158,7 +158,7 @@ class OrderController {
       console.log('🔍 DEBUG - usedPointsAmount:', usedPointsAmount, 'type:', typeof usedPointsAmount);
 
       if (usedPointsAmount > 0) {
-        // Chuyển đổi từ VND sang điểm (100 VND = 1 điểm)
+        // Chuyển đổi từ VND sang điểm (1 VND = 1 điểm)
         const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
         console.log('🔍 DEBUG - Will deduct points:', pointsUsed, 'from amount:', usedPointsAmount);
 
