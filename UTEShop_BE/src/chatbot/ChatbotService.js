@@ -716,6 +716,39 @@ class ChatbotService {
         }
         break;
 
+      case "more_products":
+        // Tìm thêm sản phẩm cùng loại, loại trừ những sản phẩm đã hiển thị
+        if (state.lastFilters && Object.keys(state.lastFilters).length > 0) {
+          products = await this.searchProducts(state.lastFilters, 5, state.shownProductIds);
+          if (products.length > 0) {
+            state.lastProducts = products;
+            state.shownProductIds = [...state.shownProductIds, ...products.map(p => p._id)];
+            const keyword = state.lastFilters.keyword || state.lastFilters.category || "sản phẩm";
+            responseMessage = `🛍️ Đây là thêm ${products.length} ${keyword} khác cho bạn!\n\nBạn có thể nhấn "Mua ngay" hoặc nói "mua số 1" để chọn sản phẩm nhé! 😊`;
+          } else {
+            responseMessage = `😅 Rất tiếc, tôi đã hiển thị hết các sản phẩm phù hợp rồi.\n\nBạn muốn tìm loại sản phẩm khác không? Ví dụ: áo polo, quần jean, giày sneaker... 🛒`;
+          }
+        } else if (state.lastProducts.length > 0) {
+          // Nếu không có filter nhưng có sản phẩm trước đó, tìm theo category của sản phẩm đó
+          const lastProduct = state.lastProducts[0];
+          const categoryName = lastProduct.category?.name || lastProduct.category;
+          if (categoryName) {
+            products = await this.searchProducts({ category: categoryName }, 5, state.shownProductIds);
+            if (products.length > 0) {
+              state.lastProducts = products;
+              state.shownProductIds = [...state.shownProductIds, ...products.map(p => p._id)];
+              responseMessage = `🛍️ Đây là thêm ${products.length} sản phẩm ${categoryName} khác cho bạn!\n\nBạn có thể nhấn "Mua ngay" hoặc nói "mua số 1" để chọn sản phẩm nhé! 😊`;
+            } else {
+              responseMessage = `😅 Rất tiếc, tôi đã hiển thị hết các sản phẩm ${categoryName} rồi.\n\nBạn muốn tìm loại sản phẩm khác không? 🛒`;
+            }
+          } else {
+            responseMessage = "😊 Bạn muốn tìm loại sản phẩm gì? Ví dụ: áo thun, quần jean, giày sneaker...";
+          }
+        } else {
+          responseMessage = "😊 Bạn chưa tìm sản phẩm nào. Hãy cho tôi biết bạn muốn tìm gì nhé!\n\nVí dụ: áo thun, quần jean, giày sneaker...";
+        }
+        break;
+
       default:
         // Dùng message từ AI cho các intent khác, hoặc message mặc định
         responseMessage = analysis.message || "😊 Tôi có thể giúp bạn tìm kiếm và đặt hàng sản phẩm.\n\nBạn muốn tìm gì hôm nay? Ví dụ: áo thun, quần jean, giày sneaker...";
