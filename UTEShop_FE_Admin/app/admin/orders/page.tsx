@@ -112,7 +112,7 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
         // Remove highlight after 5 seconds
         setTimeout(() => {
           router.replace('/admin/orders', { scroll: false });
-        }, 5000);
+        }, 1000);
       }
     }
   }, [highlightOrderId, orders, router]);
