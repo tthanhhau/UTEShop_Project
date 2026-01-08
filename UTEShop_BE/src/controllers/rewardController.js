@@ -70,8 +70,12 @@ export const claimReviewReward = async (req, res) => {
       }
 
       // Cập nhật voucher.usersUsed array cho tracking
+      // Đảm bảo usersUsed là array và kiểm tra userId tồn tại trước khi gọi toString()
+      if (!voucher.usersUsed) {
+        voucher.usersUsed = [];
+      }
       const userUsedIndex = voucher.usersUsed.findIndex(
-        u => u.userId.toString() === userId
+        u => u && u.userId && u.userId.toString() === userId.toString()
       );
 
       if (userUsedIndex > -1) {
