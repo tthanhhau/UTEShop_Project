@@ -86,6 +86,25 @@ const orderSchema = new mongoose.Schema(
     },
     reviewedAt: { type: Date },
     reviewDeletedAt: { type: Date },
+    // Thông tin vận chuyển từ đơn vị giao hàng bên thứ 3
+    shippingInfo: {
+      provider: {
+        type: String,
+        enum: ["GHN", "GHTK", "VIETTEL", "OTHER"],
+      },
+      trackingCode: { type: String }, // Mã vận đơn
+      shippingFee: { type: Number }, // Phí vận chuyển
+      expectedDeliveryTime: { type: Date }, // Thời gian giao hàng dự kiến
+      status: { type: String }, // Trạng thái từ đơn vị vận chuyển
+      createdAt: { type: Date },
+      cancelledAt: { type: Date },
+      toDistrictId: { type: String }, // ID quận/huyện (cho GHN)
+      toWardCode: { type: String }, // Mã phường/xã (cho GHN)
+      // ✅ THÊM CÁC FIELD TEXT NAMES CHO GHTK
+      province: { type: String }, // Tên tỉnh/thành phố (VD: "Thành phố Hồ Chí Minh")
+      district: { type: String }, // Tên quận/huyện (VD: "Quận 5")
+      ward: { type: String }, // Tên phường/xã (VD: "Phường 1")
+    },
   },
   { timestamps: true }
 );

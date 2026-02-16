@@ -2,8 +2,23 @@ import React from 'react';
 import { formatPrice } from '../utils/formatPrice';
 
 const PaymentSummary = ({ order }) => {
-  // Tính ngược lại tạm tính từ tổng cộng và các khoản giảm giá
-  const subtotal = order.totalPrice + (order.voucherDiscount || 0) + (order.usedPointsAmount || 0);
+  const shippingFee = Number(order?.shippingInfo?.shippingFee || 0);
+  const voucherDiscount = Number(order?.voucherDiscount || 0);
+  const usedPointsAmount = Number(order?.usedPointsAmount || 0);
+  const itemSubtotal = Array.isArray(order?.items)
+    ? order.items.reduce(
+      (sum, item) => sum + Number(item?.price || 0) * Number(item?.quantity || 0),
+      0
+    )
+    : 0;
+
+  // Backward-compatible cho đơn cũ từng lưu totalPrice chưa gồm phí ship
+  const expectedTotal = Math.max(
+    0,
+    itemSubtotal - voucherDiscount - usedPointsAmount + shippingFee
+  );
+  const baseTotal = Number(order?.totalPrice || 0);
+  const displayTotal = shippingFee > 0 && baseTotal < expectedTotal ? expectedTotal : baseTotal;
   const pointsUsed = order.usedPointsAmount ? Math.floor(order.usedPointsAmount / 100) : 0;
 
   return (
@@ -14,8 +29,15 @@ const PaymentSummary = ({ order }) => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <span className="text-gray-600">Tạm tính</span>
-          <span className="font-medium">{formatPrice(subtotal)}</span>
+          <span className="font-medium">{formatPrice(itemSubtotal)}</span>
         </div>
+
+        {shippingFee > 0 && (
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">Phí vận chuyển</span>
+            <span className="font-medium">{formatPrice(shippingFee)}</span>
+          </div>
+        )}
 
         {/* Phần giảm giá */}
         <div className="py-3 space-y-3 border-t border-dashed border-gray-200">
@@ -73,7 +95,7 @@ const PaymentSummary = ({ order }) => {
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Tổng cộng</span>
             <span className="text-2xl font-bold text-primary">
-              {formatPrice(order.totalPrice)}
+              {formatPrice(displayTotal)}
             </span>
           </div>
         </div>

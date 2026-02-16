@@ -161,6 +161,10 @@ app.use("/api/chatbot", chatbotRoutes);
 import returnRoutes from "./src/routes/returnRoutes.js";
 app.use("/api/returns", returnRoutes);
 
+// Shipping routes
+import shippingRoutes from "./src/routes/shippingRoutes.js";
+app.use("/api/shipping", shippingRoutes);
+
 /* ------------------------------- 404 & Err ------------------------------ */
 
 // 404 JSON thay vì HTML

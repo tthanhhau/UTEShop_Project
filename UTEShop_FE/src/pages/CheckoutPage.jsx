@@ -7,6 +7,7 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import PaymentMethod from "../components/PaymentMethod";
 import MoMoPaymentForm from "../components/MoMoPaymentForm";
+import ShippingAddressSelector from "../components/ShippingAddressSelector";
 import api from "../api/axiosConfig";
 
 const CheckoutPage = () => {
@@ -30,11 +31,18 @@ const CheckoutPage = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isFromCart, setIsFromCart] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Shipping address states
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedWard, setSelectedWard] = useState(null);
+  const [shippingFee, setShippingFee] = useState(0);
+  const [detailedAddress, setDetailedAddress] = useState(""); // Số nhà, tên đường
+
   // Voucher & loyalty
   const [vouchers, setVouchers] = useState([]);
   const [selectedVoucherId, setSelectedVoucherId] = useState("");
   const [usePoints, setUsePoints] = useState(false);
-  // conversion: 1 point -> 1000 VND (assumption). Change if backend uses different conversion.
   const POINT_TO_VND = 1;
   // Fetch thông tin user mới nhất từ API (chỉ 1 lần khi mount)
   useEffect(() => {
@@ -100,7 +108,7 @@ const CheckoutPage = () => {
     console.log("📦 CheckoutPage - cartItems:", state?.cartItems);
     console.log("📦 CheckoutPage - fromCart:", state?.fromCart);
     console.log("📦 CheckoutPage - product:", state?.product);
-    
+
     if (!state || (!state.product && !state.cartItems)) {
       // Nếu không có thông tin sản phẩm, chuyển về trang sản phẩm
       navigate("/products", {
@@ -190,6 +198,36 @@ const CheckoutPage = () => {
     // Validate và hiển thị lỗi
     const validation = validatePhoneNumber(numericValue);
     setPhoneError(validation.message);
+  };
+
+  // Handle shipping address change
+  const handleAddressChange = (addressData) => {
+    setSelectedProvince(addressData.province);
+    setSelectedDistrict(addressData.district);
+    setSelectedWard(addressData.ward);
+
+    // Tạo địa chỉ đầy đủ để lưu vào database
+    if (addressData.province && addressData.district && addressData.ward) {
+      const fullAddress = `${detailedAddress ? detailedAddress + ', ' : ''}${addressData.ward.WardName}, ${addressData.district.DistrictName}, ${addressData.province.ProvinceName}`;
+      setShippingAddress(fullAddress);
+    }
+  };
+
+  // Handle shipping fee calculated
+  const handleFeeCalculated = (fee) => {
+    setShippingFee(fee);
+  };
+
+  // Handle detailed address change
+  const handleDetailedAddressChange = (e) => {
+    const value = e.target.value;
+    setDetailedAddress(value);
+
+    // Cập nhật lại địa chỉ đầy đủ
+    if (selectedProvince && selectedDistrict && selectedWard) {
+      const fullAddress = `${value ? value + ', ' : ''}${selectedWard.WardName}, ${selectedDistrict.DistrictName}, ${selectedProvince.ProvinceName}`;
+      setShippingAddress(fullAddress);
+    }
   };
 
   // Tính tổng giá
@@ -282,8 +320,9 @@ const CheckoutPage = () => {
 
     const voucherAmount = calculateVoucherAmount(voucher, base);
     const pointsDeduction = calculatePointsDeduction(base - voucherAmount);
-    const final = Math.max(0, base - voucherAmount - pointsDeduction);
-    return { base, voucherAmount, pointsDeduction, final };
+    const subtotal = base - voucherAmount - pointsDeduction;
+    const final = Math.max(0, subtotal + shippingFee);
+    return { base, voucherAmount, pointsDeduction, shippingFee, final };
   };
 
   // Xử lý lỗi thanh toán MoMo
@@ -303,6 +342,12 @@ const CheckoutPage = () => {
     // Kiểm tra địa chỉ
     if (!shippingAddress.trim()) {
       alert("Vui lòng nhập địa chỉ giao hàng");
+      return;
+    }
+
+    // Kiểm tra địa chỉ có cấu trúc (cho shipping API)
+    if (!selectedDistrict || !selectedWard) {
+      alert("Vui lòng chọn đầy đủ địa chỉ giao hàng (Tỉnh/Quận/Phường)");
       return;
     }
 
@@ -362,6 +407,14 @@ const CheckoutPage = () => {
           shippingAddress,
           phoneNumber,
           paymentMethod: paymentMethod,
+          shippingInfo: {
+            toDistrictId: selectedDistrict?.DistrictID,
+            toWardCode: selectedWard?.WardCode,
+            province: selectedProvince?.ProvinceName,
+            district: selectedDistrict?.DistrictName,
+            ward: selectedWard?.WardName,
+            shippingFee: shippingFee,
+          },
           codDetails: {
             phoneNumberConfirmed: false,
             additionalNotes: `Thanh toán cho ${cartItems.length} sản phẩm từ giỏ hàng`,
@@ -386,6 +439,14 @@ const CheckoutPage = () => {
           shippingAddress,
           phoneNumber,
           paymentMethod: paymentMethod,
+          shippingInfo: {
+            toDistrictId: selectedDistrict?.DistrictID,
+            toWardCode: selectedWard?.WardCode,
+            province: selectedProvince?.ProvinceName,
+            district: selectedDistrict?.DistrictName,
+            ward: selectedWard?.WardName,
+            shippingFee: shippingFee,
+          },
           codDetails: {
             phoneNumberConfirmed: false,
             additionalNotes: `Thanh toán cho sản phẩm: ${productDetails.name}`,
@@ -596,7 +657,7 @@ const CheckoutPage = () => {
                   <span>Total</span>
                   {/* Show final total after voucher/points */}
                   {(() => {
-                    const { base, voucherAmount, pointsDeduction, final } =
+                    const { base, voucherAmount, pointsDeduction, shippingFee, final } =
                       calculateFinalTotal();
                     return (
                       <div className="text-right">
@@ -611,6 +672,11 @@ const CheckoutPage = () => {
                         {pointsDeduction > 0 && (
                           <div className="text-sm text-green-600">
                             Points: -{pointsDeduction.toLocaleString()}₫
+                          </div>
+                        )}
+                        {shippingFee > 0 && (
+                          <div className="text-sm text-blue-600">
+                            Phí vận chuyển: +{shippingFee.toLocaleString()}₫
                           </div>
                         )}
                         <div className="text-lg font-bold mt-1">
@@ -646,23 +712,36 @@ const CheckoutPage = () => {
               />
             </div>
 
-            {/* Địa chỉ giao hàng */}
+            {/* Địa chỉ chi tiết */}
             <div className="mb-4">
               <label className="block mb-2 font-medium">
-                Địa Chỉ Giao Hàng
+                Địa chỉ chi tiết <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={shippingAddress}
-                onChange={(e) => {
-                  console.log("Shipping address changed:", e.target.value);
-                  setShippingAddress(e.target.value);
-                }}
-                placeholder="Nhập địa chỉ giao hàng"
+                value={detailedAddress}
+                onChange={handleDetailedAddressChange}
+                placeholder="Số nhà, tên đường (VD: 123 Nguyễn Huệ)"
                 required
                 className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+
+            {/* Chọn địa chỉ có cấu trúc và tính phí ship */}
+            <div className="mb-4">
+              <ShippingAddressSelector
+                onAddressChange={handleAddressChange}
+                onFeeCalculated={handleFeeCalculated}
+              />
+            </div>
+
+            {/* Hiển thị địa chỉ đầy đủ */}
+            {shippingAddress && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-md border border-gray-200">
+                <p className="text-sm text-gray-600 mb-1">Địa chỉ giao hàng đầy đủ:</p>
+                <p className="font-medium">{shippingAddress}</p>
+              </div>
+            )}
 
             {/* Số điện thoại */}
             <div className="mb-4">
@@ -786,6 +865,10 @@ const CheckoutPage = () => {
                   customerName={customerName}
                   shippingAddress={shippingAddress}
                   phoneNumber={phoneNumber}
+                  selectedProvince={selectedProvince}
+                  selectedDistrict={selectedDistrict}
+                  selectedWard={selectedWard}
+                  shippingFee={shippingFee}
                 />
               </div>
             )}
