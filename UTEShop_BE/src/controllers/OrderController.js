@@ -35,8 +35,8 @@ class OrderController {
     // Debug log
     console.log("🔍 ORDER CREATE - customerName from body:", customerName);
     console.log("🔍 ORDER CREATE - phoneNumber from body:", phoneNumber);
-
-    console.log("🔍 ORDER CREATE - items:", voucher);
+    console.log("🔍 ORDER CREATE - shippingInfo from body:", JSON.stringify(req.body.shippingInfo, null, 2));
+    console.log("🔍 ORDER CREATE - voucher:", voucher);
 
     // Kiểm tra user authentication
     if (!req.user || !req.user._id) {
@@ -149,9 +149,24 @@ class OrderController {
       console.log("🎟️ Voucher discount:", voucherDiscount);
       console.log("⭐ Points deduction:", usedPointsAmount);
 
-      // Tính toán tổng tiền cuối cùng
+      const voucherDiscountAmount = Number(voucherDiscount || 0);
+      const usedPointsDeduction = Number(usedPointsAmount || 0);
+      const providedTotal = Number(providedTotalPrice || 0);
+
+      // Ưu tiên phí ship từ shippingInfo, fallback suy luận từ totalPrice FE gửi lên
+      let shippingFee = Number(req.body.shippingInfo?.shippingFee || 0);
+      if (!shippingFee && providedTotal > 0) {
+        const inferredShippingFee =
+          providedTotal - (subtotal - voucherDiscountAmount - usedPointsDeduction);
+        if (inferredShippingFee > 0) {
+          shippingFee = inferredShippingFee;
+        }
+      }
+
+      // Tính toán tổng tiền cuối cùng (bao gồm phí vận chuyển)
       const finalTotal =
-        subtotal - (voucherDiscount || 0) - (usedPointsAmount || 0);
+        subtotal - voucherDiscountAmount - usedPointsDeduction + shippingFee;
+      console.log("🚚 Shipping fee:", shippingFee);
       console.log("💵 Final total:", finalTotal);
 
       // ✅ TRỪ ĐIỂM CỦA USER (cũng dùng atomic update)
@@ -213,14 +228,25 @@ class OrderController {
           requestIdForQuery
         );
 
+        const paidAmount = Number(paymentResult?.data?.amount || 0);
+        const expectedAmount = Number(finalTotal || 0);
+        const isAmountMatched = paidAmount === expectedAmount;
+
+        console.log("💳 MOMO verify:", {
+          success: paymentResult?.success,
+          resultCode: paymentResult?.data?.resultCode,
+          paidAmount,
+          expectedAmount,
+          isAmountMatched,
+        });
+
         if (
           !paymentResult.success ||
           String(paymentResult.data.resultCode) !== "0" ||
-          paymentResult.data.amount !== finalTotal
+          !isAmountMatched
         ) {
           throw new Error(
-            paymentResult.data?.message ||
-            "Payment amount mismatch or payment not completed"
+            `Payment amount mismatch or payment not completed (paid=${paidAmount}, expected=${expectedAmount})`
           );
         }
 
@@ -251,6 +277,17 @@ class OrderController {
           phoneNumberConfirmed: false,
           additionalNotes: codDetails?.additionalNotes || "",
         },
+        // Lưu thông tin shipping từ frontend
+        ...(req.body.shippingInfo && {
+          shippingInfo: {
+            toDistrictId: req.body.shippingInfo.toDistrictId,
+            toWardCode: req.body.shippingInfo.toWardCode,
+            province: req.body.shippingInfo.province,
+            district: req.body.shippingInfo.district,
+            ward: req.body.shippingInfo.ward,
+            shippingFee: req.body.shippingInfo.shippingFee || 0,
+          },
+        }),
         ...(Object.keys(onlinePaymentInfo).length > 0 && { onlinePaymentInfo }),
       });
 

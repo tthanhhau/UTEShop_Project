@@ -33,6 +33,27 @@ export function PurchaseHistory() {
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   const orderRefs = useRef({});
 
+  const getDisplayOrderTotal = (order) => {
+    const shippingFee = Number(order?.shippingInfo?.shippingFee || 0);
+    const baseTotal = Number(order?.totalPrice || 0);
+    if (!shippingFee) return baseTotal;
+
+    const itemsSubtotal = Array.isArray(order?.items)
+      ? order.items.reduce(
+        (sum, item) => sum + Number(item?.price || 0) * Number(item?.quantity || 0),
+        0
+      )
+      : 0;
+    const voucherDiscount = Number(order?.voucherDiscount || 0);
+    const usedPointsAmount = Number(order?.usedPointsAmount || 0);
+    const expectedTotal = Math.max(
+      0,
+      itemsSubtotal - voucherDiscount - usedPointsAmount + shippingFee
+    );
+
+    return baseTotal < expectedTotal ? expectedTotal : baseTotal;
+  };
+
   // Xử lý điều hướng đến trang đánh giá sản phẩm
   const handleReviewProduct = (productId, orderId) => {
     navigate(`/products/${productId}?review=true&orderId=${orderId}#reviews`);
@@ -229,7 +250,7 @@ export function PurchaseHistory() {
                       </div>
                       <div className="flex items-center gap-1">
                         <DollarSign className="h-4 w-4" />
-                        {formatPrice(order.totalPrice)}
+                        {formatPrice(getDisplayOrderTotal(order))}
                       </div>
                     </div>
                   </div>

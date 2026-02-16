@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import api from "@/api/axiosConfig";
 import { checkProductInOrderReviewed } from "../../api/reviewApi";
 import { checkReturnEligibility, createReturnRequest, RETURN_REASONS } from "../../api/returnApi";
+import { useSelector } from "react-redux";
+import io from "socket.io-client";
 import {
   Search,
   Package,
@@ -75,6 +77,8 @@ export function OrderTracking() {
   const [reviewStatus, setReviewStatus] = useState({});
   const [highlightedOrderId, setHighlightedOrderId] = useState(null);
   const orderRefs = useRef({});
+  const socketRef = useRef(null);
+  const { user } = useSelector((state) => state.auth);
 
   // Return request states
   const [returnEligibility, setReturnEligibility] = useState({});
@@ -83,6 +87,27 @@ export function OrderTracking() {
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [returnLoading, setReturnLoading] = useState(false);
+
+  const getDisplayOrderTotal = (order) => {
+    const shippingFee = Number(order?.shippingInfo?.shippingFee || 0);
+    const baseTotal = Number(order?.totalPrice || 0);
+    if (!shippingFee) return baseTotal;
+
+    const itemsSubtotal = Array.isArray(order?.items)
+      ? order.items.reduce(
+        (sum, item) => sum + Number(item?.price || 0) * Number(item?.quantity || 0),
+        0
+      )
+      : 0;
+    const voucherDiscount = Number(order?.voucherDiscount || 0);
+    const usedPointsAmount = Number(order?.usedPointsAmount || 0);
+    const expectedTotal = Math.max(
+      0,
+      itemsSubtotal - voucherDiscount - usedPointsAmount + shippingFee
+    );
+
+    return baseTotal < expectedTotal ? expectedTotal : baseTotal;
+  };
 
   //fetch API
   useEffect(() => {
@@ -150,6 +175,65 @@ export function OrderTracking() {
 
     fetchOrdersData();
   }, []);
+
+  // WebSocket real-time updates
+  useEffect(() => {
+    if (!user?._id) return;
+
+    // Kết nối WebSocket
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    socketRef.current = io(BACKEND_URL, {
+      transports: ['websocket', 'polling'],
+    });
+
+    // Join room của user
+    socketRef.current.emit('join', user._id);
+    console.log('🔌 WebSocket connected for order tracking');
+
+    // Lắng nghe cập nhật order status
+    socketRef.current.on('order_status_update', (data) => {
+      console.log('📦 Order status updated:', data);
+
+      // Cập nhật order trong danh sách
+      setOrdersData((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === data.orderId
+            ? { ...order, status: data.newStatus }
+            : order
+        )
+      );
+    });
+
+    // Lắng nghe khi có mã vận đơn mới
+    socketRef.current.on('shipping_created', (data) => {
+      console.log('🚚 Shipping created:', data);
+
+      // Cập nhật order với thông tin shipping
+      setOrdersData((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === data.orderId
+            ? {
+              ...order,
+              status: data.newStatus || order.status,
+              shippingInfo: {
+                ...order.shippingInfo,
+                trackingCode: data.trackingCode,
+                provider: data.provider,
+              },
+            }
+            : order
+        )
+      );
+    });
+
+    // Cleanup khi unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        console.log('🔌 WebSocket disconnected');
+      }
+    };
+  }, [user]);
 
   // Scroll đến đơn hàng được highlight từ notification
   useEffect(() => {
@@ -425,6 +509,13 @@ export function OrderTracking() {
                             "vi-VN"
                           )}
                         </span>
+                        {/* Hiển thị mã vận đơn nếu có */}
+                        {order.shippingInfo?.trackingCode && (
+                          <span className="text-blue-600 font-medium">
+                            <Truck className="w-4 h-4 inline mr-1" />
+                            Mã vận đơn: {order.shippingInfo.trackingCode}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Badge variant="secondary" className={statusInfo.color}>
@@ -514,7 +605,7 @@ export function OrderTracking() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t">
                     <div className="space-y-1">
                       <div className="font-semibold text-lg">
-                        Tổng tiền: {formatPrice(order.totalPrice)}
+                        Tổng tiền: {formatPrice(getDisplayOrderTotal(order))}
                       </div>
                       {order.estimatedDelivery &&
                         statusNumber !== 5 &&
@@ -530,7 +621,7 @@ export function OrderTracking() {
                           </div>
                         )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
@@ -538,6 +629,18 @@ export function OrderTracking() {
                       >
                         Chi tiết
                       </Button>
+                      {/* Nút xem tracking nếu có mã vận đơn */}
+                      {order.shippingInfo?.trackingCode && statusNumber >= 4 && statusNumber !== 6 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                          onClick={() => navigate(`/orders/${order._id}#tracking`)}
+                        >
+                          <Truck className="w-4 h-4 mr-2" />
+                          Theo dõi vận chuyển
+                        </Button>
+                      )}
                       {statusNumber !== 6 && statusNumber !== 5 && (
                         <Button variant="outline" size="sm">
                           Liên hệ shop

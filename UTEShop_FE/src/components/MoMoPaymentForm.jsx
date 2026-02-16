@@ -16,6 +16,10 @@ const MoMoPaymentForm = ({
   customerName,
   shippingAddress,
   phoneNumber,
+  selectedProvince,
+  selectedDistrict,
+  selectedWard,
+  shippingFee = 0,
   // === THÊM 3 PROP MỚI ===
   voucher,
   voucherDiscount,
@@ -63,6 +67,10 @@ const MoMoPaymentForm = ({
           customerName: customerName,
           shippingAddress: shippingAddress,
           phoneNumber: phoneNumber,
+          selectedProvince: selectedProvince,
+          selectedDistrict: selectedDistrict,
+          selectedWard: selectedWard,
+          shippingFee: shippingFee,
           voucher: voucher,
           voucherDiscount: voucherDiscount,
           usedPointsAmount: usedPointsAmount
@@ -143,13 +151,14 @@ const MoMoPaymentForm = ({
       let orderData;
       if (isFromCart && cartItems && cartItems.length > 0) {
         // Tạo đơn hàng từ giỏ hàng
-        const totalPrice = cartItems.reduce((total, item) => {
+        const subtotal = cartItems.reduce((total, item) => {
           const itemPrice = item.product.price * item.quantity;
           const discountAmount = item.product.discountPercentage > 0
             ? itemPrice * item.product.discountPercentage / 100
             : 0;
           return total + (itemPrice - discountAmount);
         }, 0);
+        const totalPrice = amount || subtotal + (shippingFee || 0);
 
         orderData = {
           items: cartItems.map(item => ({
@@ -164,6 +173,14 @@ const MoMoPaymentForm = ({
           customerName: customerName || 'Tên chưa cập nhật',
           shippingAddress: shippingAddress || 'Địa chỉ chưa cập nhật',
           phoneNumber: phoneNumber || 'Số điện thoại chưa cập nhật',
+          shippingInfo: {
+            toDistrictId: selectedDistrict?.DistrictID,
+            toWardCode: selectedWard?.WardCode,
+            province: selectedProvince?.ProvinceName,
+            district: selectedDistrict?.DistrictName,
+            ward: selectedWard?.WardName,
+            shippingFee: shippingFee || 0,
+          },
           paymentMethod: 'MOMO',
           momoOrderId: momoOrderId,
           momoRequestId: momoRequestId,
@@ -174,7 +191,7 @@ const MoMoPaymentForm = ({
         const discountAmount = productDetails.discountPercentage > 0
           ? subtotal * productDetails.discountPercentage / 100
           : 0;
-        const totalPrice = subtotal - discountAmount;
+        const totalPrice = amount || (subtotal - discountAmount) + (shippingFee || 0);
 
         orderData = {
           items: [{
@@ -189,6 +206,14 @@ const MoMoPaymentForm = ({
           customerName: customerName || 'Tên chưa cập nhật',
           shippingAddress: shippingAddress || 'Địa chỉ chưa cập nhật',
           phoneNumber: phoneNumber || 'Số điện thoại chưa cập nhật',
+          shippingInfo: {
+            toDistrictId: selectedDistrict?.DistrictID,
+            toWardCode: selectedWard?.WardCode,
+            province: selectedProvince?.ProvinceName,
+            district: selectedDistrict?.DistrictName,
+            ward: selectedWard?.WardName,
+            shippingFee: shippingFee || 0,
+          },
           paymentMethod: 'MOMO',
           momoOrderId: momoOrderId,
           momoRequestId: momoRequestId,
