@@ -36,6 +36,16 @@ class ShippingService {
         this.defaultProvider = process.env.SHIPPING_PROVIDER || 'GHN';
     }
 
+    hasRequiredShippingAddressIds({ toDistrictId, toWardCode } = {}) {
+        return Boolean(toDistrictId && toWardCode);
+    }
+
+    assertRequiredShippingAddressIds(payload = {}, context = 'shipping request') {
+        if (!this.hasRequiredShippingAddressIds(payload)) {
+            throw new Error(`Missing required address IDs (${context}): toDistrictId and toWardCode`);
+        }
+    }
+
     /**
      * Tính phí vận chuyển
      * @param {Object} params - Thông tin tính phí
@@ -305,52 +315,84 @@ class ShippingService {
 
     // ==================== GHTK (Giao Hàng Tiết Kiệm) ====================
 
+    normalizeAddressName(name) {
+        if (!name) return name;
+
+        return name
+            .replace(/^(Tỉnh|Thành phố|TP\.?)\s+/i, '')
+            .replace(/^(Huyện|Quận|Thị xã|Thành phố)\s+/i, '')
+            .replace(/^(Xã|Phường|Thị trấn)\s+/i, '')
+            .trim();
+    }
+
+    async resolveAddressNames({ province, district, ward, toDistrictId, toWardCode }) {
+        const provinceName = typeof province === 'string' ? province.trim() : province;
+        const districtName = typeof district === 'string' ? district.trim() : district;
+        const wardName = typeof ward === 'string' ? ward.trim() : ward;
+
+        if (provinceName && districtName && wardName) {
+            return {
+                provinceName,
+                districtName,
+                wardName,
+            };
+        }
+
+        if (!this.hasRequiredShippingAddressIds({ toDistrictId, toWardCode })) {
+            return {
+                provinceName,
+                districtName,
+                wardName,
+            };
+        }
+
+        try {
+            const addressInfo = await getAddressInfo(null, toDistrictId, toWardCode);
+
+            return {
+                provinceName: provinceName || addressInfo.provinceName,
+                districtName: districtName || addressInfo.districtName,
+                wardName: wardName || addressInfo.wardName,
+            };
+        } catch (error) {
+            console.warn('⚠️ resolveAddressNames fallback used because address lookup failed:', {
+                toDistrictId,
+                toWardCode,
+                reason: error.message,
+            });
+
+            return {
+                provinceName,
+                districtName,
+                wardName,
+            };
+        }
+    }
+
     async calculateGHTKFee(params) {
         const { pickAddress, address, province, district, ward, weight, value, toDistrictId, toWardCode } = params;
+
+        this.assertRequiredShippingAddressIds({ toDistrictId, toWardCode }, 'calculateGHTKFee');
 
         console.log('🔍 calculateGHTKFee received params:', { province, district, ward, toDistrictId, toWardCode });
 
         // Ưu tiên dùng text nếu có, không cần convert
-        let provinceName = province;
-        let districtName = district;
-        let wardName = ward;
+        const resolvedAddress = await this.resolveAddressNames({
+            province,
+            district,
+            ward,
+            toDistrictId,
+            toWardCode,
+        });
+        const provinceName = resolvedAddress.provinceName;
+        const districtName = resolvedAddress.districtName;
+        const wardName = resolvedAddress.wardName;
 
-        // Chỉ convert nếu không có text
-        if (!provinceName && toDistrictId && toWardCode) {
-            console.log('⚠️ No text provided, attempting to convert from IDs...');
-            try {
-                // Lấy tên từ API công khai
-                const wards = await getWardsFromPublicAPI(toDistrictId);
-                const wardData = wards.find(w => w.WardCode === toWardCode.toString());
-
-                if (wardData) {
-                    wardName = wardData.WardName;
-
-                    // Lấy district name
-                    const districts = await getDistrictsFromPublicAPI(toDistrictId);
-                    const districtData = districts.find(d => d.DistrictID === parseInt(toDistrictId));
-
-                    if (districtData) {
-                        districtName = districtData.DistrictName;
-
-                        // Lấy province name
-                        const provinces = await getProvincesFromPublicAPI();
-                        const provinceData = provinces.find(p => p.ProvinceID === districtData.ProvinceID);
-
-                        if (provinceData) {
-                            provinceName = provinceData.ProvinceName;
-                        }
-                    }
-                }
-
-                console.log('✅ Converted address:', { provinceName, districtName, wardName });
-            } catch (error) {
-                console.error('❌ Error converting address:', error.message);
-                throw new Error('Không thể chuyển đổi địa chỉ');
-            }
-        } else {
-            console.log('✅ Using provided text names:', { provinceName, districtName, wardName });
+        if (!provinceName || !districtName || !wardName) {
+            throw new Error('Không thể xác định đầy đủ địa chỉ giao hàng từ dữ liệu hiện có');
         }
+
+        console.log('✅ Resolved address names:', { provinceName, districtName, wardName });
 
         console.log('📦 GHTK Fee Request:', {
             pick_address: pickAddress || process.env.GHTK_PICK_ADDRESS,
@@ -362,19 +404,9 @@ class ShippingService {
             value: value || 0,
         });
 
-        // Chuẩn hóa tên địa chỉ cho GHTK (bỏ "Tỉnh", "Thành phố", "TP", "Huyện", "Xã", "Phường")
-        const normalizeAddress = (name) => {
-            if (!name) return name;
-            return name
-                .replace(/^(Tỉnh|Thành phố|TP\.?)\s+/i, '')
-                .replace(/^(Huyện|Quận|Thị xã|Thành phố)\s+/i, '')
-                .replace(/^(Xã|Phường|Thị trấn)\s+/i, '')
-                .trim();
-        };
-
-        const normalizedProvince = normalizeAddress(provinceName);
-        const normalizedDistrict = normalizeAddress(districtName);
-        const normalizedWard = normalizeAddress(wardName);
+        const normalizedProvince = this.normalizeAddressName(provinceName);
+        const normalizedDistrict = this.normalizeAddressName(districtName);
+        const normalizedWard = this.normalizeAddressName(wardName);
 
         console.log('🔄 Normalized address:', {
             province: `${provinceName} -> ${normalizedProvince}`,
@@ -459,20 +491,23 @@ class ShippingService {
             note,
         } = orderData;
 
-        // Nếu có province text thì dùng, không cần convert
-        let provinceName = province;
-        let districtName = district;
-        let wardName = ward;
+        this.assertRequiredShippingAddressIds({ toDistrictId, toWardCode }, 'createGHTKOrder');
 
-        // Chuẩn hóa tên địa chỉ (bỏ tiền tố)
-        const normalizeAddress = (name) => {
-            if (!name) return name;
-            return name
-                .replace(/^(Tỉnh|Thành phố|TP\.?)\s+/i, '')
-                .replace(/^(Huyện|Quận|Thị xã|Thành phố)\s+/i, '')
-                .replace(/^(Xã|Phường|Thị trấn)\s+/i, '')
-                .trim();
-        };
+        // Nếu có province text thì dùng, không cần convert
+        const resolvedAddress = await this.resolveAddressNames({
+            province,
+            district,
+            ward,
+            toDistrictId,
+            toWardCode,
+        });
+        const provinceName = resolvedAddress.provinceName;
+        const districtName = resolvedAddress.districtName;
+        const wardName = resolvedAddress.wardName;
+
+        if (!provinceName || !districtName || !wardName) {
+            throw new Error('Không thể xác định đầy đủ địa chỉ để tạo vận đơn GHTK');
+        }
 
         const response = await axios.post(
             `${this.ghtkConfig.apiUrl}/shipment/order`,
@@ -494,9 +529,9 @@ class ShippingService {
                     tel: customerPhone,
                     name: customerName,
                     address: shippingAddress,
-                    province: normalizeAddress(provinceName),
-                    district: normalizeAddress(districtName),
-                    ward: normalizeAddress(wardName),
+                    province: this.normalizeAddressName(provinceName),
+                    district: this.normalizeAddressName(districtName),
+                    ward: this.normalizeAddressName(wardName),
                     hamlet: 'Khác', // GHTK yêu cầu bắt buộc, dùng "Khác" nếu không có thông tin cụ thể
                     is_freeship: codAmount > 0 ? '0' : '1',
                     pick_money: codAmount || 0,

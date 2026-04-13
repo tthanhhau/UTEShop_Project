@@ -207,8 +207,8 @@ const CheckoutPage = () => {
     setSelectedWard(addressData.ward);
 
     // Tạo địa chỉ đầy đủ để lưu vào database
-    if (addressData.province && addressData.district && addressData.ward) {
-      const fullAddress = `${detailedAddress ? detailedAddress + ', ' : ''}${addressData.ward.WardName}, ${addressData.district.DistrictName}, ${addressData.province.ProvinceName}`;
+    if (addressData.province && addressData.ward) {
+      const fullAddress = `${detailedAddress ? detailedAddress + ', ' : ''}${addressData.ward.WardName}, ${addressData.province.ProvinceName}`;
       setShippingAddress(fullAddress);
     }
   };
@@ -224,8 +224,8 @@ const CheckoutPage = () => {
     setDetailedAddress(value);
 
     // Cập nhật lại địa chỉ đầy đủ
-    if (selectedProvince && selectedDistrict && selectedWard) {
-      const fullAddress = `${value ? value + ', ' : ''}${selectedWard.WardName}, ${selectedDistrict.DistrictName}, ${selectedProvince.ProvinceName}`;
+    if (selectedProvince && selectedWard) {
+      const fullAddress = `${value ? value + ', ' : ''}${selectedWard.WardName}, ${selectedProvince.ProvinceName}`;
       setShippingAddress(fullAddress);
     }
   };
@@ -346,8 +346,8 @@ const CheckoutPage = () => {
     }
 
     // Kiểm tra địa chỉ có cấu trúc (cho shipping API)
-    if (!selectedDistrict || !selectedWard) {
-      alert("Vui lòng chọn đầy đủ địa chỉ giao hàng (Tỉnh/Quận/Phường)");
+    if (!selectedWard) {
+      alert("Vui lòng chọn đầy đủ địa chỉ giao hàng (Tỉnh/Phường)");
       return;
     }
 
@@ -411,7 +411,7 @@ const CheckoutPage = () => {
             toDistrictId: selectedDistrict?.DistrictID,
             toWardCode: selectedWard?.WardCode,
             province: selectedProvince?.ProvinceName,
-            district: selectedDistrict?.DistrictName,
+            district: '',
             ward: selectedWard?.WardName,
             shippingFee: shippingFee,
           },
@@ -443,7 +443,7 @@ const CheckoutPage = () => {
             toDistrictId: selectedDistrict?.DistrictID,
             toWardCode: selectedWard?.WardCode,
             province: selectedProvince?.ProvinceName,
-            district: selectedDistrict?.DistrictName,
+            district: '',
             ward: selectedWard?.WardName,
             shippingFee: shippingFee,
           },
