@@ -9,8 +9,9 @@ class PaymentController {
     // Tạo payment request cho MoMo
     createPaymentRequest = asyncHandler(async (req, res) => {
         const { amount, orderInfo, orderId } = req.body;
+        const normalizedAmount = Number(amount);
 
-        if (!amount || amount <= 0) {
+        if (!Number.isFinite(normalizedAmount) || normalizedAmount < 0) {
             return res.status(400).json({
                 message: "Invalid payment amount",
                 code: "INVALID_AMOUNT",
@@ -27,9 +28,20 @@ class PaymentController {
         // Tạo orderId nếu chưa có
         const finalOrderId = orderId || momoService.generateOrderId();
 
+        // Đơn hàng 0đ: không cần gọi cổng MoMo, vẫn cho phép luồng thanh toán online
+        if (normalizedAmount === 0) {
+            return res.status(200).json({
+                success: true,
+                noPaymentRequired: true,
+                orderId: finalOrderId,
+                requestId: `ZERO_${Date.now()}`,
+                message: "Zero amount order - skip gateway",
+            });
+        }
+
         const paymentData = {
             orderId: finalOrderId,
-            amount: amount,
+            amount: normalizedAmount,
             orderInfo: orderInfo,
             extraData: JSON.stringify({
                 userId: req.user._id.toString(),

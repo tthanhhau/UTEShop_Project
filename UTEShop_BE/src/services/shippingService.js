@@ -94,6 +94,13 @@ class ShippingService {
             if (error.response?.data) {
                 console.error('📋 Full error response:', JSON.stringify(error.response.data, null, 2));
             }
+            if (error.provider === 'GHTK') {
+                console.error('📋 GHTK provider error details:', {
+                    code: error.code,
+                    logId: error.logId,
+                    message: error.message,
+                });
+            }
             throw error;
         }
     }
@@ -325,12 +332,26 @@ class ShippingService {
             .trim();
     }
 
-    async resolveAddressNames({ province, district, ward, toDistrictId, toWardCode }) {
+    async resolveAddressNames(
+        { province, district, ward, toDistrictId, toWardCode },
+        { keepMissingDistrict = false } = {}
+    ) {
         const provinceName = typeof province === 'string' ? province.trim() : province;
         const districtName = typeof district === 'string' ? district.trim() : district;
         const wardName = typeof ward === 'string' ? ward.trim() : ward;
 
         if (provinceName && districtName && wardName) {
+            return {
+                provinceName,
+                districtName,
+                wardName,
+            };
+        }
+
+        // Với một số địa bàn mới, dữ liệu suy diễn quận/huyện từ API công khai
+        // có thể không tương thích với bảng địa chỉ nội bộ của GHTK.
+        // Nếu FE đã có tỉnh + phường/xã nhưng thiếu quận/huyện, giữ nguyên dữ liệu gốc.
+        if (keepMissingDistrict && provinceName && wardName && !districtName) {
             return {
                 provinceName,
                 districtName,
@@ -377,35 +398,50 @@ class ShippingService {
         console.log('🔍 calculateGHTKFee received params:', { province, district, ward, toDistrictId, toWardCode });
 
         // Ưu tiên dùng text nếu có, không cần convert
-        const resolvedAddress = await this.resolveAddressNames({
-            province,
-            district,
-            ward,
-            toDistrictId,
-            toWardCode,
-        });
+        const resolvedAddress = await this.resolveAddressNames(
+            {
+                province,
+                district,
+                ward,
+                toDistrictId,
+                toWardCode,
+            },
+            { keepMissingDistrict: false }
+        );
         const provinceName = resolvedAddress.provinceName;
         const districtName = resolvedAddress.districtName;
         const wardName = resolvedAddress.wardName;
+        const fallbackDistrictName = typeof process.env.GHTK_FALLBACK_DISTRICT === 'string'
+            ? process.env.GHTK_FALLBACK_DISTRICT.trim()
+            : '';
+        const effectiveDistrictName = districtName || fallbackDistrictName;
 
-        if (!provinceName || !districtName || !wardName) {
+        if (!provinceName || !effectiveDistrictName || !wardName) {
             throw new Error('Không thể xác định đầy đủ địa chỉ giao hàng từ dữ liệu hiện có');
         }
 
-        console.log('✅ Resolved address names:', { provinceName, districtName, wardName });
+        if (!districtName && fallbackDistrictName) {
+            console.warn('⚠️ Using GHTK_FALLBACK_DISTRICT for fee calculation:', fallbackDistrictName);
+        }
+
+        console.log('✅ Resolved address names:', {
+            provinceName,
+            districtName: effectiveDistrictName,
+            wardName,
+        });
 
         console.log('📦 GHTK Fee Request:', {
             pick_address: pickAddress || process.env.GHTK_PICK_ADDRESS,
             address: address || 'default',
             province: provinceName,
-            district: districtName,
+            district: effectiveDistrictName,
             ward: wardName,
             weight: weight || 1000,
             value: value || 0,
         });
 
         const normalizedProvince = this.normalizeAddressName(provinceName);
-        const normalizedDistrict = this.normalizeAddressName(districtName);
+        const normalizedDistrict = this.normalizeAddressName(effectiveDistrictName);
         const normalizedWard = this.normalizeAddressName(wardName);
 
         console.log('🔄 Normalized address:', {
@@ -494,29 +530,46 @@ class ShippingService {
         this.assertRequiredShippingAddressIds({ toDistrictId, toWardCode }, 'createGHTKOrder');
 
         // Nếu có province text thì dùng, không cần convert
-        const resolvedAddress = await this.resolveAddressNames({
-            province,
-            district,
-            ward,
-            toDistrictId,
-            toWardCode,
-        });
+        const resolvedAddress = await this.resolveAddressNames(
+            {
+                province,
+                district,
+                ward,
+                toDistrictId,
+                toWardCode,
+            },
+            { keepMissingDistrict: true }
+        );
         const provinceName = resolvedAddress.provinceName;
         const districtName = resolvedAddress.districtName;
         const wardName = resolvedAddress.wardName;
 
-        if (!provinceName || !districtName || !wardName) {
+        if (!provinceName || !wardName) {
             throw new Error('Không thể xác định đầy đủ địa chỉ để tạo vận đơn GHTK');
         }
+
+        // GHTK yêu cầu giá trị hàng hóa (order.value) trong khoảng 1..50,000,000 VND.
+        // Đơn có tổng thanh toán 0đ do dùng điểm/voucher vẫn cần khai báo giá trị hàng hợp lệ.
+        const declaredGoodsValue = this.calculateGHTKDeclaredGoodsValue(items, totalPrice);
+        console.log('📦 GHTK request financials:', {
+            orderId,
+            codAmount: codAmount || 0,
+            declaredGoodsValue,
+            payableTotal: totalPrice,
+        });
 
         const response = await axios.post(
             `${this.ghtkConfig.apiUrl}/shipment/order`,
             {
                 products: items.map(item => ({
                     name: item.name,
-                    weight: item.weight || 0.5,
+                    // GHTK create-order expects product weight in kg.
+                    weight: this.normalizeWeightForGHTKProduct(item.weight),
                     quantity: item.quantity,
                     price: item.price,
+                    ...(item.length ? { length: item.length } : {}),
+                    ...(item.width ? { width: item.width } : {}),
+                    ...(item.height ? { height: item.height } : {}),
                 })),
                 order: {
                     id: orderId,
@@ -529,14 +582,14 @@ class ShippingService {
                     tel: customerPhone,
                     name: customerName,
                     address: shippingAddress,
-                    province: this.normalizeAddressName(provinceName),
-                    district: this.normalizeAddressName(districtName),
-                    ward: this.normalizeAddressName(wardName),
+                    province: provinceName,
+                    district: districtName || '',
+                    ward: wardName,
                     hamlet: 'Khác', // GHTK yêu cầu bắt buộc, dùng "Khác" nếu không có thông tin cụ thể
                     is_freeship: codAmount > 0 ? '0' : '1',
                     pick_money: codAmount || 0,
                     note: note || '',
-                    value: totalPrice,
+                    value: declaredGoodsValue,
                 },
             },
             {
@@ -548,6 +601,15 @@ class ShippingService {
         );
 
         console.log('📦 GHTK Create Order Response:', JSON.stringify(response.data, null, 2));
+
+        if (!response.data?.success || !response.data?.order) {
+            const ghtkError = new Error(response.data?.message || 'GHTK create order failed');
+            ghtkError.provider = 'GHTK';
+            ghtkError.code = response.data?.error_code;
+            ghtkError.logId = response.data?.log_id;
+            ghtkError.raw = response.data;
+            throw ghtkError;
+        }
 
         return {
             success: response.data.success,
@@ -651,9 +713,59 @@ class ShippingService {
         // Tính tổng trọng lượng (gram)
         // Mặc định mỗi sản phẩm 500g nếu không có thông tin
         return items.reduce((total, item) => {
-            const itemWeight = item.weight || 500;
+            const itemWeight = this.normalizeWeightToGram(item.weight);
             return total + (itemWeight * item.quantity);
         }, 0);
+    }
+
+    normalizeWeightToGram(weight) {
+        const numericWeight = Number(weight);
+        if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
+            return 500;
+        }
+
+        // Nếu nhập theo kg (ví dụ 0.5, 1, 2.3) thì quy về gram.
+        if (numericWeight > 0 && numericWeight <= 50) {
+            return Math.round(numericWeight * 1000);
+        }
+
+        return Math.round(numericWeight);
+    }
+
+    normalizeWeightForGHTKProduct(weight) {
+        const numericWeight = Number(weight);
+        if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
+            return 0.5;
+        }
+
+        // Quy ước nội bộ: nếu > 50 thì đang là gram, chuyển sang kg.
+        if (numericWeight > 50) {
+            return Number((numericWeight / 1000).toFixed(3));
+        }
+
+        // Nếu <= 50 thì coi là kg.
+        return Number(numericWeight.toFixed(3));
+    }
+
+    calculateGHTKDeclaredGoodsValue(items = [], orderTotal = 0) {
+        const productsValue = items.reduce((sum, item) => {
+            const unitPrice = Number(item?.price || 0);
+            const quantity = Number(item?.quantity || 0);
+            if (!Number.isFinite(unitPrice) || !Number.isFinite(quantity)) {
+                return sum;
+            }
+            return sum + (unitPrice * quantity);
+        }, 0);
+
+        const fallbackValue = Number(orderTotal || 0);
+        const rawValue = productsValue > 0 ? productsValue : fallbackValue;
+
+        // Range hợp lệ theo thông báo lỗi từ GHTK: 1 đ <= GTHH <= 50,000,000 đ
+        if (rawValue <= 0) {
+            return 1;
+        }
+
+        return Math.min(50000000, Math.round(rawValue));
     }
 
     /**

@@ -88,7 +88,7 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                         name: item.product.name,
                         quantity: item.quantity,
                         price: item.price,
-                        weight: item.product.weight || 5, // Mặc định 500g
+                        weight: item.product.weight || 500, // Mặc định 500g
                     })),
                     totalPrice: order.totalPrice,
                     codAmount: order.paymentMethod === 'COD' ? order.totalPrice : 0,

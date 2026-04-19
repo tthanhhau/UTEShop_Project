@@ -47,6 +47,11 @@ const MoMoPaymentForm = ({
       });
 
       if (response.data.success) {
+        if (response.data.noPaymentRequired) {
+          await createOrderAfterPayment(response.data.orderId, response.data.requestId);
+          return;
+        }
+
         setPaymentUrl(response.data.payUrl);
         setQrCodeUrl(response.data.qrCodeUrl);
         setShowQR(true);

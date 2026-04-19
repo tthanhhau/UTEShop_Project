@@ -297,11 +297,11 @@ const CheckoutPage = () => {
   };
 
   // points deduction (in VND) - use all available points (checkbox) but not exceeding subtotal
-  const calculatePointsDeduction = (subtotal) => {
+  const calculatePointsDeduction = (payableAmount) => {
     if (!usePoints) return 0;
     const availablePoints = getAvailablePoints();
     const deduction = availablePoints * POINT_TO_VND;
-    return Math.min(deduction, subtotal);
+    return Math.min(deduction, Math.max(0, payableAmount));
   };
 
   // Final total after applying voucher and/or points
@@ -319,9 +319,10 @@ const CheckoutPage = () => {
     console.log("� Selected Voucher:", voucher);
 
     const voucherAmount = calculateVoucherAmount(voucher, base);
-    const pointsDeduction = calculatePointsDeduction(base - voucherAmount);
-    const subtotal = base - voucherAmount - pointsDeduction;
-    const final = Math.max(0, subtotal + shippingFee);
+    const afterVoucher = Math.max(0, base - voucherAmount);
+    const payableBeforePoints = afterVoucher + Number(shippingFee || 0);
+    const pointsDeduction = calculatePointsDeduction(payableBeforePoints);
+    const final = Math.max(0, payableBeforePoints - pointsDeduction);
     return { base, voucherAmount, pointsDeduction, shippingFee, final };
   };
 
