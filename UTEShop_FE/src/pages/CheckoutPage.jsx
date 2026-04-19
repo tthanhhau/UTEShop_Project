@@ -207,8 +207,8 @@ const CheckoutPage = () => {
     setSelectedWard(addressData.ward);
 
     // Tạo địa chỉ đầy đủ để lưu vào database
-    if (addressData.province && addressData.district && addressData.ward) {
-      const fullAddress = `${detailedAddress ? detailedAddress + ', ' : ''}${addressData.ward.WardName}, ${addressData.district.DistrictName}, ${addressData.province.ProvinceName}`;
+    if (addressData.province && addressData.ward) {
+      const fullAddress = `${detailedAddress ? detailedAddress + ', ' : ''}${addressData.ward.WardName}, ${addressData.province.ProvinceName}`;
       setShippingAddress(fullAddress);
     }
   };
@@ -224,8 +224,8 @@ const CheckoutPage = () => {
     setDetailedAddress(value);
 
     // Cập nhật lại địa chỉ đầy đủ
-    if (selectedProvince && selectedDistrict && selectedWard) {
-      const fullAddress = `${value ? value + ', ' : ''}${selectedWard.WardName}, ${selectedDistrict.DistrictName}, ${selectedProvince.ProvinceName}`;
+    if (selectedProvince && selectedWard) {
+      const fullAddress = `${value ? value + ', ' : ''}${selectedWard.WardName}, ${selectedProvince.ProvinceName}`;
       setShippingAddress(fullAddress);
     }
   };
@@ -297,11 +297,11 @@ const CheckoutPage = () => {
   };
 
   // points deduction (in VND) - use all available points (checkbox) but not exceeding subtotal
-  const calculatePointsDeduction = (subtotal) => {
+  const calculatePointsDeduction = (payableAmount) => {
     if (!usePoints) return 0;
     const availablePoints = getAvailablePoints();
     const deduction = availablePoints * POINT_TO_VND;
-    return Math.min(deduction, subtotal);
+    return Math.min(deduction, Math.max(0, payableAmount));
   };
 
   // Final total after applying voucher and/or points
@@ -319,9 +319,10 @@ const CheckoutPage = () => {
     console.log("� Selected Voucher:", voucher);
 
     const voucherAmount = calculateVoucherAmount(voucher, base);
-    const pointsDeduction = calculatePointsDeduction(base - voucherAmount);
-    const subtotal = base - voucherAmount - pointsDeduction;
-    const final = Math.max(0, subtotal + shippingFee);
+    const afterVoucher = Math.max(0, base - voucherAmount);
+    const payableBeforePoints = afterVoucher + Number(shippingFee || 0);
+    const pointsDeduction = calculatePointsDeduction(payableBeforePoints);
+    const final = Math.max(0, payableBeforePoints - pointsDeduction);
     return { base, voucherAmount, pointsDeduction, shippingFee, final };
   };
 
@@ -346,8 +347,8 @@ const CheckoutPage = () => {
     }
 
     // Kiểm tra địa chỉ có cấu trúc (cho shipping API)
-    if (!selectedDistrict || !selectedWard) {
-      alert("Vui lòng chọn đầy đủ địa chỉ giao hàng (Tỉnh/Quận/Phường)");
+    if (!selectedWard) {
+      alert("Vui lòng chọn đầy đủ địa chỉ giao hàng (Tỉnh/Phường)");
       return;
     }
 
@@ -411,7 +412,7 @@ const CheckoutPage = () => {
             toDistrictId: selectedDistrict?.DistrictID,
             toWardCode: selectedWard?.WardCode,
             province: selectedProvince?.ProvinceName,
-            district: selectedDistrict?.DistrictName,
+            district: '',
             ward: selectedWard?.WardName,
             shippingFee: shippingFee,
           },
@@ -443,7 +444,7 @@ const CheckoutPage = () => {
             toDistrictId: selectedDistrict?.DistrictID,
             toWardCode: selectedWard?.WardCode,
             province: selectedProvince?.ProvinceName,
-            district: selectedDistrict?.DistrictName,
+            district: '',
             ward: selectedWard?.WardName,
             shippingFee: shippingFee,
           },

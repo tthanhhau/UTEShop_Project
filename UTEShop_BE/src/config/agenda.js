@@ -88,7 +88,7 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                         name: item.product.name,
                         quantity: item.quantity,
                         price: item.price,
-                        weight: item.product.weight || 5, // Mặc định 500g
+                        weight: item.product.weight || 500, // Mặc định 500g
                     })),
                     totalPrice: order.totalPrice,
                     codAmount: order.paymentMethod === 'COD' ? order.totalPrice : 0,
@@ -101,12 +101,10 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                 console.log('   - district:', shippingData.district, '(type:', typeof shippingData.district, ')');
                 console.log('   - ward:', shippingData.ward, '(type:', typeof shippingData.ward, ')');
 
-                // Kiểm tra nếu thiếu text names (đơn hàng cũ)
-                if (!shippingData.province || !shippingData.district || !shippingData.ward) {
-                    console.error('❌ Missing address text names in order. Cannot create GHTK order.');
-                    console.error('   This might be an old order created before the fix.');
-                    console.error('   Please place a NEW order to test the shipping integration.');
-                    return; // Skip shipping creation for old orders
+                if (!shippingService.hasRequiredShippingAddressIds(shippingData)) {
+                    console.error('❌ Missing required shipping address IDs. Cannot create shipping order.');
+                    console.error('   Required fields: toDistrictId and toWardCode');
+                    return;
                 }
 
                 // Tạo đơn giao hàng với GHTK

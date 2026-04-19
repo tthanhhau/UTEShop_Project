@@ -1,9 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import shippingApi from '@/api/shippingApi';
 
-/**
- * Component chọn địa chỉ giao hàng và tính phí vận chuyển
- */
 function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -17,32 +14,22 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Load danh sách tỉnh/thành khi component mount
     useEffect(() => {
         loadProvinces();
     }, []);
 
-    // Load danh sách quận/huyện khi chọn tỉnh
     useEffect(() => {
-        if (selectedProvince) {
-            loadDistricts(selectedProvince.ProvinceID);
-            setDistricts([]);
-            setWards([]);
-            setSelectedDistrict(null);
-            setSelectedWard(null);
+        if (!selectedProvince) {
+            return;
         }
+
+        setDistricts([]);
+        setWards([]);
+        setSelectedDistrict(null);
+        setSelectedWard(null);
+        loadDistrictsAndWards(selectedProvince);
     }, [selectedProvince]);
 
-    // Load danh sách phường/xã khi chọn quận
-    useEffect(() => {
-        if (selectedDistrict) {
-            loadWards(selectedDistrict.DistrictID);
-            setWards([]);
-            setSelectedWard(null);
-        }
-    }, [selectedDistrict]);
-
-    // Tính phí vận chuyển khi chọn đủ địa chỉ
     useEffect(() => {
         if (selectedDistrict && selectedWard) {
             calculateShippingFee();
@@ -63,29 +50,52 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
         }
     };
 
-    const loadDistricts = async (provinceId) => {
+    const loadDistrictsAndWards = async (province) => {
         try {
             setLoading(true);
-            const response = await shippingApi.getDistricts(provinceId);
-            setDistricts(response.data.data || []);
-            setError('');
-        } catch (err) {
-            setError('Không thể tải danh sách quận/huyện');
-            console.error('Error loading districts:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
+            const response = await shippingApi.getDistricts(province.ProvinceID, 'GHTK');
+            const nextDistricts = response.data.data || [];
 
-    const loadWards = async (districtId) => {
-        try {
-            setLoading(true);
-            const response = await shippingApi.getWards(districtId);
-            setWards(response.data.data || []);
+            setDistricts(nextDistricts);
             setError('');
+
+            if (!nextDistricts.length) {
+                setError('Không tìm thấy địa giới giao hàng cho tỉnh/thành phố này');
+                return;
+            }
+
+            const wardResponses = await Promise.all(
+                nextDistricts.map(async (district) => {
+                    const wardResponse = await shippingApi.getWards(district.DistrictID, 'GHTK');
+                    const districtWards = wardResponse.data.data || [];
+
+                    return districtWards.map((ward) => ({
+                        ...ward,
+                        DistrictID: ward.DistrictID || district.DistrictID,
+                        DistrictName: district.DistrictName,
+                    }));
+                })
+            );
+
+            const flattenedWards = wardResponses.flat().sort((left, right) =>
+                String(left.WardName).localeCompare(String(right.WardName), 'vi')
+            );
+
+            setWards(flattenedWards);
+
+            const defaultDistrict = nextDistricts[0] || null;
+            setSelectedDistrict(defaultDistrict);
+
+            if (onAddressChange) {
+                onAddressChange({
+                    province,
+                    district: defaultDistrict,
+                    ward: null,
+                });
+            }
         } catch (err) {
-            setError('Không thể tải danh sách phường/xã');
-            console.error('Error loading wards:', err);
+            setError('Không thể tải danh sách phường/xã theo tỉnh/thành phố');
+            console.error('Error loading districts/wards:', err);
         } finally {
             setLoading(false);
         }
@@ -98,16 +108,16 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
                 toDistrictId: selectedDistrict.DistrictID,
                 toWardCode: selectedWard.WardCode,
                 province: selectedProvince.ProvinceName,
-                district: selectedDistrict.DistrictName,
+                district: selectedDistrict.IsProvinceLevel ? '' : selectedDistrict.DistrictName,
                 ward: selectedWard.WardName,
-                weight: 1000, // Mặc định 1kg
+                weight: 1000,
                 insuranceValue: 0,
+                provider: 'GHTK',
             });
 
             const fee = response.data.fee || 0;
             setShippingFee(fee);
 
-            // Callback để parent component biết phí ship
             if (onFeeCalculated) {
                 onFeeCalculated(fee);
             }
@@ -123,7 +133,7 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
     };
 
     const handleProvinceChange = (e) => {
-        const province = provinces.find(p => p.ProvinceID === parseInt(e.target.value));
+        const province = provinces.find((item) => item.ProvinceID === parseInt(e.target.value, 10));
         setSelectedProvince(province);
 
         if (onAddressChange) {
@@ -135,27 +145,18 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
         }
     };
 
-    const handleDistrictChange = (e) => {
-        const district = districts.find(d => d.DistrictID === parseInt(e.target.value));
-        setSelectedDistrict(district);
-
-        if (onAddressChange) {
-            onAddressChange({
-                province: selectedProvince,
-                district,
-                ward: null,
-            });
-        }
-    };
-
     const handleWardChange = (e) => {
-        const ward = wards.find(w => w.WardCode === e.target.value);
+        const wardValue = e.target.value;
+        const ward = wards.find((item) => `${item.DistrictID}__${item.WardCode}` === wardValue);
+        const district = districts.find((item) => String(item.DistrictID) === String(ward?.DistrictID)) || null;
+
+        setSelectedDistrict(district);
         setSelectedWard(ward);
 
         if (onAddressChange) {
             onAddressChange({
                 province: selectedProvince,
-                district: selectedDistrict,
+                district,
                 ward,
             });
         }
@@ -172,7 +173,6 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
             )}
 
             <div className="space-y-4">
-                {/* Tỉnh/Thành phố */}
                 <div>
                     <label className="block text-sm font-medium mb-2">
                         Tỉnh/Thành phố <span className="text-red-500">*</span>
@@ -184,7 +184,7 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="">Chọn Tỉnh/Thành phố</option>
-                        {provinces.map(province => (
+                        {provinces.map((province) => (
                             <option key={province.ProvinceID} value={province.ProvinceID}>
                                 {province.ProvinceName}
                             </option>
@@ -192,53 +192,29 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
                     </select>
                 </div>
 
-                {/* Quận/Huyện */}
-                <div>
-                    <label className="block text-sm font-medium mb-2">
-                        Quận/Huyện <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        value={selectedDistrict?.DistrictID || ''}
-                        onChange={handleDistrictChange}
-                        disabled={!selectedProvince || loading}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    >
-                        <option value="">Chọn Quận/Huyện</option>
-                        {districts.map(district => (
-                            <option key={district.DistrictID} value={district.DistrictID}>
-                                {district.DistrictName}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Phường/Xã */}
                 <div>
                     <label className="block text-sm font-medium mb-2">
                         Phường/Xã <span className="text-red-500">*</span>
                     </label>
                     <select
-                        value={selectedWard?.WardCode || ''}
+                        value={selectedWard ? `${selectedWard.DistrictID}__${selectedWard.WardCode}` : ''}
                         onChange={handleWardChange}
-                        disabled={!selectedDistrict || loading}
+                        disabled={!selectedProvince || loading}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                     >
                         <option value="">Chọn Phường/Xã</option>
-                        {wards.map(ward => (
-                            <option key={ward.WardCode} value={ward.WardCode}>
+                        {wards.map((ward) => (
+                            <option key={`${ward.DistrictID}-${ward.WardCode}`} value={`${ward.DistrictID}__${ward.WardCode}`}>
                                 {ward.WardName}
                             </option>
                         ))}
                     </select>
                 </div>
 
-                {/* Hiển thị phí vận chuyển */}
                 {shippingFee > 0 && (
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                         <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-700">
-                                Phí vận chuyển:
-                            </span>
+                            <span className="text-sm font-medium text-gray-700">Phí vận chuyển:</span>
                             <span className="text-lg font-bold text-blue-600">
                                 {shippingFee.toLocaleString('vi-VN')}đ
                             </span>

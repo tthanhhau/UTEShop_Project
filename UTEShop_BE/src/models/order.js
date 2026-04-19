@@ -101,9 +101,9 @@ const orderSchema = new mongoose.Schema(
       toDistrictId: { type: String }, // ID quận/huyện (cho GHN)
       toWardCode: { type: String }, // Mã phường/xã (cho GHN)
       // ✅ THÊM CÁC FIELD TEXT NAMES CHO GHTK
-      province: { type: String }, // Tên tỉnh/thành phố (VD: "Thành phố Hồ Chí Minh")
-      district: { type: String }, // Tên quận/huyện (VD: "Quận 5")
-      ward: { type: String }, // Tên phường/xã (VD: "Phường 1")
+      province: { type: String }, // Tên tỉnh/thành phố theo bộ địa giới hiện hành
+      district: { type: String }, // Tên quận/huyện đang dùng để gửi sang hãng vận chuyển
+      ward: { type: String }, // Tên phường/xã đang dùng để gửi sang hãng vận chuyển
     },
   },
   { timestamps: true }
