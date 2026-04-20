@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Truck, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { orderApi } from '../../api/orderApi';
+import { getOrderDisplayStatus } from '../../utils/orderShippingStatus';
 
 const OrderManagement = () => {
   const navigate = useNavigate();
@@ -377,10 +378,17 @@ const OrderManagement = () => {
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      <span className="ml-2">{getStatusText(order.status)}</span>
-                    </span>
+                    <div className="space-y-1">
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm ${getOrderDisplayStatus(order).color}`}>
+                        {getStatusIcon(order.status)}
+                        <span className="ml-2">{getOrderDisplayStatus(order).label}</span>
+                      </span>
+                      {order.shippingInfo?.trackingCode && (
+                        <div className="text-xs text-blue-600">
+                          {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 px-6">
                     <span className={`px-2 py-1 rounded-full text-xs ${

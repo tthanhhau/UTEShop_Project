@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '../../../lib/axios';
+import { getOrderDisplayStatus } from '../../../lib/orderShippingStatus';
 
 interface Order {
   _id: string;
@@ -437,15 +438,22 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
+                    <div className="space-y-1">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full border text-sm ${getOrderDisplayStatus(order).color}`}>
                       <i className={`fas ${order.status === 'pending' ? 'fa-clock' :
                         order.status === 'processing' ? 'fa-box' :
                           order.status === 'shipped' ? 'fa-truck' :
                             order.status === 'delivered' ? 'fa-check-circle' :
                               'fa-times-circle'
                         } mr-2`}></i>
-                      <span>{getStatusText(order.status)}</span>
+                      <span>{getOrderDisplayStatus(order).label}</span>
                     </span>
+                    {order.shippingInfo?.trackingCode && (
+                      <div className="text-xs text-blue-600">
+                        {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
+                      </div>
+                    )}
+                    </div>
                   </td>
                   <td className="py-4 px-6">
                     <span className={`px-2 py-1 rounded-full text-xs ${order.paymentStatus === 'paid'

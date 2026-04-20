@@ -16,6 +16,7 @@ import {
   Save
 } from 'lucide-react';
 import { orderApi } from '../../api/orderApi';
+import { getOrderDisplayStatus } from '../../utils/orderShippingStatus';
 
 const OrderDetailManagement = () => {
   const { orderId } = useParams();
@@ -191,6 +192,8 @@ const OrderDetailManagement = () => {
       </div>
     );
   }
+
+  const shippingDisplayStatus = getOrderDisplayStatus(order);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -426,6 +429,31 @@ const OrderDetailManagement = () => {
                     </div>
                   </div>
                 </div>
+
+                {order.shippingInfo?.trackingCode && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-md font-semibold text-gray-800 mb-4 flex items-center">
+                      <Truck className="w-4 h-4 mr-2 text-indigo-600" />
+                      Trạng thái vận chuyển
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Mã vận đơn</p>
+                        <p className="text-gray-900 font-semibold">{order.shippingInfo.trackingCode}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Đơn vị vận chuyển</p>
+                        <p className="text-gray-900 font-semibold">{order.shippingInfo.provider || 'N/A'}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-sm font-medium text-gray-600 mb-2">Trạng thái hiện tại</p>
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm ${shippingDisplayStatus.color}`}>
+                          {shippingDisplayStatus.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

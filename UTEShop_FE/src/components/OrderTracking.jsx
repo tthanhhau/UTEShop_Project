@@ -1,77 +1,42 @@
-import React from 'react';
-import { RiShoppingBag3Line } from 'react-icons/ri';
-import { HiOutlineClipboardCheck } from 'react-icons/hi';
-import { TbTruckDelivery } from 'react-icons/tb';
-import { IoCheckmarkDoneOutline } from 'react-icons/io5';
+import React from "react";
+import { getOrderProgressTimeline } from "../utils/orderShippingStatus";
 
-const OrderTracking = ({ status }) => {
-    const steps = [
-        {
-            key: 'pending',
-            label: 'Đơn hàng mới',
-            icon: RiShoppingBag3Line,
-            isActive: status !== 'cancelled',
-        },
-        {
-            key: 'processing',
-            label: 'Đã xác nhận đơn hàng',
-            icon: HiOutlineClipboardCheck,
-            isActive: ['processing', 'preparing', 'shipped', 'delivered'].includes(status),
-        },
-        {
-            key: 'preparing',
-            label: 'Shop đang chuẩn bị giao hàng',
-            icon: TbTruckDelivery,
-            isActive: ['preparing', 'shipped', 'delivered'].includes(status),
-        },
-        {
-            key: 'shipped',
-            label: 'Đang giao hàng',
-            icon: TbTruckDelivery,
-            isActive: ['shipped', 'delivered'].includes(status),
-        },
-        {
-            key: 'delivered',
-            label: 'Đã giao thành công',
-            icon: IoCheckmarkDoneOutline,
-            isActive: status === 'delivered',
-        },
-    ]; if (status === 'cancelled') {
-        return (
-            <div className="flex items-center justify-center p-4 bg-red-50 rounded-lg">
-                <span className="text-red-600 font-medium">Đơn hàng đã bị hủy</span>
-            </div>
-        );
-    }
+const OrderTracking = ({ order, status }) => {
+  const orderData = order || { status };
+  const timeline = getOrderProgressTimeline(orderData);
 
+  if (timeline.isCancelled) {
     return (
-        <div className="relative mt-8">
-            {/* Steps */}
-            <div className="flex items-center justify-between relative">
-                {steps.map((step, index) => (
-                    <div key={step.key} className="flex flex-col items-center">
-                        {/* Icon circle */}
-                        <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center 
-                                ${step.isActive
-                                    ? 'bg-primary text-white'
-                                    : 'bg-gray-100 text-gray-400'
-                                }`}
-                        >
-                            {React.createElement(step.icon, { className: 'w-6 h-6' })}
-                        </div>
-
-                        {/* Label */}
-                        <div className={`mt-2 text-sm text-center w-32
-                            ${step.isActive ? 'text-primary font-medium' : 'text-gray-500'}`}
-                        >
-                            {step.label}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        Đơn hàng đã bị hủy
+      </div>
     );
+  }
+
+  return (
+    <div className="space-y-4">
+      {timeline.steps.map((step, index) => {
+        const isCurrent = index === timeline.currentIndex;
+        const isPassed = index < timeline.currentIndex;
+        const mutedClass = isCurrent ? "text-gray-900" : "text-gray-400";
+        const dotClass = isCurrent ? "bg-green-600" : isPassed ? "bg-gray-900" : "bg-gray-300";
+
+        return (
+          <div key={step.key} className="relative flex gap-4">
+            <div className="relative flex w-5 justify-center">
+              <span className={`mt-2 h-2.5 w-2.5 rounded-full ${dotClass}`}></span>
+              {index < timeline.steps.length - 1 && (
+                <span className="absolute top-5 h-full w-px bg-gray-200"></span>
+              )}
+            </div>
+            <div className={`pb-6 text-base ${mutedClass}`}>
+              <p className={isCurrent ? "font-semibold" : "font-normal"}>{step.label}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 export default OrderTracking;

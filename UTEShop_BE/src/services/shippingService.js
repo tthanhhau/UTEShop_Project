@@ -615,6 +615,7 @@ class ShippingService {
             success: response.data.success,
             provider: 'GHTK',
             trackingCode: response.data.order.label,
+            status: String(response.data.order.status || '1'),
             estimatedPickTime: response.data.order.estimated_pick_time,
             estimatedDeliverTime: response.data.order.estimated_deliver_time,
             fee: response.data.order.fee,
@@ -632,13 +633,19 @@ class ShippingService {
             }
         );
 
+        const rawOrder = response.data.order || {};
+        const normalizedStatus = String(rawOrder.status ?? '');
+        const logs = this.extractTrackingLogs(rawOrder, 'GHTK');
+
         return {
             success: response.data.success,
             provider: 'GHTK',
             trackingCode,
-            status: response.data.order.status,
-            statusText: this.mapGHTKStatus(response.data.order.status),
-            data: response.data.order,
+            status: normalizedStatus,
+            statusText: this.mapGHTKStatus(normalizedStatus),
+            logs,
+            lastUpdatedAt: this.resolveTrackingTimestamp(rawOrder) || logs[0]?.time || null,
+            data: rawOrder,
         };
     }
 
@@ -685,6 +692,122 @@ class ShippingService {
             '49': 'Shipper báo giao hàng thất bại',
         };
         return statusMap[status] || status;
+    }
+
+    isDeliveredShippingStatus(provider, status) {
+        const providerName = (provider || '').toUpperCase();
+        const normalizedStatus = String(status ?? '');
+
+        if (providerName === 'GHTK') {
+            return ['7', '11', '12', '45'].includes(normalizedStatus);
+        }
+
+        if (providerName === 'GHN') {
+            return ['delivered', 'DELIVERED'].includes(normalizedStatus);
+        }
+
+        return normalizedStatus.toLowerCase() === 'delivered';
+    }
+
+    resolveTrackingTimestamp(payload = {}) {
+        const candidates = [
+            payload.updated_at,
+            payload.updatedAt,
+            payload.action_time,
+            payload.time,
+            payload.timestamp,
+            payload.created,
+            payload.created_at,
+            payload.createdAt,
+            payload.date,
+        ];
+
+        const resolved = candidates.find(Boolean);
+        return resolved ? new Date(resolved).toISOString() : null;
+    }
+
+    extractTrackingLogs(rawOrder = {}, provider = '') {
+        const logCollections = [
+            rawOrder.logs,
+            rawOrder.log,
+            rawOrder.status_logs,
+            rawOrder.statusLogs,
+            rawOrder.timeline,
+            rawOrder.histories,
+            rawOrder.history,
+            rawOrder.journeys,
+        ];
+
+        const sourceLogs = logCollections.find(Array.isArray) || [];
+
+        const normalizedLogs = sourceLogs
+            .map((entry) => this.normalizeTrackingLog(entry, provider))
+            .filter(Boolean)
+            .sort((a, b) => {
+                const timeA = a.time ? new Date(a.time).getTime() : 0;
+                const timeB = b.time ? new Date(b.time).getTime() : 0;
+                return timeB - timeA;
+            });
+
+        if (normalizedLogs.length > 0) {
+            return normalizedLogs;
+        }
+
+        const fallbackStatus = String(rawOrder.status ?? '');
+        const fallbackTime = this.resolveTrackingTimestamp(rawOrder);
+
+        if (!fallbackStatus && !fallbackTime) {
+            return [];
+        }
+
+        return [
+            {
+                status: fallbackStatus,
+                message: provider.toUpperCase() === 'GHTK'
+                    ? this.mapGHTKStatus(fallbackStatus)
+                    : fallbackStatus,
+                time: fallbackTime,
+                location: rawOrder.current_warehouse || rawOrder.currentWarehouse || rawOrder.location || '',
+            },
+        ];
+    }
+
+    normalizeTrackingLog(entry = {}, provider = '') {
+        const status = String(
+            entry.status ??
+            entry.state ??
+            entry.action_code ??
+            entry.code ??
+            ''
+        );
+
+        const message = entry.message ||
+            entry.description ||
+            entry.reason ||
+            entry.action ||
+            entry.status_text ||
+            entry.status_name ||
+            (provider.toUpperCase() === 'GHTK' ? this.mapGHTKStatus(status) : status);
+
+        const time = this.resolveTrackingTimestamp(entry);
+        const location = entry.location ||
+            entry.area ||
+            entry.hub_name ||
+            entry.hub ||
+            entry.warehouse ||
+            entry.address ||
+            '';
+
+        if (!status && !message && !time) {
+            return null;
+        }
+
+        return {
+            status,
+            message: message || 'Cập nhật trạng thái vận chuyển',
+            time,
+            location,
+        };
     }
 
     // ==================== Viettel Post ====================

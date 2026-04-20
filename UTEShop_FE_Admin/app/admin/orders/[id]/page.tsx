@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '../../../../lib/axios';
+import { getOrderDisplayStatus } from '../../../../lib/orderShippingStatus';
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -122,6 +123,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  const shippingDisplayStatus = getOrderDisplayStatus(order);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
@@ -163,10 +166,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   
                   const statusInfo = getStatusInfo(order.status);
                   return (
+                    <div className="space-y-2">
+                    <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${shippingDisplayStatus.color}`}>
+                      <i className={`fas ${statusInfo.icon} mr-2`}></i>
+                      {shippingDisplayStatus.label}
+                    </span>
+                    {order.shippingInfo?.trackingCode && (
+                      <div className="text-xs text-blue-600">
+                        {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
+                      </div>
+                    )}
                     <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${statusInfo.color}`}>
                       <i className={`fas ${statusInfo.icon} mr-2`}></i>
-                      {statusInfo.text}
+                      Nội bộ: {statusInfo.text}
                     </span>
+                    </div>
                   );
                 })()}
               </div>

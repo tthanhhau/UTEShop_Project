@@ -117,6 +117,7 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                     // Lưu thông tin vận đơn vào database
                     order.shippingInfo.trackingCode = shippingResult.trackingCode;
                     order.shippingInfo.provider = shippingResult.provider;
+                    order.shippingInfo.status = shippingResult.status || order.shippingInfo.status;
                     order.shippingInfo.createdAt = new Date();
                     order.shippingInfo.expectedDeliveryTime = shippingResult.expectedDeliveryTime || shippingResult.estimatedDeliverTime;
                     order.status = 'shipped'; // Chuyển sang shipped
@@ -223,7 +224,7 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                         order.shippingInfo.status = trackingResult.status;
 
                         // Nếu đã giao hàng thành công, chuyển status sang delivered
-                        if (trackingResult.status === 'delivered' || trackingResult.statusText?.includes('giao hàng')) {
+                        if (shippingService.isDeliveredShippingStatus(order.shippingInfo.provider, trackingResult.status)) {
                             order.status = 'delivered';
                             console.log(`✅ Order ${order._id} marked as delivered`);
 
