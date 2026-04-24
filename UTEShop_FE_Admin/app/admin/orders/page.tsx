@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '../../../lib/axios';
+import { getOrderDisplayStatus } from '../../../lib/orderShippingStatus';
 
 interface Order {
   _id: string;
@@ -190,7 +191,7 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
     const colors: any = {
       pending: 'bg-yellow-100 text-yellow-800',
       processing: 'bg-blue-100 text-blue-800',
-      prepared: 'bg-purple-100 text-purple-800',
+      preparing: 'bg-purple-100 text-purple-800',
       shipped: 'bg-indigo-100 text-indigo-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
@@ -202,7 +203,7 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
     const statusText: any = {
       pending: 'Chờ xử lý',
       processing: 'Đang xử lý',
-      prepared: 'Đã chuẩn bị',
+      preparing: 'Đang chuẩn bị',
       shipped: 'Đang giao',
       delivered: 'Đã giao',
       cancelled: 'Đã hủy'
@@ -323,7 +324,7 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
               <option value="all">Tất cả</option>
               <option value="pending">Chờ xử lý</option>
               <option value="processing">Đang xử lý</option>
-              <option value="prepared">Đã chuẩn bị</option>
+              <option value="preparing">Đang chuẩn bị</option>
               <option value="shipped">Đang giao</option>
               <option value="delivered">Đã giao</option>
               <option value="cancelled">Đã hủy</option>
@@ -437,15 +438,22 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
-                      <i className={`fas ${order.status === 'pending' ? 'fa-clock' :
-                        order.status === 'processing' ? 'fa-box' :
-                          order.status === 'shipped' ? 'fa-truck' :
-                            order.status === 'delivered' ? 'fa-check-circle' :
-                              'fa-times-circle'
-                        } mr-2`}></i>
-                      <span>{getStatusText(order.status)}</span>
-                    </span>
+                    <div className="space-y-1">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full border text-sm ${getOrderDisplayStatus(order).color}`}>
+                        <i className={`fas ${order.status === 'pending' ? 'fa-clock' :
+                          order.status === 'processing' ? 'fa-box' :
+                            order.status === 'shipped' ? 'fa-truck' :
+                              order.status === 'delivered' ? 'fa-check-circle' :
+                                'fa-times-circle'
+                          } mr-2`}></i>
+                        <span>{getOrderDisplayStatus(order).label}</span>
+                      </span>
+                      {order.shippingInfo?.trackingCode && (
+                        <div className="text-xs text-blue-600">
+                          {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 px-6">
                     <span className={`px-2 py-1 rounded-full text-xs ${order.paymentStatus === 'paid'
@@ -468,8 +476,8 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
                       {(() => {
                         // Ánh xạ trạng thái tiếp theo
                         const statusFlow: any = {
-                          processing: "prepared",
-                          prepared: "shipped",
+                          processing: "preparing",
+                          preparing: "shipped",
                           shipped: "delivered"
                         };
                         const nextStatus = statusFlow[order.status];

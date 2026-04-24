@@ -117,6 +117,7 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                     // Lưu thông tin vận đơn vào database
                     order.shippingInfo.trackingCode = shippingResult.trackingCode;
                     order.shippingInfo.provider = shippingResult.provider;
+                    order.shippingInfo.status = shippingResult.status || order.shippingInfo.status;
                     order.shippingInfo.createdAt = new Date();
                     order.shippingInfo.expectedDeliveryTime = shippingResult.expectedDeliveryTime || shippingResult.estimatedDeliverTime;
                     order.status = 'shipped'; // Chuyển sang shipped
@@ -193,74 +194,10 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
         }
     });
 
-    /**
-     * Job để đồng bộ trạng thái vận đơn từ GHTK/GHN
-     * Chạy định kỳ mỗi 30 phút để cập nhật trạng thái
-     */
-    agenda.define('sync shipping status', async (job) => {
-        console.log(`🔄 Syncing shipping status...`);
-
-        try {
-            // Lấy tất cả đơn hàng đang shipped và có tracking code
-            const shippedOrders = await Order.find({
-                status: 'shipped',
-                'shippingInfo.trackingCode': { $exists: true, $ne: null }
-            }).limit(50); // Giới hạn 50 đơn mỗi lần để tránh quá tải
-
-            console.log(`📦 Found ${shippedOrders.length} orders to sync`);
-
-            const { default: shippingService } = await import('../services/shippingService.js');
-
-            for (const order of shippedOrders) {
-                try {
-                    const trackingResult = await shippingService.trackOrder(
-                        order.shippingInfo.trackingCode,
-                        order.shippingInfo.provider
-                    );
-
-                    if (trackingResult.success) {
-                        // Cập nhật trạng thái trong database
-                        order.shippingInfo.status = trackingResult.status;
-
-                        // Nếu đã giao hàng thành công, chuyển status sang delivered
-                        if (trackingResult.status === 'delivered' || trackingResult.statusText?.includes('giao hàng')) {
-                            order.status = 'delivered';
-                            console.log(`✅ Order ${order._id} marked as delivered`);
-
-                            // Gửi notification cho user
-                            const deliveredNotification = new Notification({
-                                user: order.user,
-                                message: `Đơn hàng #${order._id} đã được giao thành công!`,
-                                link: `/orders/tracking/${order._id}`,
-                                orderId: order._id,
-                                type: 'order_delivered',
-                            });
-                            await deliveredNotification.save();
-                            sendNotificationToUser(io, order.user, 'new_notification', deliveredNotification.toObject());
-                        }
-
-                        await order.save();
-                    }
-                } catch (trackError) {
-                    console.error(`❌ Error tracking order ${order._id}:`, trackError.message);
-                }
-            }
-
-            console.log(`✅ Shipping status sync completed`);
-        } catch (error) {
-            console.error(`❌ Error in sync shipping status job:`, error.message);
-        }
-    });
-
     // Khởi động agenda và schedule các job định kỳ
     (async function () {
         await agenda.start();
         console.log('✅ Agenda started');
-
-        // Schedule job đồng bộ trạng thái vận đơn mỗi 1 phút (cho demo)
-        // Production nên dùng '30 minutes' hoặc '1 hour'
-        await agenda.every('1 minute', 'sync shipping status');
-        console.log('✅ Scheduled: sync shipping status every 1 minute');
     })();
 
     return agenda;

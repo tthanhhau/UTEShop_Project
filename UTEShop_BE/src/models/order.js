@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const statusToNumberMap = {
   pending: 1,
   processing: 2,
-  prepared: 3,
+  preparing: 3,
   shipped: 4,
   delivered: 5,
   cancelled: 6,
@@ -36,7 +36,7 @@ const orderSchema = new mongoose.Schema(
       enum: [
         "pending",
         "processing",
-        "prepared",
+        "preparing",
         "shipped",
         "delivered",
         "cancelled",

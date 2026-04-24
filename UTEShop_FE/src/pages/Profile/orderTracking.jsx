@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import api from "@/api/axiosConfig";
 import { checkProductInOrderReviewed } from "../../api/reviewApi";
 import { checkReturnEligibility, createReturnRequest, RETURN_REASONS } from "../../api/returnApi";
+import { getOrderDisplayStatus, getOrderProgressTimeline } from "../../utils/orderShippingStatus";
 import { useSelector } from "react-redux";
 import io from "socket.io-client";
 import {
@@ -27,7 +28,7 @@ import {
 const statusToNumberMap = {
   pending: 1,
   processing: 2,
-  prepared: 3,
+  preparing: 3,
   shipped: 4,
   delivered: 5,
   cancelled: 6,
@@ -65,6 +66,16 @@ const orderStatuses = {
     color: "bg-red-100 text-red-800 border-red-200",
     icon: XCircle,
   },
+};
+
+const shippingIconMap = {
+  shoppingBag: ShoppingBag,
+  checkCircle: CheckCircle,
+  package: Package,
+  truck: Truck,
+  xCircle: XCircle,
+  rotateCcw: RotateCcw,
+  clock: Clock,
 };
 
 export function OrderTracking() {
@@ -380,50 +391,43 @@ export function OrderTracking() {
     }
   };
 
-  const renderStatusTimeline = (currentStatus) => {
-    const statuses = [1, 2, 3, 4, 5];
+  const renderStatusTimeline = (order) => {
+    const timeline = getOrderProgressTimeline(order);
 
     return (
-      <div className="flex items-center justify-between mt-4">
-        {statuses.map((status, index) => {
-          const StatusIcon = orderStatuses[status].icon;
-          const isActive = currentStatus >= status && currentStatus !== 6;
-          const isCompleted = currentStatus > status && currentStatus !== 6;
+      <div className="mt-4">
+        <div className="space-y-0">
+          {timeline.steps.map((step, index) => {
+            const isActive = index <= timeline.currentIndex && !timeline.isCancelled;
+            const isCompleted = index < timeline.currentIndex && !timeline.isCancelled;
+            const textClass = index === timeline.currentIndex ? "text-gray-900 font-semibold" : "text-gray-400";
+            const dotClass = index === timeline.currentIndex ? "bg-green-600" : isCompleted ? "bg-gray-900" : "bg-gray-300";
 
-          return (
-            <div
-              key={status}
-              className="flex flex-col items-center flex-1 relative"
-            >
+            return (
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted || isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-                  }`}
+                key={step.key}
+                className="relative flex gap-4"
               >
-                <StatusIcon className="w-4 h-4" />
+                <div className="relative flex w-4 justify-center">
+                  <span className={`mt-2 h-2.5 w-2.5 rounded-full ${dotClass}`} />
+                  {index < timeline.steps.length - 1 && (
+                    <span className="absolute top-5 h-full w-px bg-gray-200" />
+                  )}
+                </div>
+                <div className={`pb-6 text-base ${textClass}`}>
+                  <span>
+                    {step.label}
+                  </span>
+                </div>
               </div>
-              <div className="text-xs text-center mt-2 max-w-20">
-                <span
-                  className={
-                    isActive
-                      ? "text-primary font-medium"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {orderStatuses[status].label}
-                </span>
-              </div>
-              {index < statuses.length - 1 && (
-                <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
-                    }`}
-                  style={{ transform: "translateX(0)", zIndex: -1 }} // Adjusted for better alignment
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        {timeline.exceptionLabel && (
+          <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700">
+            {timeline.exceptionLabel}
+          </div>
+        )}
       </div>
     );
   };
@@ -482,8 +486,9 @@ export function OrderTracking() {
               : order.status || 1;
 
             // Kiểm tra an toàn: nếu status không hợp lệ, dùng mặc định
-            const statusInfo = orderStatuses[statusNumber] || orderStatuses[1];
-            const StatusIcon = statusInfo.icon;
+            const displayStatus = getOrderDisplayStatus(order);
+            const StatusIcon = shippingIconMap[displayStatus.iconKey] || Package;
+            const timeline = getOrderProgressTimeline(order);
 
             const isHighlighted = highlightedOrderId === order._id;
 
@@ -518,9 +523,9 @@ export function OrderTracking() {
                         )}
                       </div>
                     </div>
-                    <Badge variant="secondary" className={statusInfo.color}>
+                    <Badge variant="secondary" className={displayStatus.color}>
                       <StatusIcon className="w-4 h-4 mr-1" />
-                      {statusInfo.label}
+                      {displayStatus.label}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -595,9 +600,9 @@ export function OrderTracking() {
 
                   {statusNumber !== 6 && (
                     <div className="mb-6">
-                      <h4 className="font-medium mb-3">Tiến độ đơn hàng</h4>
+                      <h4 className="font-medium mb-3">{timeline.title}</h4>
                       <div className="relative">
-                        {renderStatusTimeline(statusNumber)}
+                        {renderStatusTimeline(order)}
                       </div>
                     </div>
                   )}
@@ -630,7 +635,7 @@ export function OrderTracking() {
                         Chi tiết
                       </Button>
                       {/* Nút xem tracking nếu có mã vận đơn */}
-                      {order.shippingInfo?.trackingCode && statusNumber >= 4 && statusNumber !== 6 && (
+                      {order.shippingInfo?.trackingCode && statusNumber !== 6 && (
                         <Button
                           variant="outline"
                           size="sm"

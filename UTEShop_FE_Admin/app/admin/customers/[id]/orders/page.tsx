@@ -23,11 +23,11 @@ export default function CustomerOrderHistory() {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Fetching orders for customer:', customerId);
       const response = await axios.get(`/admin/customers/${customerId}/orders`);
       console.log('Response:', response.data);
-      
+
       if (response.data.success) {
         console.log('Customer data:', response.data.data);
         console.log('Orders count:', response.data.data?.orders?.length || 0);
@@ -59,7 +59,7 @@ export default function CustomerOrderHistory() {
     const statusMap: any = {
       'pending': 'Chờ xử lý',
       'processing': 'Đang xử lý',
-      'prepared': 'Đã chuẩn bị',
+      'preparing': 'Đang chuẩn bị',
       'shipped': 'Đang giao',
       'delivered': 'Đã giao',
       'cancelled': 'Đã hủy'
@@ -71,7 +71,7 @@ export default function CustomerOrderHistory() {
     const colorMap: any = {
       'pending': 'text-yellow-600 bg-yellow-100',
       'processing': 'text-blue-600 bg-blue-100',
-      'prepared': 'text-purple-600 bg-purple-100',
+      'preparing': 'text-purple-600 bg-purple-100',
       'shipped': 'text-orange-600 bg-orange-100',
       'delivered': 'text-green-600 bg-green-100',
       'cancelled': 'text-red-600 bg-red-100'
@@ -198,24 +198,23 @@ export default function CustomerOrderHistory() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {customer.voucherClaims.map((claim: any, index: number) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-gray-900 text-sm">
                         {claim.voucherCode}
                       </h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        claim.source === 'REVIEW' ? 'bg-blue-100 text-blue-800' :
-                        claim.source === 'PROMOTION' ? 'bg-green-100 text-green-800' :
-                        claim.source === 'LOYALTY' ? 'bg-purple-100 text-purple-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${claim.source === 'REVIEW' ? 'bg-blue-100 text-blue-800' :
+                          claim.source === 'PROMOTION' ? 'bg-green-100 text-green-800' :
+                            claim.source === 'LOYALTY' ? 'bg-purple-100 text-purple-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {claim.source === 'REVIEW' ? 'Đánh giá' :
-                         claim.source === 'PROMOTION' ? 'Khuyến mãi' :
-                         claim.source === 'LOYALTY' ? 'Tích lũy' :
-                         claim.source}
+                          claim.source === 'PROMOTION' ? 'Khuyến mãi' :
+                            claim.source === 'LOYALTY' ? 'Tích lũy' :
+                              claim.source}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
@@ -266,8 +265,8 @@ export default function CustomerOrderHistory() {
                   <div className="space-y-3 mb-4">
                     <h4 className="font-medium text-gray-700">Sản phẩm:</h4>
                     {order.items.map((item: any) => (
-                      <div 
-                        key={item._id} 
+                      <div
+                        key={item._id}
                         className="flex justify-between items-center bg-gray-50 p-4 rounded-lg"
                       >
                         <div className="flex items-center">
@@ -315,9 +314,8 @@ export default function CustomerOrderHistory() {
                       </div>
                       <div className="flex items-center">
                         <span className="text-gray-500">Trạng thái thanh toán:</span>
-                        <span className={`ml-2 font-medium ${
-                          order.paymentStatus === 'paid' ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                        <span className={`ml-2 font-medium ${order.paymentStatus === 'paid' ? 'text-green-600' : 'text-red-600'
+                          }`}>
                           {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                         </span>
                       </div>

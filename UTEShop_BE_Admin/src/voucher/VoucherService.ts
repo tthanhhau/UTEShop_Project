@@ -104,7 +104,7 @@ export class VoucherService {
     // === RÀNG BUỘC XÓA VOUCHER ===
 
     // Kiểm tra voucher có đang được sử dụng trong đơn hàng chưa hoàn thành không
-    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const pendingStatuses = ['pending', 'processing', 'preparing', 'shipped'];
     const ordersWithVoucher = await this.orderModel.countDocuments({
       voucher: id,
       status: { $in: pendingStatuses }

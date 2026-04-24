@@ -16,6 +16,7 @@ import {
   Save
 } from 'lucide-react';
 import { orderApi } from '../../api/orderApi';
+import { getOrderDisplayStatus } from '../../utils/orderShippingStatus';
 
 const OrderDetailManagement = () => {
   const { orderId } = useParams();
@@ -130,7 +131,7 @@ const OrderDetailManagement = () => {
     const icons = {
       pending: <Clock className="w-5 h-5" />,
       processing: <Package className="w-5 h-5" />,
-      prepared: <Package className="w-5 h-5" />,
+      preparing: <Package className="w-5 h-5" />,
       shipped: <Truck className="w-5 h-5" />,
       delivered: <CheckCircle className="w-5 h-5" />,
       cancelled: <XCircle className="w-5 h-5" />
@@ -142,7 +143,7 @@ const OrderDetailManagement = () => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       processing: 'bg-blue-100 text-blue-800 border-blue-200',
-      prepared: 'bg-purple-100 text-purple-800 border-purple-200',
+      preparing: 'bg-purple-100 text-purple-800 border-purple-200',
       shipped: 'bg-indigo-100 text-indigo-800 border-indigo-200',
       delivered: 'bg-green-100 text-green-800 border-green-200',
       cancelled: 'bg-red-100 text-red-800 border-red-200'
@@ -154,7 +155,7 @@ const OrderDetailManagement = () => {
     const statusTexts = {
       pending: 'Chờ xử lý',
       processing: 'Đang xử lý',
-      prepared: 'Đã chuẩn bị',
+      preparing: 'Đang chuẩn bị',
       shipped: 'Đang giao',
       delivered: 'Đã giao',
       cancelled: 'Đã hủy'
@@ -191,6 +192,8 @@ const OrderDetailManagement = () => {
       </div>
     );
   }
+
+  const shippingDisplayStatus = getOrderDisplayStatus(order);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -426,6 +429,31 @@ const OrderDetailManagement = () => {
                     </div>
                   </div>
                 </div>
+
+                {order.shippingInfo?.trackingCode && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-md font-semibold text-gray-800 mb-4 flex items-center">
+                      <Truck className="w-4 h-4 mr-2 text-indigo-600" />
+                      Trạng thái vận chuyển
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Mã vận đơn</p>
+                        <p className="text-gray-900 font-semibold">{order.shippingInfo.trackingCode}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Đơn vị vận chuyển</p>
+                        <p className="text-gray-900 font-semibold">{order.shippingInfo.provider || 'N/A'}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-sm font-medium text-gray-600 mb-2">Trạng thái hiện tại</p>
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm ${shippingDisplayStatus.color}`}>
+                          {shippingDisplayStatus.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

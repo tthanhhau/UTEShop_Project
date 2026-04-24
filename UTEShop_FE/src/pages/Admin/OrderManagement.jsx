@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Truck, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { orderApi } from '../../api/orderApi';
+import { getOrderDisplayStatus } from '../../utils/orderShippingStatus';
 
 const OrderManagement = () => {
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ const OrderManagement = () => {
   const fetchStats = async () => {
     try {
       const data = await orderApi.getOrderStatistics();
-      
+
       setStats({
         totalOrders: data.totalOrders || 0,
         pendingOrders: data.pendingOrders || 0,
@@ -80,7 +81,7 @@ const OrderManagement = () => {
     const icons = {
       pending: <Clock className="w-4 h-4" />,
       processing: <Package className="w-4 h-4" />,
-      prepared: <Package className="w-4 h-4" />,
+      preparing: <Package className="w-4 h-4" />,
       shipped: <Truck className="w-4 h-4" />,
       delivered: <CheckCircle className="w-4 h-4" />,
       cancelled: <XCircle className="w-4 h-4" />
@@ -91,8 +92,8 @@ const OrderManagement = () => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800', 
-      prepared: 'bg-purple-100 text-purple-800',
+      processing: 'bg-blue-100 text-blue-800',
+      preparing: 'bg-purple-100 text-purple-800',
       shipped: 'bg-indigo-100 text-indigo-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
@@ -104,7 +105,7 @@ const OrderManagement = () => {
     const statusText = {
       pending: 'Chờ xử lý',
       processing: 'Đang xử lý',
-      prepared: 'Đã chuẩn bị',
+      preparing: 'Đang chuẩn bị',
       shipped: 'Đang giao',
       delivered: 'Đã giao',
       cancelled: 'Đã hủy'
@@ -115,10 +116,10 @@ const OrderManagement = () => {
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       await orderApi.updateOrderStatus(orderId, newStatus);
-      
+
       // Cập nhật local state
-      setOrders(prev => prev.map(order => 
-        order._id === orderId 
+      setOrders(prev => prev.map(order =>
+        order._id === orderId
           ? { ...order, status: newStatus, ...(newStatus === 'delivered' ? { deliveredAt: new Date().toISOString() } : {}) }
           : order
       ));
@@ -134,9 +135,9 @@ const OrderManagement = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { 
-      style: 'currency', 
-      currency: 'VND' 
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
     }).format(amount);
   };
 
@@ -153,22 +154,22 @@ const OrderManagement = () => {
   const filteredOrders = orders.filter(order => {
     if (filters.status !== 'all' && order.status !== filters.status) return false;
     if (filters.paymentStatus !== 'all' && order.paymentStatus !== filters.paymentStatus) return false;
-    
+
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
       const userName = order.user?.name?.toLowerCase() || '';
       const userEmail = order.user?.email?.toLowerCase() || '';
       const orderId = order._id || '';
       const userPhone = order.user?.phone?.toLowerCase() || '';
-      
-      if (!userName.includes(searchTerm) && 
-          !userEmail.includes(searchTerm) && 
-          !orderId.includes(searchTerm) && 
-          !userPhone.includes(searchTerm)) {
+
+      if (!userName.includes(searchTerm) &&
+        !userEmail.includes(searchTerm) &&
+        !orderId.includes(searchTerm) &&
+        !userPhone.includes(searchTerm)) {
         return false;
       }
     }
-    
+
     return true;
   });
 
@@ -274,15 +275,15 @@ const OrderManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái đơn hàng</label>
-            <select 
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.status}
-              onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
             >
               <option value="all">Tất cả</option>
               <option value="pending">Chờ xử lý</option>
               <option value="processing">Đang xử lý</option>
-              <option value="prepared">Đã chuẩn bị</option>
+              <option value="preparing">Đang chuẩn bị</option>
               <option value="shipped">Đang giao</option>
               <option value="delivered">Đã giao</option>
               <option value="cancelled">Đã hủy</option>
@@ -291,10 +292,10 @@ const OrderManagement = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái thanh toán</label>
-            <select 
+            <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.paymentStatus}
-              onChange={(e) => setFilters(prev => ({...prev, paymentStatus: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
             >
               <option value="all">Tất cả</option>
               <option value="paid">Đã thanh toán</option>
@@ -305,17 +306,17 @@ const OrderManagement = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
-            <input 
+            <input
               type="text"
               placeholder="Tên khách hàng hoặc mã đơn..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filters.search}
-              onChange={(e) => setFilters(prev => ({...prev, search: e.target.value}))}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
             />
           </div>
 
           <div className="flex items-end">
-            <button 
+            <button
               onClick={() => setFilters({ status: 'all', paymentStatus: 'all', search: '', dateFrom: '', dateTo: '' })}
               className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
             >
@@ -329,9 +330,9 @@ const OrderManagement = () => {
       <div className="bg-white rounded-xl shadow-sm">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Danh sách đơn hàng ({filteredOrders.length})
-          </h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Danh sách đơn hàng ({filteredOrders.length})
+            </h3>
             <div className="text-sm text-gray-500 flex items-center">
               <span className="mr-2">💡</span>
               Click vào bất kỳ đơn hàng nào để xem chi tiết
@@ -354,8 +355,8 @@ const OrderManagement = () => {
             </thead>
             <tbody>
               {filteredOrders.map((order) => (
-                <tr 
-                  key={order._id} 
+                <tr
+                  key={order._id}
                   className="border-b border-gray-100 hover:bg-blue-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
                   onClick={() => navigate(`/admin/orders/${order._id}`)}
                   title="Click để xem chi tiết đơn hàng"
@@ -377,21 +378,27 @@ const OrderManagement = () => {
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      <span className="ml-2">{getStatusText(order.status)}</span>
-                    </span>
+                    <div className="space-y-1">
+                      <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm ${getOrderDisplayStatus(order).color}`}>
+                        {getStatusIcon(order.status)}
+                        <span className="ml-2">{getOrderDisplayStatus(order).label}</span>
+                      </span>
+                      {order.shippingInfo?.trackingCode && (
+                        <div className="text-xs text-blue-600">
+                          {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 px-6">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.paymentStatus === 'paid' 
-                        ? 'bg-green-100 text-green-800' 
+                    <span className={`px-2 py-1 rounded-full text-xs ${order.paymentStatus === 'paid'
+                        ? 'bg-green-100 text-green-800'
                         : order.paymentStatus === 'unpaid'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 
-                       order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                      {order.paymentStatus === 'paid' ? 'Đã thanh toán' :
+                        order.paymentStatus === 'unpaid' ? 'Chưa thanh toán' : 'Đã hoàn tiền'}
                     </span>
                     <div className="text-xs text-gray-500 mt-1">{order.paymentMethod}</div>
                   </td>
@@ -410,7 +417,7 @@ const OrderManagement = () => {
                         >
                           <option value="pending">Chờ xử lý</option>
                           <option value="processing">Đang xử lý</option>
-                          <option value="prepared">Đã chuẩn bị</option>
+                          <option value="preparing">Đang chuẩn bị</option>
                           <option value="shipped">Đang giao</option>
                           <option value="delivered">Đã giao</option>
                           <option value="cancelled">Hủy đơn</option>
