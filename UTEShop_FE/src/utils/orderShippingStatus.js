@@ -11,7 +11,7 @@ const INTERNAL_STATUS_MAP = {
     color: "bg-yellow-100 text-yellow-800 border-yellow-200",
     iconKey: "checkCircle",
   },
-  prepared: {
+  preparing: {
     label: "Shop đang chuẩn bị giao hàng",
     shortLabel: "Đang chuẩn bị",
     color: "bg-orange-100 text-orange-800 border-orange-200",
@@ -208,7 +208,7 @@ const GHTK_TIMELINE_STEPS = [
 const INTERNAL_TIMELINE_STEPS = [
   { key: "pending", label: "Đơn hàng mới" },
   { key: "processing", label: "Đã xác nhận đơn hàng" },
-  { key: "prepared", label: "Shop đang chuẩn bị giao hàng" },
+  { key: "preparing", label: "Shop đang chuẩn bị giao hàng" },
   { key: "shipped", label: "Đang giao hàng" },
   { key: "delivered", label: "Đã giao thành công" },
 ];
@@ -216,59 +216,24 @@ const INTERNAL_TIMELINE_STEPS = [
 const INTERNAL_TIMELINE_INDEX = {
   pending: 0,
   processing: 1,
-  prepared: 2,
+  preparing: 2,
   shipped: 3,
   delivered: 4,
 };
 
 export function getOrderDisplayStatus(order) {
   const shippingInfo = order?.shippingInfo || {};
-  const provider = (shippingInfo.provider || "").toUpperCase();
-  const shippingStatus = shippingInfo.status;
-
-  if (provider === "GHTK" && shippingStatus !== undefined && shippingStatus !== null && shippingStatus !== "") {
-    const statusKey = String(shippingStatus);
-    const meta = GHTK_STATUS_MAP[statusKey] || {
-      label: `Trạng thái GHTK ${statusKey}`,
-      shortLabel: `GHTK ${statusKey}`,
-      color: "bg-slate-100 text-slate-800 border-slate-200",
-      iconKey: "truck",
-      timelineIndex: 0,
-    };
-
-    return {
-      ...meta,
-      code: statusKey,
-      source: "shipping",
-      provider,
-      trackingCode: shippingInfo.trackingCode || "",
-    };
-  }
-
   const fallback = INTERNAL_STATUS_MAP[order?.status] || INTERNAL_STATUS_MAP.pending;
   return {
     ...fallback,
     code: order?.status || "pending",
     source: "order",
-    provider: provider || "",
+    provider: "",
     trackingCode: shippingInfo.trackingCode || "",
   };
 }
 
 export function getOrderProgressTimeline(order) {
-  const displayStatus = getOrderDisplayStatus(order);
-
-  if (displayStatus.source === "shipping") {
-    const currentIndex = Math.max(0, displayStatus.timelineIndex ?? 0);
-    return {
-      title: "Tiến trình vận chuyển",
-      steps: GHTK_TIMELINE_STEPS,
-      currentIndex,
-      isCancelled: order?.status === "cancelled" || displayStatus.code === "-1",
-      exceptionLabel: displayStatus.exceptionLabel || "",
-    };
-  }
-
   const currentIndex = INTERNAL_TIMELINE_INDEX[order?.status] ?? 0;
   return {
     title: "Tiến độ đơn hàng",

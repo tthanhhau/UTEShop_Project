@@ -8,14 +8,14 @@ import { getOrderDisplayStatus } from '../../../../lib/orderShippingStatus';
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [orderId, setOrderId] = useState<string>('');
-  
+
   useEffect(() => {
     params.then(p => setOrderId(p.id));
   }, [params]);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [editData, setEditData] = useState({
     status: '',
     paymentStatus: ''
@@ -32,14 +32,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     try {
       setLoading(true);
       const response = await axios.get(`/admin/orders/${orderId}`);
-      
+
       const orderData = response.data.order || response.data.data || response.data;
       console.log('🔍 ADMIN ORDER DATA:', orderData);
       console.log('🔍 usedPoints:', orderData.usedPoints);
       console.log('🔍 usedPointsAmount:', orderData.usedPointsAmount);
       console.log('🔍 voucherDiscount:', orderData.voucherDiscount);
       setOrder(orderData);
-      
+
       setEditData({
         status: orderData.status || '',
         paymentStatus: orderData.paymentStatus || ''
@@ -55,7 +55,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const handleSaveChanges = async () => {
     try {
       setSaving(true);
-      
+
       // Backend sẽ tự động update paymentStatus nếu cần (COD + delivered)
       await axios.put(`/admin/orders/${orderId}/status`, {
         status: editData.status
@@ -156,30 +156,30 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     const statusMap: any = {
                       pending: { text: 'Chờ xử lý', color: 'bg-yellow-100 text-yellow-800', icon: 'fa-clock' },
                       processing: { text: 'Đang xử lý', color: 'bg-blue-100 text-blue-800', icon: 'fa-spinner' },
-                      prepared: { text: 'Đã chuẩn bị', color: 'bg-purple-100 text-purple-800', icon: 'fa-box' },
+                      preparing: { text: 'Đang chuẩn bị', color: 'bg-purple-100 text-purple-800', icon: 'fa-box' },
                       shipped: { text: 'Đang giao', color: 'bg-indigo-100 text-indigo-800', icon: 'fa-truck' },
                       delivered: { text: 'Đã giao', color: 'bg-green-100 text-green-800', icon: 'fa-check-circle' },
                       cancelled: { text: 'Đã hủy', color: 'bg-red-100 text-red-800', icon: 'fa-times-circle' }
                     };
                     return statusMap[status] || { text: 'Không xác định', color: 'bg-gray-100 text-gray-800', icon: 'fa-question' };
                   };
-                  
+
                   const statusInfo = getStatusInfo(order.status);
                   return (
                     <div className="space-y-2">
-                    <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${shippingDisplayStatus.color}`}>
-                      <i className={`fas ${statusInfo.icon} mr-2`}></i>
-                      {shippingDisplayStatus.label}
-                    </span>
-                    {order.shippingInfo?.trackingCode && (
-                      <div className="text-xs text-blue-600">
-                        {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
-                      </div>
-                    )}
-                    <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${statusInfo.color}`}>
-                      <i className={`fas ${statusInfo.icon} mr-2`}></i>
-                      Nội bộ: {statusInfo.text}
-                    </span>
+                      <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${shippingDisplayStatus.color}`}>
+                        <i className={`fas ${statusInfo.icon} mr-2`}></i>
+                        {shippingDisplayStatus.label}
+                      </span>
+                      {order.shippingInfo?.trackingCode && (
+                        <div className="text-xs text-blue-600">
+                          {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
+                        </div>
+                      )}
+                      <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${statusInfo.color}`}>
+                        <i className={`fas ${statusInfo.icon} mr-2`}></i>
+                        Nội bộ: {statusInfo.text}
+                      </span>
                     </div>
                   );
                 })()}
@@ -193,7 +193,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <i className="fas fa-info-circle text-blue-600 mr-2"></i>
               Thông tin đơn hàng
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Cột trái */}
               <div className="space-y-6">
@@ -233,11 +233,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     <div>
                       <label className="text-xs text-gray-500">Trạng thái:</label>
                       <div>
-                        <span className={`px-2 py-1 rounded-full text-xs inline-flex items-center ${
-                          order.paymentStatus === 'paid' 
-                            ? 'bg-green-100 text-green-800' 
+                        <span className={`px-2 py-1 rounded-full text-xs inline-flex items-center ${order.paymentStatus === 'paid'
+                            ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                          }`}>
                           <i className={`fas ${order.paymentStatus === 'paid' ? 'fa-check-circle' : 'fa-clock'} mr-1`}></i>
                           {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                         </span>
@@ -291,23 +290,23 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="bg-white rounded-lg shadow-sm p-6">
               {order.items.map((item: any, index: number) => {
                 const imageUrl = item.product?.images?.[0] || item.product?.image;
-                
+
                 return (
                   <div key={index} className={`${index > 0 ? 'mt-4 pt-4 border-t' : ''}`}>
                     <div className="flex items-start space-x-4">
                       {/* Product Image */}
                       <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                         {imageUrl ? (
-                          <img 
-                            src={imageUrl} 
-                            alt={item.product?.name || 'Product'} 
+                          <img
+                            src={imageUrl}
+                            alt={item.product?.name || 'Product'}
                             className="w-full h-full object-cover rounded-lg"
                           />
                         ) : (
                           <i className="fas fa-image text-gray-400 text-2xl"></i>
                         )}
                       </div>
-                      
+
                       {/* Product Info */}
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 mb-2">
@@ -344,14 +343,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           {/* Chi tiết thanh toán */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Chi tiết thanh toán</h3>
-            
+
             <div className="space-y-3">
               {/* Tạm tính */}
               <div className="flex justify-between text-gray-600">
                 <span>Tạm tính</span>
                 <span className="font-medium">{formatCurrency(
-                  (order.totalPrice || 0) + 
-                  (order.voucherDiscount || 0) + 
+                  (order.totalPrice || 0) +
+                  (order.voucherDiscount || 0) +
                   (order.usedPointsAmount || 0)
                 )}</span>
               </div>

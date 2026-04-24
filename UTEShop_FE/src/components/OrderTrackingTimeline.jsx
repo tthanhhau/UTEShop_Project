@@ -1,61 +1,7 @@
 import { useEffect, useState } from "react";
 import shippingApi from "@/api/shippingApi";
-import {
-  buildGHTKTrackingTimeline,
-  getOrderDisplayStatus,
-  getOrderProgressTimeline,
-} from "@/utils/orderShippingStatus";
-
-function buildFallbackTimeline(order) {
-  const timeline = getOrderProgressTimeline(order);
-
-  return timeline.steps.map((step, index) => ({
-    key: step.key,
-    label: step.label,
-    timeText: "",
-    timeParts: { date: "" },
-    location: "",
-    isCurrent: index === timeline.currentIndex,
-    isPast: index < timeline.currentIndex,
-    isFuture: index > timeline.currentIndex,
-    isDone: index <= timeline.currentIndex,
-  }));
-}
-
-function renderTimelineRows(rows) {
-  return (
-    <div className="space-y-0">
-      {rows.map((row, index) => {
-        const textClass = row.isCurrent ? "text-gray-900 font-semibold" : "text-gray-400";
-        const dotClass = row.isCurrent ? "bg-green-600" : row.isPast ? "bg-gray-900" : "bg-gray-300";
-
-        return (
-          <div key={row.key || index} className="relative flex gap-6">
-            <div className="flex w-28 shrink-0 justify-end pt-1 text-right">
-              <div className={row.isCurrent ? "text-green-700" : "text-gray-400"}>
-                {row.timeParts?.date ? (
-                  <div className="text-[15px] leading-5">{row.timeParts.date}</div>
-                ) : (
-                  <div className="text-[15px] leading-5">&nbsp;</div>
-                )}
-              </div>
-            </div>
-
-            <div className="relative flex w-4 justify-center">
-              <span className={`mt-2 h-2.5 w-2.5 rounded-full ${dotClass}`}></span>
-              {index < rows.length - 1 && <span className="absolute top-5 h-full w-px bg-gray-200"></span>}
-            </div>
-
-            <div className="flex-1 pb-6">
-              <p className={`text-[18px] leading-7 ${textClass}`}>{row.label}</p>
-              {row.location && <p className="mt-1 text-sm text-gray-400">{row.location}</p>}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+import { getOrderDisplayStatus } from "@/utils/orderShippingStatus";
+import OrderTracking from "@/components/OrderTracking";
 
 function OrderTrackingTimeline({ orderId, fallbackOrder = null }) {
   const [tracking, setTracking] = useState(null);
@@ -109,26 +55,9 @@ function OrderTrackingTimeline({ orderId, fallbackOrder = null }) {
     );
   }
 
-  const displayStatus = tracking
-    ? getOrderDisplayStatus({
-        shippingInfo: {
-          provider: tracking.provider,
-          trackingCode: tracking.trackingCode,
-          status: tracking.status,
-        },
-      })
-    : fallbackOrder
-    ? getOrderDisplayStatus(fallbackOrder)
-    : null;
+  const displayStatus = fallbackOrder ? getOrderDisplayStatus(fallbackOrder) : null;
 
-  const rows =
-    tracking?.provider === "GHTK"
-      ? buildGHTKTrackingTimeline(tracking, fallbackOrder)
-      : fallbackOrder
-      ? buildFallbackTimeline(fallbackOrder)
-      : [];
-
-  if (!displayStatus || rows.length === 0) {
+  if (!displayStatus || !fallbackOrder?.status) {
     return null;
   }
 
@@ -170,7 +99,7 @@ function OrderTrackingTimeline({ orderId, fallbackOrder = null }) {
         <p className="text-lg font-bold text-blue-700">{displayStatus.label}</p>
       </div>
 
-      {renderTimelineRows(rows)}
+      <OrderTracking status={fallbackOrder.status} />
 
       <div className="mt-6 border-t border-gray-200 pt-6">
         <p className="text-center text-xs text-gray-500">Thông tin được làm mới tự động mỗi 5 phút</p>

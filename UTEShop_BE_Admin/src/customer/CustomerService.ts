@@ -126,7 +126,7 @@ export class CustomerService {
   // === XÓA KHÁCH HÀNG VỚI RÀNG BUỘC ===
   async deleteCustomer(id: string) {
     // 1. Kiểm tra user có đơn hàng chưa hoàn thành không
-    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const pendingStatuses = ['pending', 'processing', 'preparing', 'shipped'];
     const pendingOrders = await this.orderModel.countDocuments({
       user: new Types.ObjectId(id),
       status: { $in: pendingStatuses }

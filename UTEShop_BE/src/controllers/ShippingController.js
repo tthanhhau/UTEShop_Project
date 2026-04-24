@@ -171,10 +171,6 @@ class ShippingController {
             order.shippingInfo.status = result.status;
         }
 
-        if (shippingService.isDeliveredShippingStatus(order.shippingInfo.provider, result?.status)) {
-            order.status = 'delivered';
-        }
-
         await order.save();
 
         res.status(200).json({
