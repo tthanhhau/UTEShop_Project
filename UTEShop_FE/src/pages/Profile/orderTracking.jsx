@@ -8,6 +8,7 @@ import api from "@/api/axiosConfig";
 import { checkProductInOrderReviewed } from "../../api/reviewApi";
 import { checkReturnEligibility, createReturnRequest, RETURN_REASONS } from "../../api/returnApi";
 import { getOrderDisplayStatus, getOrderProgressTimeline } from "../../utils/orderShippingStatus";
+import OrderTrackingSteps from "@/components/OrderTracking";
 import { useSelector } from "react-redux";
 import io from "socket.io-client";
 import {
@@ -392,42 +393,9 @@ export function OrderTracking() {
   };
 
   const renderStatusTimeline = (order) => {
-    const timeline = getOrderProgressTimeline(order);
-
     return (
       <div className="mt-4">
-        <div className="space-y-0">
-          {timeline.steps.map((step, index) => {
-            const isActive = index <= timeline.currentIndex && !timeline.isCancelled;
-            const isCompleted = index < timeline.currentIndex && !timeline.isCancelled;
-            const textClass = index === timeline.currentIndex ? "text-gray-900 font-semibold" : "text-gray-400";
-            const dotClass = index === timeline.currentIndex ? "bg-green-600" : isCompleted ? "bg-gray-900" : "bg-gray-300";
-
-            return (
-              <div
-                key={step.key}
-                className="relative flex gap-4"
-              >
-                <div className="relative flex w-4 justify-center">
-                  <span className={`mt-2 h-2.5 w-2.5 rounded-full ${dotClass}`} />
-                  {index < timeline.steps.length - 1 && (
-                    <span className="absolute top-5 h-full w-px bg-gray-200" />
-                  )}
-                </div>
-                <div className={`pb-6 text-base ${textClass}`}>
-                  <span>
-                    {step.label}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {timeline.exceptionLabel && (
-          <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700">
-            {timeline.exceptionLabel}
-          </div>
-        )}
+        <OrderTrackingSteps status={order.status} />
       </div>
     );
   };
