@@ -108,7 +108,6 @@ class ShippingController {
             trackingCode: result.trackingCode,
             shippingFee: result.totalFee || result.fee,
             expectedDeliveryTime: result.expectedDeliveryTime || result.estimatedDeliverTime,
-            status: result.status || order.shippingInfo?.status,
             createdAt: new Date(),
         };
 
@@ -166,10 +165,6 @@ class ShippingController {
             order.shippingInfo.trackingCode,
             order.shippingInfo.provider
         );
-
-        if (result?.status) {
-            order.shippingInfo.status = result.status;
-        }
 
         await order.save();
 
