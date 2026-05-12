@@ -73,7 +73,7 @@ const HomePage = () => {
         {
             image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&h=800&fit=crop&q=90",
             title: "Bộ sưu tập mới nhất",
-            description: "Khám phá xu hướng thời trang 2024 - Quần áo, giày dép từ các thương hiệu hàng đầu",
+            description: "Khám phá xu hướng thời trang 2026 - Quần áo, giày dép từ các thương hiệu hàng đầu",
             buttonText: "Khám phá ngay",
             link: "/products?sort=newest"
         },
