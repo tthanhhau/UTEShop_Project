@@ -1,0 +1,29 @@
+# ============================================================
+# UTEShop Virtual Try-On - HuggingFace Spaces Dependencies
+# ============================================================
+# Hardware: ZeroGPU (A100)
+# SDK: Gradio
+# ============================================================
+
+# === Core AI ===
+torch
+torchvision
+accelerate>=0.31.0
+diffusers
+transformers>=4.46.0
+huggingface_hub>=0.34.0
+peft>=0.17.0
+safetensors>=0.4.0
+
+# === Image Processing ===
+Pillow>=10.0.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# === Gradio + Spaces ===
+gradio>=4.41.0
+spaces
+
+# === Utilities ===
+tqdm>=4.60.0

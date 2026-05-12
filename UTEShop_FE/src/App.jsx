@@ -5,7 +5,6 @@ import { SocketProvider } from "./context/SocketContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
-import Modal from "react-modal";
 
 import store from "./redux/store";
 import MainLayout from "./layouts/MainLayout";
@@ -50,7 +49,6 @@ import ProductManagement from "./pages/Admin/ProductManagement";
 import PrivateRoute from "./components/utils/PrivateRoute";
 import AdminRoute from "./components/utils/AdminRoute";
 import VouchersPage from "./pages/VouchersPage";
-Modal.setAppElement("#root");
 
 function App() {
   return (

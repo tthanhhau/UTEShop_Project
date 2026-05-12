@@ -9,11 +9,14 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Ép tất cả import react đều trỏ về cùng 1 bản duy nhất
+      "react": path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    include: ["react", "react-dom", "react-redux"],
+    include: ["react", "react-dom", "react-redux", "react-router-dom"],
   },
   server: {
     port: 5173,
