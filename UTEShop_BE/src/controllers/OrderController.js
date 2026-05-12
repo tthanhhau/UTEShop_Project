@@ -8,6 +8,8 @@ import User from "../models/user.js"; // Import User model
 import mongoose from "mongoose";
 import PointTransaction from "../models/PointTransaction.js";
 import Configuration from "../models/Configuration.js";
+import Voucher from "../models/voucher.js";
+import UserVoucher from "../models/userVoucher.js";
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
@@ -367,7 +369,14 @@ class OrderController {
         }
 
         // 2. Tăng usesCount trong voucher
-        const voucherDoc = await Voucher.findById(voucher._id).session(session);
+        const voucherDoc = voucher._id
+          ? await Voucher.findById(voucher._id).session(session)
+          : await Voucher.findOne({ code: voucher.code }).session(session);
+
+        if (!voucherDoc) {
+          throw new Error(`Voucher not found for code: ${voucher.code}`);
+        }
+
         voucherDoc.usesCount = (voucherDoc.usesCount || 0) + 1;
         await voucherDoc.save({ session });
         console.log("✅ Voucher usesCount incremented");

@@ -59,6 +59,23 @@ export const createReturnRequest = async (req, res) => {
             return total + (item.discountedPrice || item.price) * item.quantity;
         }, 0);
 
+        // Lấy phí ship từ đơn hàng, ưu tiên field shippingInfo.
+        // Nếu đơn cũ chưa lưu shippingInfo, suy luận từ totalPrice của đơn.
+        let shippingFee = Number(order.shippingInfo?.shippingFee || 0);
+        if (!shippingFee && Number(order.totalPrice || 0) > 0) {
+            const inferredShippingFee = Number(order.totalPrice || 0)
+                - sellingPrice
+                + Number(order.usedPointsAmount || 0)
+                + Number(order.voucherDiscount || 0);
+
+            if (inferredShippingFee > 0) {
+                shippingFee = inferredShippingFee;
+            }
+        }
+
+        // Tổng tiền hoàn = giá bán + phí ship
+        const refundAmount = sellingPrice + shippingFee;
+
         // Tạo yêu cầu hoàn trả
         const returnRequest = new ReturnRequest({
             order: orderId,
@@ -66,7 +83,7 @@ export const createReturnRequest = async (req, res) => {
             reason,
             reasonText: reasonMap[reason] || reason,
             customReason: reason === "other" ? customReason : "",
-            refundAmount: sellingPrice, // Giá bán sản phẩm (đã giảm %, trước voucher/điểm)
+            refundAmount: refundAmount, // Giá bán sản phẩm + phí ship (trước voucher/điểm)
             pointsUsed: order.usedPoints || 0, // Số điểm đã dùng
             voucherDiscount: order.voucherDiscount || 0, // Số tiền giảm từ voucher
         });

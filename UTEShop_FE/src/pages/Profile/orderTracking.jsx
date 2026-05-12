@@ -677,7 +677,7 @@ export function OrderTracking() {
                 <p className="text-sm text-gray-500">Đơn hàng</p>
                 <p className="font-medium">#{selectedOrderForReturn._id}</p>
                 <p className="text-sm text-green-600 font-medium">
-                  Số tiền hoàn: {formatPrice(selectedOrderForReturn.totalPrice)}
+                  Số tiền hoàn: {formatPrice(getDisplayOrderTotal(selectedOrderForReturn))}
                 </p>
               </div>
 
