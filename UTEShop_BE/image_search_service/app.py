@@ -253,9 +253,20 @@ def search():
         
         print(f"🔍 Comparing with {len(img_embeddings)} products...")
         similarities = util.cos_sim(query_embedding, img_embeddings)[0]
-        
+
         top_k = int(request.args.get('top_k', 10))
         top_indices = similarities.argsort(descending=True)[:min(50, len(similarities))].cpu().numpy()
+
+        # Log top candidates for debugging
+        debug_top = min(5, len(top_indices))
+        print(f"🔎 Top {debug_top} similarity candidates:")
+        for rank, idx in enumerate(top_indices[:debug_top], start=1):
+            product_id = product_ids[int(idx)]
+            similarity_score = float(similarities[int(idx)])
+            name = None
+            if product_info and product_info.get(product_id):
+                name = product_info[product_id].get("name")
+            print(f"  #{rank}: {product_id} | {name or 'unknown'} | {similarity_score:.4f}")
         
         if products_collection is None:
             return jsonify({
@@ -264,6 +275,7 @@ def search():
             }), 500
         
         results = []
+        seen_products = {}
         for idx in top_indices:
             product_id = product_ids[int(idx)]
             similarity_score = float(similarities[int(idx)])
@@ -271,6 +283,10 @@ def search():
             if similarity_score < 0.3:
                 continue
             
+            # Deduplicate by product id, keep highest similarity
+            if product_id in seen_products:
+                if similarity_score <= seen_products[product_id]:
+                    continue
             product = products_collection.find_one({"_id": ObjectId(product_id)})
             if product:
                 category_info = None
@@ -328,6 +344,7 @@ def search():
                     "isInStock": stock > 0
                 })
                 
+                seen_products[product_id] = similarity_score
                 if len(results) >= top_k:
                     break
         
