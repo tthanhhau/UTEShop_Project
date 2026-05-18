@@ -1,0 +1,4 @@
+-r requirements.txt
+pillow-avif-plugin>=1.4.6
+sentence-transformers[train]>=2.3.0
+tqdm>=4.66.0

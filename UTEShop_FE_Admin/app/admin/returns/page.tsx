@@ -50,6 +50,22 @@ const statusConfig: Record<string, { label: string; bgColor: string; textColor: 
     rejected: { label: "Từ chối", bgColor: "bg-red-100", textColor: "text-red-800" },
 };
 
+// Helper function để tính refundAmount chính xác (bao gồm phí ship)
+function calculateRefundAmount(request: ReturnRequest): number {
+    // Ưu tiên order.totalPrice vì đó là tổng hoàn chỉnh bao gồm ship
+    // refundAmount từ DB có thể incomplete (chỉ giá sản phẩm) nên dùng làm fallback
+    if (request.order?.totalPrice && request.order.totalPrice > 0) {
+        return request.order.totalPrice;
+    }
+
+    // Fallback: dùng refundAmount từ DB nếu order.totalPrice không có
+    if (request.refundAmount && request.refundAmount > 0) {
+        return request.refundAmount;
+    }
+
+    return 0;
+}
+
 export default function ReturnsPage() {
     const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
     const [stats, setStats] = useState<Stats>({ pending: 0, approved: 0, rejected: 0, totalRefunded: 0 });
@@ -270,7 +286,7 @@ export default function ReturnsPage() {
                                                 {request.customReason && `: ${request.customReason}`}
                                             </p>
                                         </td>
-                                        <td className="px-6 py-4 font-medium text-green-600">{formatPrice(request.refundAmount)}</td>
+                                        <td className="px-6 py-4 font-medium text-green-600">{formatPrice(calculateRefundAmount(request))}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
                                                 {statusInfo.label}
@@ -372,7 +388,7 @@ export default function ReturnsPage() {
 
                             <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
                                 <span className="font-medium">Số tiền hoàn trả</span>
-                                <span className="text-xl font-bold text-green-600">{formatPrice(selectedRequest.refundAmount)}</span>
+                                <span className="text-xl font-bold text-green-600">{formatPrice(calculateRefundAmount(selectedRequest))}</span>
                             </div>
 
                             {selectedRequest.status !== "pending" && selectedRequest.adminNote && (
@@ -407,7 +423,7 @@ export default function ReturnsPage() {
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">
                                 {actionType === "approve"
-                                    ? `Khách hàng sẽ được cộng ${selectedRequest.refundAmount.toLocaleString("vi-VN")} điểm tích lũy.`
+                                    ? `Khách hàng sẽ được cộng ${calculateRefundAmount(selectedRequest).toLocaleString("vi-VN")} điểm tích lũy.`
                                     : "Vui lòng nhập lý do từ chối để thông báo cho khách hàng."}
                             </p>
                         </div>
@@ -418,7 +434,7 @@ export default function ReturnsPage() {
                                     <div>
                                         <p className="font-medium text-green-800">Xác nhận duyệt</p>
                                         <p className="text-sm text-green-700">
-                                            Số điểm sẽ được cộng: {selectedRequest.refundAmount.toLocaleString("vi-VN")} điểm
+                                            Số điểm sẽ được cộng: {calculateRefundAmount(selectedRequest).toLocaleString("vi-VN")} điểm
                                         </p>
                                     </div>
                                 </div>

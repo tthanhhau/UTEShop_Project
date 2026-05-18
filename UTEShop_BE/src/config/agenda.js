@@ -27,8 +27,8 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
     });
 
     /**
-     * Định nghĩa logic cho job 'process pending order'.
-     * Tự động chuyển status sang "processing" và tạo đơn giao hàng với GHTK
+    * Định nghĩa logic cho job 'process pending order'.
+    * Tự động chuyển status sang "processing" và tạo đơn giao hàng
      */
     agenda.define('process pending order', async (job) => {
         const { orderId } = job.attrs.data;
@@ -117,10 +117,8 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                     // Lưu thông tin vận đơn vào database
                     order.shippingInfo.trackingCode = shippingResult.trackingCode;
                     order.shippingInfo.provider = shippingResult.provider;
-                    order.shippingInfo.status = shippingResult.status || order.shippingInfo.status;
                     order.shippingInfo.createdAt = new Date();
                     order.shippingInfo.expectedDeliveryTime = shippingResult.expectedDeliveryTime || shippingResult.estimatedDeliverTime;
-                    order.status = 'shipped'; // Chuyển sang shipped
                     await order.save();
 
                     console.log(`✅ Shipping order created: ${shippingResult.trackingCode}`);
@@ -130,7 +128,6 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                         orderId: order._id,
                         trackingCode: shippingResult.trackingCode,
                         provider: shippingResult.provider,
-                        newStatus: 'shipped',
                     });
 
                     // Gửi notification cho user về mã vận đơn
