@@ -1,10 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  useParams,
-  useNavigate,
-  useLocation,
-  useSearchParams,
-} from "react-router-dom";
+import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "../api/axiosConfig";
 import { addToCart, getCartItemCount } from "../features/cart/cartSlice";
@@ -15,6 +10,7 @@ import FavoriteButton from "../components/FavoriteButton";
 import ProductStats from "../components/ProductStats";
 import SimilarProducts from "../components/SimilarProducts";
 import ReviewSection from "../components/ReviewSection";
+import VirtualTryOnModal from "../components/VirtualTryOnModal";
 
 // Tạm thời mock toast nếu chưa có
 const toast = {
@@ -41,6 +37,7 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState(null);
   const viewCountCalled = useRef(false);
+  const [showTryOnModal, setShowTryOnModal] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -409,6 +406,15 @@ export default function ProductDetailPage() {
                 {addingToCart ? "Đang thêm..." : "Thêm vào giỏ hàng"}
               </button>
 
+              {/* Virtual Try-On Button */}
+              <button
+                onClick={() => setShowTryOnModal(true)}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              >
+                <span>🪄</span>
+                <span>Thử đồ ảo ngay</span>
+              </button>
+
               <button
                 onClick={handleCODPayment}
                 className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors"
@@ -446,6 +452,13 @@ export default function ProductDetailPage() {
       <div className="mt-12">
         <SimilarProducts productId={product._id} />
       </div>
+
+      {/* Virtual Try-On Modal */}
+      <VirtualTryOnModal
+        isOpen={showTryOnModal}
+        onClose={() => setShowTryOnModal(false)}
+        product={product}
+      />
     </div>
   );
 }

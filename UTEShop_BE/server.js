@@ -134,6 +134,9 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/elasticsearch", elasticsearchRoutes);
 app.use("/api/image-search", imageSearchRoutes);
 
+import virtualTryOnRoutes from "./src/routes/virtualTryOnRoutes.js";
+app.use("/api/try-on", virtualTryOnRoutes);
+
 // Admin routes
 import voucherRoutes from "./src/routes/voucherRoutes.js";
 import pointsRoutes from "./src/routes/pointsRoutes.js";
