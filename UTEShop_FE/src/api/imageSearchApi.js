@@ -7,14 +7,18 @@ const API_URL = `${import.meta.env.VITE_API_URL}/api`;
  * Search products by image
  * @param {File|string} image - Image file or base64 string
  * @param {number} topK - Number of results to return (default: 10)
+ * @param {string} text - Optional text query to combine with image
  * @returns {Promise} API response with search results
  */
-export const searchByImage = async (image, topK = 10) => {
+export const searchByImage = async (image, topK = 10, text = '') => {
   try {
     // If image is a File object - use raw axios to avoid Content-Type override
     if (image instanceof File) {
       const formData = new FormData();
       formData.append('image', image);
+      if (text) {
+        formData.append('text', text);
+      }
 
       // Get token for auth
       const token = sessionStorage.getItem('token');
@@ -37,6 +41,7 @@ export const searchByImage = async (image, topK = 10) => {
     else if (typeof image === 'string') {
       const response = await api.post(`/image-search/search?top_k=${topK}`, {
         image_base64: image,
+        ...(text ? { text } : {}),
       });
 
       return response.data;

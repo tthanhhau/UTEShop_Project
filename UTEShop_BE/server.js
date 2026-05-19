@@ -137,22 +137,10 @@ app.use("/api/image-search", imageSearchRoutes);
 import virtualTryOnRoutes from "./src/routes/virtualTryOnRoutes.js";
 app.use("/api/try-on", virtualTryOnRoutes);
 
-// Admin routes
+// Voucher and points routes
 import voucherRoutes from "./src/routes/voucherRoutes.js";
 import pointsRoutes from "./src/routes/pointsRoutes.js";
-import analyticsRoutes from "./src/routes/analyticsRoutes.js";
-import adminCategoryRoutes from "./src/routes/adminCategoryRoutes.js";
-import adminProductRoutes from "./src/routes/adminProductRoutes.js";
-import adminBrandRoutes from "./src/routes/adminBrandRoutes.js";
 
-app.use("/api/admin/vouchers", voucherRoutes);
-app.use("/api/admin/points", pointsRoutes);
-app.use("/api/admin/analytics", analyticsRoutes);
-app.use("/api/admin/categories", adminCategoryRoutes);
-app.use("/api/admin/products", adminProductRoutes);
-app.use("/api/admin/brands", adminBrandRoutes);
-
-// Customer voucher and points routes
 app.use("/api/vouchers", voucherRoutes);
 app.use("/api/points", pointsRoutes);
 

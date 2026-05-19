@@ -33,21 +33,7 @@ import { PurchaseHistory } from "./pages/Profile/purchaseHistory";
 import OrderDetail from "./pages/OrderDetail";
 
 // Admin components
-import AdminLogin from "./pages/Admin/AdminLogin";
-import AdminLayout from "./layouts/AdminLayout";
-import Dashboard from "./pages/Admin/Dashboard";
-import VoucherManagement from "./pages/Admin/VoucherManagement";
-import PointsManagement from "./pages/Admin/PointsManagement";
-import OrderManagement from "./pages/Admin/OrderManagement";
-import OrderDetailManagement from "./pages/Admin/OrderDetailManagement";
-import CustomerManagement from "./pages/Admin/CustomerManagement";
-import CustomerOrderDetail from "./pages/Admin/CustomerOrderDetail";
-import CategoryManagement from "./pages/Admin/CategoryManagement";
-import BrandManagement from "./pages/Admin/BrandManagement";
-import ProductManagement from "./pages/Admin/ProductManagement";
-
 import PrivateRoute from "./components/utils/PrivateRoute";
-import AdminRoute from "./components/utils/AdminRoute";
 import VouchersPage from "./pages/VouchersPage";
 
 function App() {
@@ -132,35 +118,6 @@ function App() {
               />
             </Route>
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="orders" element={<OrderManagement />} />
-              <Route path="orders/:orderId" element={<OrderDetailManagement />} />
-              <Route path="customers" element={<CustomerManagement />} />
-              <Route path="customers/:customerId/orders" element={<CustomerOrderDetail />} />
-              <Route path="vouchers" element={<VoucherManagement />} />
-              <Route path="points" element={<PointsManagement />} />
-
-              {/* Category Management Routes */}
-              <Route
-                path="categories/level-1"
-                element={<CategoryManagement />}
-              />
-
-              {/* Brand Management Route */}
-              <Route path="brands" element={<BrandManagement />} />
-
-              {/* Product Management Route */}
-              <Route path="products" element={<ProductManagement />} />
-            </Route>
           </Routes>
         </Router>
         <ToastContainer position="top-right" autoClose={3000} />
