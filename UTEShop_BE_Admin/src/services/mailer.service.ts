@@ -109,7 +109,10 @@ export class MailerService {
                     text: options.text
                 });
             } catch (mailjetError) {
-                console.error('❌ Mailjet failed:', mailjetError.message);
+                const mailjetMessage = mailjetError instanceof Error
+                    ? mailjetError.message
+                    : String(mailjetError);
+                console.error('❌ Mailjet failed:', mailjetMessage);
                 // If Mailjet fails and we have SMTP configured, try that
                 if (this.transporter) {
                     console.log('🔄 Falling back to SMTP...');
