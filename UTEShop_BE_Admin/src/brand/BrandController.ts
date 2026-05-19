@@ -12,6 +12,7 @@
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Multer } from 'multer';
 import { BrandService } from './BrandService';
 import { CreateBrandDto } from './dto/CreateBrandDto';
 import { UpdateBrandDto } from './dto/UpdateBrandDto';
@@ -67,7 +68,7 @@ export class BrandController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   @UseGuards(JwtAuthGuard)
-  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+  async uploadImage(@UploadedFile() file: Multer.File) {
     try {
       const result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
@@ -88,11 +89,12 @@ export class BrandController {
         url: (result as any).secure_url,
       };
     } catch (error) {
-      console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Upload error:', errorMessage);
       return {
         success: false,
         message: 'Lỗi upload ảnh',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
