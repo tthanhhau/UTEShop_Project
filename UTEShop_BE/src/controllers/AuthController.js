@@ -1,7 +1,7 @@
 // src/controllers/authController.js
 import User from '../models/user.js';
 import Otp from '../models/Otp.js';
-import { sendMail } from '../config/mailer_admin_based.js';
+import { sendMail } from '../config/mailer.js';
 import { otpHtml } from '../utils/emailTemplates.js';
 import generateOtp from '../utils/generateOtp.js';
 import { hash, compare } from '../utils/hash.js';

@@ -110,13 +110,6 @@ const Navbar = () => {
     }, 300);
   };
 
-  const normalizeText = (text) => {
-    return (text || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '');
-  };
-
   const dedupeByProductId = (items) => {
     const seen = new Map();
     for (const item of items || []) {
@@ -138,20 +131,9 @@ const Navbar = () => {
     if (pendingImageFile) {
       try {
         setIsImageSearchLoading(true);
-        const response = await searchByImage(pendingImageFile, 1);
+        const response = await searchByImage(pendingImageFile, 1, term);
         if (response.success && response.data && response.data.length > 0) {
           let results = dedupeByProductId(response.data);
-
-          // Lightweight text filter to refine image results
-          if (term) {
-            const termNormalized = normalizeText(term);
-            const filtered = results.filter((item) => {
-              const name = normalizeText(item.name);
-              const desc = normalizeText(item.description);
-              return name.includes(termNormalized) || desc.includes(termNormalized);
-            });
-            results = filtered;
-          }
 
           results = results.slice(0, 1);
           navigate('/products', { state: { imageSearchResults: results, isImageSearch: true } });

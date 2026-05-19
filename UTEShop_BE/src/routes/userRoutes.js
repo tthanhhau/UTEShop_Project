@@ -1,6 +1,5 @@
 import express from "express";
-import { requireAuth, admin } from "../middlewares/auth.js";
-import User from "../models/user.js";
+import { requireAuth } from "../middlewares/auth.js";
 import UserController from "../controllers/UserController.js";
 import upload from "../middlewares/cloudinaryUpload.js";
 import { claimReviewReward, getUserVouchers } from '../controllers/rewardController.js';
@@ -20,14 +19,10 @@ router.put('/password', requireAuth, UserController.changePassword);
 router.post('/claim-reward', requireAuth, claimReviewReward);
 router.get('/vouchers', requireAuth, getUserVouchers);
 
-// Admin routes
-router.get('/admin/customers', requireAuth, admin, UserController.getAllCustomers);
-router.get('/admin/customers/:customerId/orders', requireAuth, admin, UserController.getCustomerOrderHistory);
-
 router.get('/notifications', requireAuth, (req, res, next) => {
-    console.log("🔔 [ROUTE] /notifications route hit");
-    console.log("🔔 [ROUTE] req.user:", req.user);
-    next();
+  console.log("🔔 [ROUTE] /notifications route hit");
+  console.log("🔔 [ROUTE] req.user:", req.user);
+  next();
 }, getNotifications);
 router.post('/notifications/mark-read', requireAuth, markNotificationsAsRead);
 router.post('/notifications/test-shipped', requireAuth, testCreateShippedNotification); // Test endpoint

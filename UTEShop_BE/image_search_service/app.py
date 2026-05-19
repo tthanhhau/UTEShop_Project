@@ -207,6 +207,7 @@ def search():
         start_time = time.time()
         
         query_image = None
+        query_text = None
         
         # Check for file upload
         if 'image' in request.files:
@@ -229,6 +230,14 @@ def search():
                 query_image = Image.open(io.BytesIO(img_bytes))
                 if query_image.mode != 'RGB':
                     query_image = query_image.convert('RGB')
+            if json_data and json_data.get('text'):
+                query_text = str(json_data.get('text')).strip()
+
+        # Check for text in form data or query args
+        if query_text is None:
+            query_text = request.form.get('text') or request.args.get('text')
+            if query_text:
+                query_text = str(query_text).strip()
         
         if query_image is None:
             return jsonify({
@@ -237,7 +246,6 @@ def search():
             }), 400
         
         print("🔍 Encoding query image...")
-        #query_embedding = img_model.encode([query_image], convert_to_numpy=True)[0]
         model = get_model()
         query_embedding = model.encode([query_image], convert_to_numpy=True)[0]
         query_embedding = query_embedding.astype(np.float32)
@@ -252,7 +260,33 @@ def search():
             }), 500
         
         print(f"🔍 Comparing with {len(img_embeddings)} products...")
-        similarities = util.cos_sim(query_embedding, img_embeddings)[0]
+        image_similarities = util.cos_sim(query_embedding, img_embeddings)[0]
+
+        text_similarities = None
+        if query_text:
+            print("📝 Encoding query text...")
+            text_embedding = model.encode([query_text], convert_to_numpy=True)[0]
+            text_embedding = text_embedding.astype(np.float32)
+            text_similarities = util.cos_sim(text_embedding, img_embeddings)[0]
+
+        # Combine image and text similarities when text is provided
+        if text_similarities is not None:
+            try:
+                image_weight = float(request.args.get('image_weight', 0.7))
+            except Exception:
+                image_weight = 0.7
+            try:
+                text_weight = float(request.args.get('text_weight', 0.3))
+            except Exception:
+                text_weight = 0.3
+
+            total_weight = image_weight + text_weight
+            if total_weight <= 0:
+                total_weight = 1.0
+
+            similarities = (image_similarities * image_weight + text_similarities * text_weight) / total_weight
+        else:
+            similarities = image_similarities
 
         top_k = int(request.args.get('top_k', 10))
         top_indices = similarities.argsort(descending=True)[:min(50, len(similarities))].cpu().numpy()

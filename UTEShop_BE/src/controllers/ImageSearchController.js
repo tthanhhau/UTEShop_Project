@@ -62,6 +62,7 @@ export const searchByImage = asyncHandler(async (req, res) => {
         }
 
         const topK = parseInt(req.query.top_k || req.body.top_k || 10);
+        const textQuery = (req.body && req.body.text) || req.query.text || '';
         console.log(`🔍 Searching with top_k=${topK}, service URL: ${IMAGE_SEARCH_SERVICE_URL}`);
 
         // Forward request to Python image search service
@@ -72,7 +73,7 @@ export const searchByImage = asyncHandler(async (req, res) => {
             console.log('📤 Sending base64 image to Python service...');
             response = await axios.post(
                 `${IMAGE_SEARCH_SERVICE_URL}/search?top_k=${topK}`,
-                { image_base64: imageData },
+                { image_base64: imageData, ...(textQuery ? { text: textQuery } : {}) },
                 {
                     headers: {
                         'Content-Type': 'application/json'
@@ -89,6 +90,9 @@ export const searchByImage = asyncHandler(async (req, res) => {
                 filename: req.file.originalname || 'image.jpg',
                 contentType: req.file.mimetype || 'image/jpeg'
             });
+            if (textQuery) {
+                formData.append('text', textQuery);
+            }
 
             response = await axios.post(
                 `${IMAGE_SEARCH_SERVICE_URL}/search?top_k=${topK}`,
