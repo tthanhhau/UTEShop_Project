@@ -163,7 +163,6 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
       // Các trường hợp khác: fetch lại data từ server
       await fetchOrders(filters.search, filters.status, filters.paymentStatus, filters.paymentMethod, pagination.currentPage, pagination.pageSize);
       await fetchStats();
-      alert('Cập nhật trạng thái đơn hàng thành công!');
     } catch (error) {
       console.error('Error updating order status:', error);
       alert('Có lỗi xảy ra khi cập nhật trạng thái!');

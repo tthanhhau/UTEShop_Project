@@ -176,10 +176,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                           {order.shippingInfo.provider}: {order.shippingInfo.trackingCode}
                         </div>
                       )}
-                      <span className={`px-3 py-1 rounded-full text-sm flex items-center inline-flex ${statusInfo.color}`}>
-                        <i className={`fas ${statusInfo.icon} mr-2`}></i>
-                        Nội bộ: {statusInfo.text}
-                      </span>
+
                     </div>
                   );
                 })()}
@@ -234,8 +231,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                       <label className="text-xs text-gray-500">Trạng thái:</label>
                       <div>
                         <span className={`px-2 py-1 rounded-full text-xs inline-flex items-center ${order.paymentStatus === 'paid'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
                           }`}>
                           <i className={`fas ${order.paymentStatus === 'paid' ? 'fa-check-circle' : 'fa-clock'} mr-1`}></i>
                           {order.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
@@ -349,10 +346,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex justify-between text-gray-600">
                 <span>Tạm tính</span>
                 <span className="font-medium">{formatCurrency(
-                  (order.totalPrice || 0) +
-                  (order.voucherDiscount || 0) +
-                  (order.usedPointsAmount || 0)
+                  order.items?.reduce((sum: number, item: any) => sum + (item.price || 0) * (item.quantity || 0), 0) || 0
                 )}</span>
+              </div>
+
+              {/* Phí vận chuyển */}
+              <div className="flex justify-between text-gray-600">
+                <span>Phí vận chuyển</span>
+                <span className="font-medium">
+                  {formatCurrency(order.shippingInfo?.shippingFee || 0)}
+                </span>
               </div>
 
               <div className="border-t border-dashed border-gray-200 my-2"></div>
