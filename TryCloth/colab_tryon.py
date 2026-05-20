@@ -281,32 +281,46 @@ with gr.Blocks() as demo:
         api_name="tryon_b64",
     )
 
-import threading
-import time
-import urllib.request
+# ==========================================
+# KHỞI TẠO NGROK STATIC DOMAIN (LINK CỐ ĐỊNH)
+# ==========================================
+import subprocess
+import sys
 
-def start_cloudflared(port):
-    print("☁️ Đang khởi tạo Cloudflare Tunnel (Không giới hạn 60s timeout)...")
-    subprocess.run(["wget", "-q", "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64", "-O", "cloudflared"])
-    subprocess.run(["chmod", "+x", "cloudflared"])
+print("☁️ Đang cài đặt Ngrok...")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "pyngrok"])
+
+# pyrefly: ignore [missing-import]
+from pyngrok import ngrok, conf
+
+# ⚠️ BẠN HÃY THAY TOKEN VÀ DOMAIN CỦA BẠN VÀO ĐÂY:
+NGROK_TOKEN = "3DvYyODT65XNkitRzkb3qebnxo5_72G4M825U1FZi5BTLVFgv"
+NGROK_DOMAIN = "lure-reprint-october.ngrok-free.dev"
+
+# Cấu hình ngrok
+conf.get_default().auth_token = NGROK_TOKEN
+conf.get_default().region = "ap" # Chọn server Châu Á cho nhanh
+
+try:
+    # Đóng các tunnel cũ (nếu có)
+    ngrok.kill()
     
-    cmd = f"./cloudflared tunnel --url http://127.0.0.1:{port}"
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    for line in process.stdout:
-        line = line.decode('utf-8')
-        if "trycloudflare.com" in line:
-            url = line[line.find("https://"):line.find(".com")+4]
-            print("\n" + "="*60)
-            print("🚀 LINK CLOUDFLARE (NÊN DÙNG - KHÔNG BỊ LỖI TIMEOUT 60S):")
-            print(f"👉 {url}")
-            print("="*60 + "\n")
+    # Mở tunnel mới với domain tĩnh trỏ vào port 7860 (Port mặc định của Gradio)
+    public_url = ngrok.connect(7860, domain=NGROK_DOMAIN).public_url
+    
+    print("\n" + "="*60)
+    print("🚀 LINK CỐ ĐỊNH (COPY DÁN VÀO RENDER .ENV 1 LẦN DUY NHẤT):")
+    print(f"👉 {public_url}")
+    print("="*60 + "\n")
+except Exception as e:
+    print(f"❌ Lỗi khởi tạo Ngrok: {e}")
+    print("Lưu ý: Nếu lỗi 'domain not found', hãy kiểm tra lại cấu hình trên trang chủ Ngrok.")
 
-# Bật Cloudflare ngầm
-threading.Thread(target=start_cloudflared, args=(7860,), daemon=True).start()
+# Khởi chạy Gradio ở port 7860
+print("=" * 50)
+print("HỆ THỐNG SẴN SÀNG! Đang khởi động Gradio Server...")
+print("=" * 50)
 
-print("=" * 50)
-print("HE THONG SAN SANG!")
-print("Ban co the dung link gradio.live hoac link trycloudflare.com (khi no hien ra)")
-print("=" * 50)
-demo.queue()
-demo.launch(share=True, debug=True)
+# Chạy server không cần tạo link share=True nữa vì đã có Ngrok
+demo.queue(max_size=10)
+demo.launch(server_port=7860, share=False, debug=True)
