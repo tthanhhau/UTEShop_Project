@@ -1,0 +1,21 @@
+{
+  "total_records": 521,
+  "sample_records": 50,
+  "instructions_distribution": {
+    "Kiểm tra tồn kho": 78,
+    "Tìm kiếm sản phẩm": 55,
+    "Tư vấn theo ngân sách": 26,
+    "Thông tin sản phẩm": 263,
+    "Thông tin vận chuyển": 4,
+    "Tư vấn size": 47,
+    "So sánh sản phẩm": 19,
+    "Cảm ơn": 4,
+    "Chính sách đổi trả": 6,
+    "Tư vấn chất liệu": 4,
+    "Chào hỏi": 7,
+    "Tư vấn phối đồ": 8
+  },
+  "avg_input_length": 34.7,
+  "avg_output_length": 146.2,
+  "validation_passed": true
+}

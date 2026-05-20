@@ -1,6 +1,7 @@
 import ChatbotService from "./ChatbotService.js";
 import ChatHistory from "../models/ChatHistory.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import ColabAIService from "./ColabAIService.js";
 
 // POST /api/chatbot/message
 export const sendMessage = asyncHandler(async (req, res) => {
@@ -93,11 +94,59 @@ export const getSuggestions = asyncHandler(async (req, res) => {
     "Tìm áo thun dưới 300k",
     "Sản phẩm bán chạy nhất",
     "Giày Nike",
-    "Quần jean nam"
+    "Quần jean nam",
+    "Tư vấn size cho mình",
+    "Phối đồ đi chơi",
+    "Chính sách đổi trả"
   ];
 
   return res.json({
     success: true,
     data: suggestions
+  });
+});
+
+// POST /api/chatbot/stream - Streaming response (SSE)
+export const streamMessage = asyncHandler(async (req, res) => {
+  const { message, sessionId } = req.body;
+  const userId = req.user?._id || null;
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ success: false, message: "Vui lòng nhập tin nhắn" });
+  }
+
+  // SSE headers
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  try {
+    const messages = [
+      { role: "system", content: "Bạn là trợ lý AI bán hàng của UTEShop. Trả lời bằng tiếng Việt có dấu, thân thiện." },
+      { role: "user", content: message.trim() }
+    ];
+
+    for await (const chunk of ColabAIService.chatStream(messages)) {
+      res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+    }
+    res.write(`data: [DONE]\n\n`);
+  } catch (error) {
+    console.error("Stream error:", error);
+    res.write(`data: ${JSON.stringify({ error: "AI đang bận, thử lại sau." })}\n\n`);
+  } finally {
+    res.end();
+  }
+});
+
+// GET /api/chatbot/health - Kiểm tra AI
+export const healthCheck = asyncHandler(async (req, res) => {
+  const aiStatus = await ColabAIService.healthCheck();
+
+  return res.json({
+    success: true,
+    ollama: aiStatus,
+    status: aiStatus.ok ? "ready" : "offline"
   });
 });

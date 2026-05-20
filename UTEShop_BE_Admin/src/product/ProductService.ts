@@ -121,7 +121,7 @@ export class ProductService {
     // === RÀNG BUỘC XÓA SẢN PHẨM ===
 
     // 1. Kiểm tra sản phẩm có trong đơn hàng chưa hoàn thành không
-    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const pendingStatuses = ['pending', 'processing', 'preparing', 'shipped'];
     const ordersWithProduct = await this.orderModel.countDocuments({
       'items.product': new Types.ObjectId(id),
       status: { $in: pendingStatuses }
@@ -208,7 +208,7 @@ export class ProductService {
 
   async deleteMultiple(ids: string[]) {
     // === RÀNG BUỘC XÓA NHIỀU SẢN PHẨM ===
-    const pendingStatuses = ['pending', 'processing', 'prepared', 'shipped'];
+    const pendingStatuses = ['pending', 'processing', 'preparing', 'shipped'];
     const objectIds = ids.map(id => new Types.ObjectId(id));
 
     // 1. Kiểm tra sản phẩm có trong đơn hàng chưa hoàn thành không

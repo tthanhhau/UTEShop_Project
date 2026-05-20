@@ -18,7 +18,7 @@ export const getProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const updates = req.body; 
+    const updates = req.body;
 
     const allowedUpdates = ["name", "email", "phone", "birthDate", "address"];
 
@@ -120,7 +120,7 @@ export const getAllCustomers = async (req, res) => {
   try {
     // Lấy tất cả user có role customer
     const customers = await User.find({ role: "customer" }).select("-password");
-    
+
     const customerDetails = await Promise.all(
       customers.map(async (customer) => {
         // Tính điểm đã nhận
@@ -144,18 +144,18 @@ export const getAllCustomers = async (req, res) => {
 
         // Tính tổng tiền đã mua
         const orderSummary = await Order.aggregate([
-          { 
-            $match: { 
-              user: customer._id, 
-              status: { $in: ["delivered", "pending", "processing", "prepared", "shipped"] }
-            } 
+          {
+            $match: {
+              user: customer._id,
+              status: { $in: ["delivered", "pending", "processing", "preparing", "shipped"] }
+            }
           },
-          { 
-            $group: { 
-              _id: null, 
+          {
+            $group: {
+              _id: null,
               totalSpent: { $sum: "$totalPrice" },
               totalOrders: { $sum: 1 }
-            } 
+            }
           }
         ]);
 
@@ -189,10 +189,10 @@ export const getAllCustomers = async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting customers:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Server error", 
-      error: error.message 
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -201,16 +201,16 @@ export const getAllCustomers = async (req, res) => {
 export const getCustomerOrderHistory = async (req, res) => {
   try {
     const { customerId } = req.params;
-    
+
     // Lấy customer với đầy đủ dữ liệu bao gồm voucherClaims
     const customer = await User.findById(customerId).lean();
     if (!customer) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Customer not found" 
+        message: "Customer not found"
       });
     }
-    
+
     // Remove password field
     delete customer.password;
 
@@ -278,10 +278,10 @@ export const getCustomerOrderHistory = async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting customer order history:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Server error", 
-      error: error.message 
+      message: "Server error",
+      error: error.message
     });
   }
 };

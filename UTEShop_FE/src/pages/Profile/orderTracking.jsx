@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import api from "@/api/axiosConfig";
 import { checkProductInOrderReviewed } from "../../api/reviewApi";
 import { checkReturnEligibility, createReturnRequest, RETURN_REASONS } from "../../api/returnApi";
+import { getOrderDisplayStatus, getOrderProgressTimeline } from "../../utils/orderShippingStatus";
+import OrderTrackingSteps from "@/components/OrderTracking";
 import { useSelector } from "react-redux";
 import io from "socket.io-client";
 import {
@@ -27,7 +29,7 @@ import {
 const statusToNumberMap = {
   pending: 1,
   processing: 2,
-  prepared: 3,
+  preparing: 3,
   shipped: 4,
   delivered: 5,
   cancelled: 6,
@@ -65,6 +67,16 @@ const orderStatuses = {
     color: "bg-red-100 text-red-800 border-red-200",
     icon: XCircle,
   },
+};
+
+const shippingIconMap = {
+  shoppingBag: ShoppingBag,
+  checkCircle: CheckCircle,
+  package: Package,
+  truck: Truck,
+  xCircle: XCircle,
+  rotateCcw: RotateCcw,
+  clock: Clock,
 };
 
 export function OrderTracking() {
@@ -380,50 +392,10 @@ export function OrderTracking() {
     }
   };
 
-  const renderStatusTimeline = (currentStatus) => {
-    const statuses = [1, 2, 3, 4, 5];
-
+  const renderStatusTimeline = (order) => {
     return (
-      <div className="flex items-center justify-between mt-4">
-        {statuses.map((status, index) => {
-          const StatusIcon = orderStatuses[status].icon;
-          const isActive = currentStatus >= status && currentStatus !== 6;
-          const isCompleted = currentStatus > status && currentStatus !== 6;
-
-          return (
-            <div
-              key={status}
-              className="flex flex-col items-center flex-1 relative"
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${isCompleted || isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-                  }`}
-              >
-                <StatusIcon className="w-4 h-4" />
-              </div>
-              <div className="text-xs text-center mt-2 max-w-20">
-                <span
-                  className={
-                    isActive
-                      ? "text-primary font-medium"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {orderStatuses[status].label}
-                </span>
-              </div>
-              {index < statuses.length - 1 && (
-                <div
-                  className={`absolute h-0.5 w-full top-4 left-1/2 ${isCompleted ? "bg-primary" : "bg-muted"
-                    }`}
-                  style={{ transform: "translateX(0)", zIndex: -1 }} // Adjusted for better alignment
-                />
-              )}
-            </div>
-          );
-        })}
+      <div className="mt-4">
+        <OrderTrackingSteps status={order.status} />
       </div>
     );
   };
@@ -482,8 +454,9 @@ export function OrderTracking() {
               : order.status || 1;
 
             // Kiểm tra an toàn: nếu status không hợp lệ, dùng mặc định
-            const statusInfo = orderStatuses[statusNumber] || orderStatuses[1];
-            const StatusIcon = statusInfo.icon;
+            const displayStatus = getOrderDisplayStatus(order);
+            const StatusIcon = shippingIconMap[displayStatus.iconKey] || Package;
+            const timeline = getOrderProgressTimeline(order);
 
             const isHighlighted = highlightedOrderId === order._id;
 
@@ -518,9 +491,9 @@ export function OrderTracking() {
                         )}
                       </div>
                     </div>
-                    <Badge variant="secondary" className={statusInfo.color}>
+                    <Badge variant="secondary" className={displayStatus.color}>
                       <StatusIcon className="w-4 h-4 mr-1" />
-                      {statusInfo.label}
+                      {displayStatus.label}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -595,9 +568,9 @@ export function OrderTracking() {
 
                   {statusNumber !== 6 && (
                     <div className="mb-6">
-                      <h4 className="font-medium mb-3">Tiến độ đơn hàng</h4>
+                      <h4 className="font-medium mb-3">{timeline.title}</h4>
                       <div className="relative">
-                        {renderStatusTimeline(statusNumber)}
+                        {renderStatusTimeline(order)}
                       </div>
                     </div>
                   )}
@@ -630,7 +603,7 @@ export function OrderTracking() {
                         Chi tiết
                       </Button>
                       {/* Nút xem tracking nếu có mã vận đơn */}
-                      {order.shippingInfo?.trackingCode && statusNumber >= 4 && statusNumber !== 6 && (
+                      {order.shippingInfo?.trackingCode && statusNumber !== 6 && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -704,7 +677,7 @@ export function OrderTracking() {
                 <p className="text-sm text-gray-500">Đơn hàng</p>
                 <p className="font-medium">#{selectedOrderForReturn._id}</p>
                 <p className="text-sm text-green-600 font-medium">
-                  Số tiền hoàn: {formatPrice(selectedOrderForReturn.totalPrice)}
+                  Số tiền hoàn: {formatPrice(getDisplayOrderTotal(selectedOrderForReturn))}
                 </p>
               </div>
 

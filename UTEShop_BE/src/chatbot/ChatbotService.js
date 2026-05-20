@@ -1,90 +1,14 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+// Ollama AI Chatbot Service — thay thế Gemini API bằng model tự train
 import Product from "../models/product.js";
 import Category from "../models/category.js";
 import Brand from "../models/brand.js";
 import Order from "../models/order.js";
+import ColabAIService from "./ColabAIService.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 class ChatbotService {
   constructor() {
     this.conversationStates = new Map();
-    this._lastApiKey = null;
-    this._lastModel = null;
-    this._genAI = null;
-  }
-
-  // Đọc trực tiếp từ file .env để lấy giá trị mới nhất
-  // Fallback sang process.env nếu file không tồn tại (production/Render)
-  readEnvFile() {
-    const envPath = path.join(__dirname, "../../.env");
-
-    // Kiểm tra file .env có tồn tại không
-    if (!fs.existsSync(envPath)) {
-      // Production mode: dùng process.env
-      console.log("📦 Production mode: using process.env");
-      return {
-        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-        GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-1.5-flash"
-      };
-    }
-
-    // Development mode: đọc từ file .env
-    const envContent = fs.readFileSync(envPath, "utf-8");
-    const envVars = {};
-
-    envContent.split("\n").forEach(line => {
-      // Bỏ qua comment và dòng trống
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) return;
-
-      const match = trimmed.match(/^([^=]+)=(.*)$/);
-      if (match) {
-        const key = match[1].trim();
-        let value = match[2].trim();
-        // Loại bỏ quotes nếu có
-        if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
-          value = value.slice(1, -1);
-        }
-        // Loại bỏ comment inline
-        const commentIdx = value.indexOf(" #");
-        if (commentIdx > -1) {
-          value = value.substring(0, commentIdx).trim();
-        }
-        envVars[key] = value;
-      }
-    });
-
-    return envVars;
-  }
-
-  // Lấy GenAI instance, luôn đọc fresh từ file .env
-  getGenAI() {
-    // Đọc trực tiếp từ file .env mỗi lần gọi
-    const envVars = this.readEnvFile();
-    const currentKey = envVars.GEMINI_API_KEY;
-    const currentModel = envVars.GEMINI_MODEL || "gemini-1.5-flash";
-
-    console.log(`🔑 Gemini API Key: ${currentKey?.substring(0, 15)}...${currentKey?.substring(currentKey.length - 5)}`);
-    console.log(`🤖 Using model from .env: ${currentModel}`);
-
-    // Luôn tạo instance mới với key hiện tại
-    this._genAI = new GoogleGenerativeAI(currentKey);
-    this._lastModel = currentModel;
-
-    return { genAI: this._genAI, model: currentModel };
-  }
-
-  getModel() {
-    const { genAI, model } = this.getGenAI();
-    console.log(`🤖 Using model: ${model}`);
-    return genAI.getGenerativeModel({ model });
   }
 
   getState(sessionId) {
@@ -119,17 +43,14 @@ class ChatbotService {
         contextPrompt += `\n\nSẢN PHẨM VỪA TÌM:\n${state.lastProducts.map((p, i) => `${i + 1}. ${p.name}`).join("\n")}`;
       }
 
-      const prompt = `${contextPrompt}\n\nUser: ${message}\n\nTrả về JSON:`;
-      const model = this.getModel();
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
 
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
 
-      return { intent: "general", filters: {}, message: response.replace(/```json|```/g, "").trim() };
+      contextPrompt += `\n\nUser: ${message}\n\nTrả về JSON:`;
+
+      // Gọi Ollama thay vì Gemini
+      return await ColabAIService.analyzeIntent(message, contextPrompt);
     } catch (error) {
-      console.error("Gemini API error:", error);
+      console.error("Ollama API error:", error);
       return {
         intent: "error",
         filters: {},
@@ -184,9 +105,12 @@ class ChatbotService {
         if (category) query.category = category._id;
       }
 
-      // Nếu không tìm được category từ keyword, tìm theo tên sản phẩm
-      if (!categoryFound && keyword) {
-        query.name = { $regex: keyword, $options: "i" };
+      // Nếu có keyword, luôn tìm theo tên sản phẩm, NGOẠI TRỪ khi keyword chính xác là tên danh mục (ví dụ: "phụ kiện")
+      if (keyword) {
+        const isGeneralCategory = categoryFound && keyword === categoryFound.name.toLowerCase();
+        if (!isGeneralCategory) {
+          query.name = { $regex: keyword, $options: "i" };
+        }
       }
 
       if (filters.hasDiscount) query.discountPercentage = { $gt: 0 };
@@ -422,7 +346,7 @@ class ChatbotService {
         const statusMap = {
           pending: "⏳ Chờ xác nhận",
           processing: "🔄 Đang xử lý",
-          prepared: "📦 Đã chuẩn bị",
+          preparing: "📦 Đang chuẩn bị",
           shipped: "🚚 Đang giao",
           delivered: "✅ Đã giao",
           cancelled: "❌ Đã hủy"

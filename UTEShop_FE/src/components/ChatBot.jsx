@@ -44,7 +44,7 @@ export default function ChatBot() {
   useEffect(() => {
     const savedSession = sessionStorage.getItem(SESSION_KEY);
     const savedGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY);
-    
+
     if (savedSession) setSessionId(savedSession);
     if (savedGuestToken && !user) setGuestToken(savedGuestToken);
   }, []);
@@ -67,7 +67,7 @@ export default function ChatBot() {
       }
       prevUserRef.current = user;
     };
-    
+
     mergeAndLoadHistory();
   }, [user]);
 
@@ -75,16 +75,16 @@ export default function ChatBot() {
   useEffect(() => {
     const loadHistory = async () => {
       if (!isOpen || historyLoaded) return;
-      
+
       try {
         const params = {};
         if (!user && guestToken) {
           params.guestToken = guestToken;
         }
-        
+
         const response = await axios.get("/chatbot/history", { params });
         const history = response.data.data;
-        
+
         if (history && history.length > 0) {
           const formattedHistory = history.map((msg, index) => ({
             id: msg._id || index,
@@ -107,7 +107,7 @@ export default function ChatBot() {
         setHistoryLoaded(true);
       }
     };
-    
+
     loadHistory();
   }, [isOpen, user, guestToken, historyLoaded]);
 
@@ -129,14 +129,14 @@ export default function ChatBot() {
   useEffect(() => {
     const processPendingPurchase = async () => {
       if (!user) return;
-      
+
       const pendingPurchase = sessionStorage.getItem(PENDING_PURCHASE_KEY);
       if (!pendingPurchase) return;
-      
+
       try {
         const items = JSON.parse(pendingPurchase);
         sessionStorage.removeItem(PENDING_PURCHASE_KEY);
-        
+
         // Kiểm tra xem là array (nhiều sản phẩm) hay object (1 sản phẩm - format cũ)
         if (Array.isArray(items)) {
           // Nhiều sản phẩm
@@ -151,9 +151,9 @@ export default function ChatBot() {
             quantity: item.quantity,
             size: item.size,
           }));
-          
+
           console.log("🛒 Processing pending purchase with", formattedItems.length, "items");
-          
+
           navigate("/checkout", {
             state: { cartItems: formattedItems, fromCart: true },
           });
@@ -178,7 +178,7 @@ export default function ChatBot() {
         navigate("/products");
       }
     };
-    
+
     processPendingPurchase();
   }, [user, navigate]);
 
@@ -207,38 +207,61 @@ export default function ChatBot() {
 
       const { data, guestToken: newGuestToken } = response.data;
 
-      // Lưu guestToken nếu chưa đăng nhập (dùng sessionStorage để mỗi tab mới bắt đầu chat mới)
+      // Lưu guestToken nếu chưa đăng nhập
       if (newGuestToken && !user) {
         setGuestToken(newGuestToken);
         sessionStorage.setItem(GUEST_TOKEN_KEY, newGuestToken);
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          text: data.message,
-          sender: "bot",
-          timestamp: new Date(),
-          products: data.products || [],
-          intent: data.intent,
-          action: data.action,
-          cartCount: data.cartCount,
-        },
-      ]);
+      // Hiển thị response với hiệu ứng typing từng ký tự
+      const botMsg = {
+        id: Date.now() + 1,
+        text: "",
+        fullText: data.message,
+        sender: "bot",
+        timestamp: new Date(),
+        products: data.products || [],
+        intent: data.intent,
+        action: data.action,
+        cartCount: data.cartCount,
+        isStreaming: true,
+      };
+      setMessages((prev) => [...prev, botMsg]);
+
+      // Animate typing effect
+      const fullText = data.message;
+      for (let i = 0; i <= fullText.length; i += 3) {
+        await new Promise((r) => setTimeout(r, 15));
+        setMessages((prev) => {
+          const msgs = [...prev];
+          const last = msgs[msgs.length - 1];
+          if (last && last.id === botMsg.id) {
+            last.text = fullText.slice(0, i);
+            last.isStreaming = i < fullText.length;
+          }
+          return msgs;
+        });
+      }
+      // Ensure full text is shown
+      setMessages((prev) => {
+        const msgs = [...prev];
+        const last = msgs[msgs.length - 1];
+        if (last && last.id === botMsg.id) {
+          last.text = fullText;
+          last.isStreaming = false;
+        }
+        return msgs;
+      });
 
       if (data.action?.type === "CHECKOUT") {
         await handleCheckoutAction(data.action.cartItems);
       } else if (data.action?.type === "NAVIGATE") {
         handleNavigateAction(data.action.url);
       } else if (data.action?.type === "SHOW_ORDERS") {
-        // Thêm orders vào message để hiển thị
         setMessages((prev) => {
           const newMessages = [...prev];
           const lastMsg = newMessages[newMessages.length - 1];
-          if (lastMsg) {
-            lastMsg.orders = data.action.orders;
-          }
+          if (lastMsg) lastMsg.orders = data.action.orders;
           return newMessages;
         });
       }
@@ -248,7 +271,9 @@ export default function ChatBot() {
         ...prev,
         {
           id: Date.now() + 1,
-          text: "Xin lỗi, tôi đang gặp sự cố. Vui lòng thử lại sau.",
+          text: error?.response?.status === 500
+            ? "⚠️ AI đang offline. Vui lòng kiểm tra Server Colab đã chạy chưa."
+            : "Xin lỗi, tôi đang gặp sự cố. Vui lòng thử lại sau.",
           sender: "bot",
           timestamp: new Date(),
           products: [],
@@ -274,7 +299,7 @@ export default function ChatBot() {
     switch (status) {
       case "pending": return <FaClock className="text-yellow-500" />;
       case "processing": return <FaBox className="text-blue-500" />;
-      case "prepared": return <FaBox className="text-purple-500" />;
+      case "preparing": return <FaBox className="text-purple-500" />;
       case "shipped": return <FaTruck className="text-orange-500" />;
       case "delivered": return <FaCheckCircle className="text-green-500" />;
       case "cancelled": return <FaTimesCircle className="text-red-500" />;
@@ -286,7 +311,7 @@ export default function ChatBot() {
     switch (status) {
       case "pending": return "bg-yellow-100 border-yellow-300";
       case "processing": return "bg-blue-100 border-blue-300";
-      case "prepared": return "bg-purple-100 border-purple-300";
+      case "preparing": return "bg-purple-100 border-purple-300";
       case "shipped": return "bg-orange-100 border-orange-300";
       case "delivered": return "bg-green-100 border-green-300";
       case "cancelled": return "bg-red-100 border-red-300";
@@ -332,7 +357,7 @@ export default function ChatBot() {
         sessionStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify(allItems));
         console.log("🛒 Saved pending purchase with", allItems.length, "items");
       }
-      
+
       setMessages((prev) => [
         ...prev,
         {
@@ -348,10 +373,10 @@ export default function ChatBot() {
     }
 
     setIsProcessingOrder(true);
-    
+
     console.log("🛒 ChatBot - handleCheckoutAction called with cartItems:", cartItems);
     console.log("🛒 ChatBot - cartItems.length:", cartItems?.length);
-    
+
     try {
       // Luôn format items theo cùng một cách để đảm bảo nhất quán
       const formattedItems = cartItems.map((item) => ({
@@ -365,10 +390,10 @@ export default function ChatBot() {
         quantity: item.quantity,
         size: item.size,
       }));
-      
+
       console.log("🛒 ChatBot - Formatted items for checkout:", formattedItems);
       console.log("🛒 ChatBot - Number of items:", formattedItems.length);
-      
+
       setTimeout(() => {
         setIsOpen(false);
         // Luôn truyền dưới dạng cartItems để CheckoutPage xử lý nhất quán
@@ -395,7 +420,7 @@ export default function ChatBot() {
 
   const handleQuickBuy = async (product) => {
     const availableSize = product.sizes?.find((s) => s.stock > 0)?.size || "Free Size";
-    
+
     if (!user) {
       sessionStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify({
         productId: product._id,
@@ -406,7 +431,7 @@ export default function ChatBot() {
         quantity: 1,
         image: product.image,
       }));
-      
+
       setMessages((prev) => [
         ...prev,
         {
@@ -422,7 +447,7 @@ export default function ChatBot() {
     }
 
     setIsProcessingOrder(true);
-    
+
     setMessages((prev) => [
       ...prev,
       {
@@ -476,7 +501,7 @@ export default function ChatBot() {
     return new Intl.NumberFormat("vi-VN").format(price) + "đ";
   };
 
-  const quickReplies = ["Tìm áo thun", "Giày Nike", "Đang giảm giá", "Sản phẩm bán chạy"];
+  const quickReplies = ["Tìm áo thun", "Giày Nike", "Đang giảm giá", "Tư vấn size", "Phối đồ đi chơi", "Chính sách đổi trả"];
 
   const handleQuickReply = async (reply) => {
     const userMessage = {
@@ -577,7 +602,7 @@ export default function ChatBot() {
               </div>
               <div>
                 <h3 className="font-semibold text-sm">UTEShop AI</h3>
-                <p className="text-xs opacity-90">Hỗ trợ đặt hàng nhanh</p>
+                <p className="text-xs opacity-90">Colab GPU • Tự train model</p>
               </div>
             </div>
             <button
@@ -594,11 +619,10 @@ export default function ChatBot() {
               <div key={msg.id}>
                 <div className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 ${
-                      msg.sender === "user"
+                    className={`max-w-[85%] rounded-2xl px-3 py-2 ${msg.sender === "user"
                         ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
                         : "bg-white text-gray-800 shadow-md"
-                    }`}
+                      }`}
                   >
                     <p className="text-sm whitespace-pre-line">{msg.text}</p>
                     <span className="text-xs opacity-70 mt-1 block">
@@ -651,8 +675,8 @@ export default function ChatBot() {
                 {msg.orders && msg.orders.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {msg.orders.map((order, index) => (
-                      <div 
-                        key={order._id} 
+                      <div
+                        key={order._id}
                         onClick={() => handleOrderClick(order._id, order.status)}
                         className={`rounded-lg p-3 border-2 cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] ${getStatusColor(order.status)}`}
                       >
@@ -668,12 +692,12 @@ export default function ChatBot() {
                             <span className="text-xs font-medium">{order.statusText}</span>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center justify-between text-xs text-gray-600">
                           <span>📅 {new Date(order.createdAt).toLocaleDateString("vi-VN")}</span>
                           <span className="font-bold text-blue-600">{formatPrice(order.totalPrice)}</span>
                         </div>
-                        
+
                         <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
                           <FaBox className="text-gray-400" />
                           <span>{order.itemCount} sản phẩm</span>
@@ -684,9 +708,9 @@ export default function ChatBot() {
                           <div className="mt-2 flex gap-1 overflow-hidden">
                             {order.items.slice(0, 3).map((item, idx) => (
                               item.image && (
-                                <img 
+                                <img
                                   key={idx}
-                                  src={item.image} 
+                                  src={item.image}
                                   alt={item.name}
                                   className="w-10 h-10 object-cover rounded border border-gray-200"
                                 />

@@ -3,7 +3,7 @@ import axios from "axios";
 // Tạo một instance của Axios
 const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_URL}/api`,
-  timeout: 60000,
+  timeout: 120000, // 120s
   headers: {
     'Content-Type': 'application/json',
   },
