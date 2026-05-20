@@ -1,7 +1,7 @@
 // src/controllers/authController.js
 import User from '../models/user.js';
 import Otp from '../models/Otp.js';
-import { sendMail } from '../config/mailer_admin_based.js';
+import { sendMail } from '../config/mailer.js';
 import { otpHtml } from '../utils/emailTemplates.js';
 import generateOtp from '../utils/generateOtp.js';
 import { hash, compare } from '../utils/hash.js';
@@ -91,9 +91,9 @@ export const verifyOtpOnly = asyncHandler(async (req, res) => {
   otp.verified = true;
   await otp.save();
 
-  return res.json({ 
+  return res.json({
     message: 'Xác minh OTP thành công',
-    verified: true 
+    verified: true
   });
 });
 
@@ -104,8 +104,8 @@ export const completeRegistration = asyncHandler(async (req, res) => {
   // Kiểm tra OTP đã được verify chưa
   const otp = await Otp.findOne({ email, type: 'register', verified: true });
   if (!otp) {
-    return res.status(400).json({ 
-      message: 'Vui lòng xác minh OTP trước khi hoàn tất đăng ký' 
+    return res.status(400).json({
+      message: 'Vui lòng xác minh OTP trước khi hoàn tất đăng ký'
     });
   }
 
@@ -207,9 +207,9 @@ export const verifyResetOtpOnly = asyncHandler(async (req, res) => {
   otp.verified = true;
   await otp.save();
 
-  return res.json({ 
+  return res.json({
     message: 'Xác minh OTP thành công',
-    verified: true 
+    verified: true
   });
 });
 
@@ -220,8 +220,8 @@ export const completePasswordReset = asyncHandler(async (req, res) => {
   // Kiểm tra OTP đã được verify chưa
   const otp = await Otp.findOne({ email, type: 'reset', verified: true });
   if (!otp) {
-    return res.status(400).json({ 
-      message: 'Vui lòng xác minh OTP trước khi đổi mật khẩu' 
+    return res.status(400).json({
+      message: 'Vui lòng xác minh OTP trước khi đổi mật khẩu'
     });
   }
 

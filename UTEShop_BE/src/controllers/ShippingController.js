@@ -9,7 +9,7 @@ class ShippingController {
     calculateFee = asyncHandler(async (req, res) => {
         const { toDistrictId, toWardCode, province, district, ward, weight, insuranceValue, provider } = req.body;
 
-        if (!toDistrictId || !toWardCode) {
+        if (!shippingService.hasRequiredShippingAddressIds({ toDistrictId, toWardCode })) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields: toDistrictId, toWardCode",
@@ -65,13 +65,29 @@ class ShippingController {
         }
 
         // Chuẩn bị dữ liệu tạo đơn
+        const resolvedToDistrictId = req.body.toDistrictId || order.shippingInfo?.toDistrictId;
+        const resolvedToWardCode = req.body.toWardCode || order.shippingInfo?.toWardCode;
+
+        if (!shippingService.hasRequiredShippingAddressIds({
+            toDistrictId: resolvedToDistrictId,
+            toWardCode: resolvedToWardCode,
+        })) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required shipping address IDs on request/order: toDistrictId, toWardCode",
+            });
+        }
+
         const orderData = {
             orderId: order._id.toString(),
             customerName: order.customerName,
             customerPhone: order.customerPhone,
             shippingAddress: order.shippingAddress,
-            toDistrictId: req.body.toDistrictId,
-            toWardCode: req.body.toWardCode,
+            toDistrictId: resolvedToDistrictId,
+            toWardCode: resolvedToWardCode,
+            province: req.body.province || order.shippingInfo?.province,
+            district: req.body.district || order.shippingInfo?.district,
+            ward: req.body.ward || order.shippingInfo?.ward,
             items: order.items.map(item => ({
                 name: item.product.name,
                 quantity: item.quantity,
@@ -150,6 +166,8 @@ class ShippingController {
             order.shippingInfo.provider
         );
 
+        await order.save();
+
         res.status(200).json({
             success: true,
             order: {
@@ -157,6 +175,7 @@ class ShippingController {
                 status: order.status,
                 customerName: order.customerName,
                 shippingAddress: order.shippingAddress,
+                shippingInfo: order.shippingInfo,
             },
             shipping: result,
         });

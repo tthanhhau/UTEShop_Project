@@ -41,6 +41,8 @@ const Navbar = () => {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState(-1);
   const [isImageSearchLoading, setIsImageSearchLoading] = React.useState(false);
+  const [previewImage, setPreviewImage] = React.useState(null);
+  const [pendingImageFile, setPendingImageFile] = React.useState(null);
   const fileInputRef = useRef(null);
   const searchContainerRef = useRef(null);
   const debounceRef = useRef(null);
@@ -108,11 +110,52 @@ const Navbar = () => {
     }, 300);
   };
 
-  const handleSearch = (e) => {
+  const dedupeByProductId = (items) => {
+    const seen = new Map();
+    for (const item of items || []) {
+      const key = item.productId || item._id;
+      if (!key) continue;
+      const prev = seen.get(key);
+      if (!prev || (item.similarity || 0) > (prev.similarity || 0)) {
+        seen.set(key, item);
+      }
+    }
+    return Array.from(seen.values());
+  };
+
+  const handleSearch = async (e) => {
     e.preventDefault();
-    if (searchTerm.trim()) {
+    const term = searchTerm.trim();
+
+    // Prefer image search when an image is present (hybrid: image + optional text)
+    if (pendingImageFile) {
+      try {
+        setIsImageSearchLoading(true);
+        const response = await searchByImage(pendingImageFile, 1, term);
+        if (response.success && response.data && response.data.length > 0) {
+          let results = dedupeByProductId(response.data);
+
+          results = results.slice(0, 1);
+          navigate('/products', { state: { imageSearchResults: results, isImageSearch: true } });
+        } else {
+          alert('Không tìm thấy sản phẩm tương tự.');
+        }
+      } catch (error) {
+        console.error('Image search error:', error);
+        if (error.response?.status === 503) {
+          alert('Tính năng tìm kiếm bằng hình ảnh AI hiện không khả dụng trên production.');
+        } else {
+          alert('Lỗi khi tìm kiếm hình ảnh.');
+        }
+      } finally {
+        setIsImageSearchLoading(false);
+      }
+      return;
+    }
+
+    if (term) {
       setShowSuggestions(false);
-      navigate(`/products?search=${encodeURIComponent(searchTerm.trim())}`);
+      navigate(`/products?search=${encodeURIComponent(term)}`);
     }
   };
 
@@ -163,39 +206,49 @@ const Navbar = () => {
       return;
     }
 
-    try {
-      setIsImageSearchLoading(true);
-      const response = await searchByImage(file, 1);
-      if (response.success && response.data && response.data.length > 0) {
-        const topProduct = response.data[0];
-        if (topProduct.similarity < 0.5) {
-          const confirm = window.confirm(
-            `Độ tương đồng thấp (${(topProduct.similarity * 100).toFixed(1)}%). Bạn có muốn xem sản phẩm này không?`
-          );
-          if (!confirm) {
-            setIsImageSearchLoading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            return;
-          }
-        }
-        navigate('/products', { state: { imageSearchResults: response.data, isImageSearch: true } });
-      } else {
-        alert('Không tìm thấy sản phẩm tương tự.');
-      }
-    } catch (error) {
-      console.error('Image search error:', error);
-      if (error.response?.status === 503) {
-        alert('Tính năng tìm kiếm bằng hình ảnh AI hiện không khả dụng trên production.');
-      } else {
-        alert('Lỗi khi tìm kiếm hình ảnh.');
-      }
-    } finally {
-      setIsImageSearchLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    // Store image for hybrid search and show preview
+    setPendingImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => setPreviewImage(event.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearPreview = () => {
+    setPreviewImage(null);
+    setPendingImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleCameraClick = () => fileInputRef.current?.click();
+
+  /**
+   * Handle paste image from clipboard
+   */
+  const handleImagePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        if (file.size > 10 * 1024 * 1024) {
+          alert('Kích thước file không được vượt quá 10MB');
+          return;
+        }
+
+        // Store image for hybrid search and show preview
+        setPendingImageFile(file);
+        const reader = new FileReader();
+        reader.onload = (event) => setPreviewImage(event.target.result);
+        reader.readAsDataURL(file);
+
+        return; // Only handle the first image
+      }
+    }
+  };
+
   const handleLogoClick = () => navigate("/");
   const handleShopClick = () => navigate("/products");
   const handleProfileClick = () => navigate("/profile");
@@ -272,24 +325,50 @@ const Navbar = () => {
         <div className="flex-1 max-w-md mx-8 hidden md:block relative" ref={searchContainerRef}>
           <form className="relative" onSubmit={handleSearch}>
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
+              className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors ${previewImage ? 'hidden' : ''}`}
               onClick={handleSearch}
             />
+            {previewImage && (
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <img
+                  src={previewImage}
+                  alt="preview"
+                  className="h-6 w-6 object-cover rounded"
+                />
+                <button
+                  type="button"
+                  onClick={handleClearPreview}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  title="Xoá ảnh preview"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
             <Input
               type="text"
-              placeholder="Tìm kiếm sản phẩm..."
+              placeholder="Tìm kiếm sản phẩm... (Ctrl+V để dán ảnh)"
               value={searchTerm}
               onChange={handleSearchChange}
               onKeyDown={handleKeyDown}
+              onPaste={handleImagePaste}
               onFocus={() => searchTerm && suggestions.length > 0 && setShowSuggestions(true)}
-              className="pl-10 pr-12 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500"
+              className={`pl-10 pr-12 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 ${previewImage ? 'pl-16' : ''}`}
+              title="Nhập tên sản phẩm để tìm kiếm hoặc paste ảnh (Ctrl+V) để tìm kiếm bằng hình ảnh"
             />
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSearch} className="hidden" />
             <Camera
               className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors ${isImageSearchLoading ? 'animate-pulse' : ''}`}
               onClick={handleCameraClick}
-              title="Tìm kiếm bằng hình ảnh"
+              title="Tìm kiếm bằng hình ảnh (click để chọn file hoặc paste ảnh: Ctrl+V)"
             />
+            {isImageSearchLoading && (
+              <div className="absolute left-3 -bottom-5 text-xs text-gray-500">
+                Dang tim kiem...
+              </div>
+            )}
             {isLoadingSuggestions && (
               <div className="absolute right-10 top-1/2 -translate-y-1/2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
@@ -351,20 +430,47 @@ const Navbar = () => {
         </div>
         <div className="relative" ref={searchContainerRef}>
           <form className="relative" onSubmit={handleSearch}>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" onClick={handleSearch} />
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 ${previewImage ? 'hidden' : ''}`} onClick={handleSearch} />
+            {previewImage && (
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <img
+                  src={previewImage}
+                  alt="preview"
+                  className="h-6 w-6 object-cover rounded"
+                />
+                <button
+                  type="button"
+                  onClick={handleClearPreview}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  title="Xoá ảnh preview"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
             <Input
               type="text"
-              placeholder="Tìm kiếm sản phẩm..."
+              placeholder="Tìm kiếm... (Ctrl+V dán ảnh)"
               value={searchTerm}
               onChange={handleSearchChange}
               onKeyDown={handleKeyDown}
+              onPaste={handleImagePaste}
               onFocus={() => searchTerm && suggestions.length > 0 && setShowSuggestions(true)}
-              className="pl-10 pr-12 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500"
+              className={`pl-10 pr-12 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 ${previewImage ? 'pl-16' : ''}`}
+              title="Nhập tên sản phẩm để tìm kiếm hoặc paste ảnh (Ctrl+V) để tìm kiếm bằng hình ảnh"
             />
             <Camera
               className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 ${isImageSearchLoading ? 'animate-pulse' : ''}`}
               onClick={handleCameraClick}
+              title="Tìm kiếm bằng hình ảnh hoặc paste ảnh (Ctrl+V)"
             />
+            {isImageSearchLoading && (
+              <div className="absolute left-3 -bottom-5 text-xs text-gray-500">
+                Dang tim kiem...
+              </div>
+            )}
           </form>
           <SuggestionDropdown />
         </div>

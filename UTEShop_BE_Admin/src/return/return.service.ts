@@ -55,7 +55,13 @@ export class ReturnService {
 
     // Duyệt yêu cầu hoàn trả
     async approve(id: string, adminNote: string = '') {
-        const returnRequest = await this.returnRequestModel.findById(id);
+        const returnRequest = await this.returnRequestModel
+            .findById(id)
+            .populate({
+                path: 'order',
+                select: 'totalPrice items usedPointsAmount voucherDiscount shippingInfo'
+            });
+        
         if (!returnRequest) {
             throw new NotFoundException('Không tìm thấy yêu cầu hoàn trả');
         }
@@ -64,14 +70,25 @@ export class ReturnService {
             throw new BadRequestException('Yêu cầu này đã được xử lý');
         }
 
-        // Hoàn lại giá gốc của đơn hàng (refundAmount = giá sản phẩm trước voucher/điểm)
-        // Đây là giá trị thực tế của sản phẩm, không phụ thuộc vào voucher hay điểm đã dùng
-        const pointsToAdd = returnRequest.refundAmount;
+        // Tính refundAmount chính xác: ưu tiên order.totalPrice (bao gồm ship)
+        // fallback về refundAmount từ DB nếu không có totalPrice
+        let pointsToAdd = 0;
+        const order = returnRequest.order as any;
+        
+        if (order && order.totalPrice && order.totalPrice > 0) {
+            pointsToAdd = order.totalPrice;
+            console.log(`💰 [RETURN] Using order.totalPrice: ${pointsToAdd}`);
+        } else {
+            pointsToAdd = returnRequest.refundAmount || 0;
+            console.log(`💰 [RETURN] Using refundAmount from DB: ${pointsToAdd}`);
+        }
 
         // Chỉ gọi API cộng điểm nếu có điểm cần cộng
         if (pointsToAdd > 0) {
             try {
                 const userBackendUrl = process.env.USER_BACKEND_URL || 'http://localhost:5000';
+                console.log(`💰 [RETURN] Adding ${pointsToAdd} points to user ${returnRequest.user}`);
+                
                 await axios.post(`${userBackendUrl}/api/internal/add-points`, {
                     userId: returnRequest.user.toString(),
                     points: pointsToAdd,

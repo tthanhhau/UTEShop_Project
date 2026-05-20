@@ -8,6 +8,8 @@ import User from "../models/user.js"; // Import User model
 import mongoose from "mongoose";
 import PointTransaction from "../models/PointTransaction.js";
 import Configuration from "../models/Configuration.js";
+import Voucher from "../models/voucher.js";
+import UserVoucher from "../models/userVoucher.js";
 class OrderController {
   // Create a new order
   createOrder = asyncHandler(async (req, res) => {
@@ -163,19 +165,34 @@ class OrderController {
         }
       }
 
-      // Tính toán tổng tiền cuối cùng (bao gồm phí vận chuyển)
-      const finalTotal =
-        subtotal - voucherDiscountAmount - usedPointsDeduction + shippingFee;
+      const payableBeforePoints = Math.max(
+        0,
+        subtotal - voucherDiscountAmount + shippingFee
+      );
+      const appliedPointsDeduction = Math.min(
+        Math.max(0, usedPointsDeduction),
+        payableBeforePoints
+      );
+      const finalTotal = payableBeforePoints - appliedPointsDeduction;
+
+      if (appliedPointsDeduction !== usedPointsDeduction) {
+        console.warn("⚠️ Adjusted usedPointsAmount to payable amount:", {
+          requested: usedPointsDeduction,
+          applied: appliedPointsDeduction,
+          payableBeforePoints,
+        });
+      }
+
       console.log("🚚 Shipping fee:", shippingFee);
       console.log("💵 Final total:", finalTotal);
 
       // ✅ TRỪ ĐIỂM CỦA USER (cũng dùng atomic update)
       console.log('🔍 DEBUG - usedPointsAmount:', usedPointsAmount, 'type:', typeof usedPointsAmount);
 
-      if (usedPointsAmount > 0) {
+      if (appliedPointsDeduction > 0) {
         // Chuyển đổi từ VND sang điểm (1 VND = 1 điểm)
-        const pointsUsed = Math.floor(usedPointsAmount / POINT_TO_VND);
-        console.log('🔍 DEBUG - Will deduct points:', pointsUsed, 'from amount:', usedPointsAmount);
+        const pointsUsed = Math.floor(appliedPointsDeduction / POINT_TO_VND);
+        console.log('🔍 DEBUG - Will deduct points:', pointsUsed, 'from amount:', appliedPointsDeduction);
 
         const user = await User.findOneAndUpdate(
           {
@@ -204,7 +221,7 @@ class OrderController {
             user: userId,
             type: 'REDEEMED',
             points: pointsUsed, // Lưu số dương, type REDEEMED đã thể hiện là sử dụng điểm
-            description: `Sử dụng ${pointsUsed} điểm để giảm ${usedPointsAmount.toLocaleString()}đ cho đơn hàng`,
+            description: `Sử dụng ${pointsUsed} điểm để giảm ${appliedPointsDeduction.toLocaleString()}đ cho đơn hàng`,
             order: null // Sẽ update sau khi order được tạo
           }], { session });
 
@@ -221,7 +238,16 @@ class OrderController {
       let onlinePaymentInfo = {};
       let initialPaymentStatus = "unpaid";
 
-      if (paymentMethod === "MOMO" && momoOrderId) {
+      if (paymentMethod === "MOMO" && Number(finalTotal) === 0) {
+        onlinePaymentInfo = {
+          transactionId: momoRequestId || momoOrderId || `ZERO_${Date.now()}`,
+          gateway: "MOMO",
+          paidAt: new Date(),
+          amount: 0,
+        };
+
+        initialPaymentStatus = "paid";
+      } else if (paymentMethod === "MOMO" && momoOrderId) {
         const requestIdForQuery = momoRequestId || momoOrderId;
         const paymentResult = await momoService.queryTransaction(
           momoOrderId,
@@ -269,7 +295,7 @@ class OrderController {
         totalPrice: finalTotal,
         voucher: voucher || null,
         voucherDiscount: voucherDiscount || 0,
-        usedPointsAmount: usedPointsAmount || 0,
+        usedPointsAmount: appliedPointsDeduction || 0,
         shippingAddress: shippingAddress.trim(),
         paymentMethod,
         paymentStatus: initialPaymentStatus,
@@ -295,7 +321,7 @@ class OrderController {
       await order.save({ session });
 
       // Update orderId vào PointTransaction nếu có sử dụng điểm
-      if (usedPointsAmount > 0) {
+      if (appliedPointsDeduction > 0) {
         await PointTransaction.updateOne(
           {
             user: userId,
@@ -343,7 +369,14 @@ class OrderController {
         }
 
         // 2. Tăng usesCount trong voucher
-        const voucherDoc = await Voucher.findById(voucher._id).session(session);
+        const voucherDoc = voucher._id
+          ? await Voucher.findById(voucher._id).session(session)
+          : await Voucher.findOne({ code: voucher.code }).session(session);
+
+        if (!voucherDoc) {
+          throw new Error(`Voucher not found for code: ${voucher.code}`);
+        }
+
         voucherDoc.usesCount = (voucherDoc.usesCount || 0) + 1;
         await voucherDoc.save({ session });
         console.log("✅ Voucher usesCount incremented");

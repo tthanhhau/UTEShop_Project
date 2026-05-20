@@ -422,7 +422,7 @@ class ChatbotService {
         const statusMap = {
           pending: "⏳ Chờ xác nhận",
           processing: "🔄 Đang xử lý",
-          prepared: "📦 Đã chuẩn bị",
+          preparing: "📦 Đang chuẩn bị",
           shipped: "🚚 Đang giao",
           delivered: "✅ Đã giao",
           cancelled: "❌ Đã hủy"

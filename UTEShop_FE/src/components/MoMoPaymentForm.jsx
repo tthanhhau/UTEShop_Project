@@ -47,6 +47,11 @@ const MoMoPaymentForm = ({
       });
 
       if (response.data.success) {
+        if (response.data.noPaymentRequired) {
+          await createOrderAfterPayment(response.data.orderId, response.data.requestId);
+          return;
+        }
+
         setPaymentUrl(response.data.payUrl);
         setQrCodeUrl(response.data.qrCodeUrl);
         setShowQR(true);
@@ -177,7 +182,7 @@ const MoMoPaymentForm = ({
             toDistrictId: selectedDistrict?.DistrictID,
             toWardCode: selectedWard?.WardCode,
             province: selectedProvince?.ProvinceName,
-            district: selectedDistrict?.DistrictName,
+            district: '',
             ward: selectedWard?.WardName,
             shippingFee: shippingFee || 0,
           },
@@ -210,7 +215,7 @@ const MoMoPaymentForm = ({
             toDistrictId: selectedDistrict?.DistrictID,
             toWardCode: selectedWard?.WardCode,
             province: selectedProvince?.ProvinceName,
-            district: selectedDistrict?.DistrictName,
+            district: '',
             ward: selectedWard?.WardName,
             shippingFee: shippingFee || 0,
           },

@@ -7,7 +7,7 @@ import elasticsearchService from '../src/services/elasticsearchService.js';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fashion_store';
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/test';
 
 async function syncElasticsearch() {
     try {
