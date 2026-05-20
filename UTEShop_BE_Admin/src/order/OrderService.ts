@@ -180,15 +180,10 @@ export class OrderService {
 
     // Gửi notification nếu status = "shipped"
     if (status === 'shipped') {
-      console.log('📦 [ADMIN] Status is "shipped", calling sendDeliveryConfirmationNotification...');
-      try {
-        await this.sendDeliveryConfirmationNotification(updatedOrder);
-        console.log('✅ [ADMIN] Notification sent successfully');
-      } catch (error: any) {
-        console.error('❌ [ADMIN] Failed to send notification:', error);
-        console.error('❌ [ADMIN] Error stack:', error.stack);
-        // Không throw error để không ảnh hưởng đến việc update order
-      }
+      console.log('📦 [ADMIN] Status is "shipped", calling sendDeliveryConfirmationNotification asynchronously...');
+      this.sendDeliveryConfirmationNotification(updatedOrder).catch(error => {
+        console.error('❌ [ADMIN] Failed to send notification async:', error);
+      });
     } else {
       console.log(`ℹ️ [ADMIN] Status is "${status}", skipping notification`);
     }

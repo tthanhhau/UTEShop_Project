@@ -102,7 +102,7 @@ router.get('/suggest', async (req, res) => {
 router.post('/sync/:productId', async (req, res) => {
     try {
         const { productId } = req.params;
-        const Product = require('../models/product');
+        const Product = (await import('../models/product.js')).default;
 
         const product = await Product.findById(productId)
             .populate('category', 'name')

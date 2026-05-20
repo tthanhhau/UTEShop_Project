@@ -8,6 +8,18 @@ import numpy as np
 import os
 from pymongo import MongoClient
 from bson import ObjectId
+from threading import Thread
+import datetime
+
+# Background update status tracker
+update_status = {
+    "running": False,
+    "last_started": None,
+    "last_completed": None,
+    "last_result": None,
+    "progress": "",
+    "error": None
+}
 
 app = Flask(__name__)
 CORS(app, origins=["*"])
@@ -87,15 +99,21 @@ def fetch_image_from_url(url, timeout=10):
         return None
 
 
-@app.route('/update-embeddings', methods=['POST'])
-def update_embeddings():
-    if embeddings_collection is None or products_collection is None:
-        return jsonify({
-            "success": False,
-            "error": "Database not connected"
-        }), 500
+def _update_embeddings_task():
+    """Background task to update embeddings - runs in a separate thread"""
+    global update_status
+    update_status["running"] = True
+    update_status["last_started"] = datetime.datetime.utcnow().isoformat() + "Z"
+    update_status["error"] = None
+    update_status["progress"] = "Starting..."
 
     try:
+        if embeddings_collection is None or products_collection is None:
+            update_status["error"] = "Database not connected"
+            update_status["running"] = False
+            return
+
+        update_status["progress"] = "Fetching products from database..."
         products = list(
             products_collection.find(
                 {
@@ -106,17 +124,19 @@ def update_embeddings():
         )
 
         if not products:
-            return jsonify({
-                "success": False,
-                "error": "No products with images found"
-            }), 404
+            update_status["error"] = "No products with images found"
+            update_status["running"] = False
+            return
 
+        update_status["progress"] = f"Found {len(products)} products. Loading model..."
         model = get_model()
 
         embeddings = []
         product_ids = []
         product_info = {}
         skipped = 0
+        total_images = sum(len(p.get("images", [])) for p in products)
+        processed = 0
 
         for product in products:
             product_id = str(product.get("_id"))
@@ -130,10 +150,12 @@ def update_embeddings():
             }
 
             for image_url in images:
+                processed += 1
                 if not image_url:
                     skipped += 1
                     continue
 
+                update_status["progress"] = f"Encoding image {processed}/{total_images} (skipped: {skipped})"
                 image = fetch_image_from_url(image_url)
                 if image is None:
                     skipped += 1
@@ -144,37 +166,81 @@ def update_embeddings():
                 product_ids.append(product_id)
 
         if not embeddings:
-            return jsonify({
-                "success": False,
-                "error": "No valid images to embed"
-            }), 500
+            update_status["error"] = "No valid images to embed"
+            update_status["running"] = False
+            return
 
+        update_status["progress"] = f"Saving {len(embeddings)} embeddings to database..."
         payload = {
             "_id": "all_embeddings_multi",
             "embeddings": embeddings,
             "product_ids": product_ids,
             "product_info": product_info,
             "model_name": CLIP_MODEL_NAME,
-            "updated_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "updated_at": datetime.datetime.utcnow().isoformat() + "Z",
         }
 
         embeddings_collection.replace_one({"_id": "all_embeddings_multi"}, payload, upsert=True)
 
-        return jsonify({
+        update_status["last_result"] = {
             "success": True,
             "message": "Embeddings updated",
             "count": len(embeddings),
             "skipped": skipped
-        })
-    except Exception as exc:
-        print(f"❌ Update embeddings error: {exc}")
-        import traceback
+        }
+        update_status["progress"] = f"Done! {len(embeddings)} embeddings saved."
+        update_status["last_completed"] = datetime.datetime.utcnow().isoformat() + "Z"
+        print(f"✅ Background update complete: {len(embeddings)} embeddings, {skipped} skipped")
 
+    except Exception as exc:
+        print(f"❌ Background update embeddings error: {exc}")
+        import traceback
         traceback.print_exc()
+        update_status["error"] = str(exc)
+        update_status["last_result"] = {"success": False, "error": str(exc)}
+    finally:
+        update_status["running"] = False
+
+
+@app.route('/update-embeddings', methods=['POST'])
+def update_embeddings():
+    global update_status
+
+    if update_status["running"]:
         return jsonify({
             "success": False,
-            "error": str(exc)
+            "message": "Update already in progress",
+            "progress": update_status["progress"]
+        }), 409
+
+    if embeddings_collection is None or products_collection is None:
+        return jsonify({
+            "success": False,
+            "error": "Database not connected"
         }), 500
+
+    # Start background thread
+    thread = Thread(target=_update_embeddings_task, daemon=True)
+    thread.start()
+
+    return jsonify({
+        "success": True,
+        "message": "Embedding update started in background. Use /update-status to check progress.",
+        "status_url": "/update-status"
+    }), 202
+
+
+@app.route('/update-status', methods=['GET'])
+def get_update_status():
+    return jsonify({
+        "success": True,
+        "running": update_status["running"],
+        "progress": update_status["progress"],
+        "last_started": update_status["last_started"],
+        "last_completed": update_status["last_completed"],
+        "last_result": update_status["last_result"],
+        "error": update_status["error"]
+    })
 
 @app.route('/', methods=['GET'])
 def index():

@@ -18,15 +18,15 @@ async function addSizesToProducts() {
     console.log(`📦 Tìm thấy ${categories.length} categories`);
 
     // Tìm category giày (có thể là "Giày", "Shoes", "Footwear", etc.)
-    const shoeCategories = categories.filter(cat => 
-      cat.name.toLowerCase().includes('giày') || 
+    const shoeCategories = categories.filter(cat =>
+      cat.name.toLowerCase().includes('giày') ||
       cat.name.toLowerCase().includes('shoe') ||
       cat.name.toLowerCase().includes('footwear')
     );
 
     // Tìm category quần áo (áo, quần, etc.)
-    const clothingCategories = categories.filter(cat => 
-      cat.name.toLowerCase().includes('áo') || 
+    const clothingCategories = categories.filter(cat =>
+      cat.name.toLowerCase().includes('áo') ||
       cat.name.toLowerCase().includes('quần') ||
       cat.name.toLowerCase().includes('shirt') ||
       cat.name.toLowerCase().includes('pant') ||
@@ -47,15 +47,13 @@ async function addSizesToProducts() {
 
       for (const product of shoeProducts) {
         if (!product.sizes || product.sizes.length === 0) {
-          // Tạo variants cho mỗi size
-          const variants = SHOE_SIZES.map(size => ({
+          // Tạo sizes theo schema (size + stock)
+          const sizes = SHOE_SIZES.map(size => ({
             size,
             stock: Math.floor(product.stock / SHOE_SIZES.length) || 5,
-            sku: `${product._id}-${size}`
           }));
 
-          product.sizes = SHOE_SIZES;
-          product.variants = variants;
+          product.sizes = sizes;
           await product.save();
           updatedCount++;
           console.log(`✅ Đã thêm size giày cho: ${product.name}`);
@@ -71,15 +69,13 @@ async function addSizesToProducts() {
 
       for (const product of clothingProducts) {
         if (!product.sizes || product.sizes.length === 0) {
-          // Tạo variants cho mỗi size
-          const variants = CLOTHING_SIZES.map(size => ({
+          // Tạo sizes theo schema (size + stock)
+          const sizes = CLOTHING_SIZES.map(size => ({
             size,
             stock: Math.floor(product.stock / CLOTHING_SIZES.length) || 5,
-            sku: `${product._id}-${size}`
           }));
 
-          product.sizes = CLOTHING_SIZES;
-          product.variants = variants;
+          product.sizes = sizes;
           await product.save();
           updatedCount++;
           console.log(`✅ Đã thêm size quần áo cho: ${product.name}`);
@@ -88,7 +84,7 @@ async function addSizesToProducts() {
     }
 
     console.log(`\n🎉 Hoàn thành! Đã cập nhật ${updatedCount} sản phẩm`);
-    
+
   } catch (error) {
     console.error('❌ Lỗi:', error);
   } finally {
