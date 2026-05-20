@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Notification from "../models/Notification.js";
 import Order from "../models/order.js";
 
@@ -50,8 +51,6 @@ async function checkAndCreateShippedNotifications(userId, io, sendNotificationTo
     console.log(`🔍 [checkAndCreateShippedNotifications] User ID type: ${typeof userId}`);
 
     // Tìm tất cả đơn hàng "shipped" của user
-    // Convert userId sang ObjectId nếu cần
-    const mongoose = require('mongoose');
     let userIdQuery = userId;
     if (typeof userId === 'string' && mongoose.Types.ObjectId.isValid(userId)) {
         userIdQuery = new mongoose.Types.ObjectId(userId);
@@ -137,8 +136,6 @@ export const testCreateShippedNotification = async (req, res) => {
         console.log(`🧪 [TEST] ========== START TEST ==========`);
         console.log(`🧪 [TEST] Force creating notification for user: ${userId}`);
 
-        // Kiểm tra tất cả đơn hàng của user
-        const mongoose = require('mongoose');
         let userIdQuery = userId;
         if (typeof userId === 'string' && mongoose.Types.ObjectId.isValid(userId)) {
             userIdQuery = new mongoose.Types.ObjectId(userId);
