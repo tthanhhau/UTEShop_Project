@@ -68,9 +68,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         });
       }
 
-      // Reload trang ngay lập tức để đảm bảo hiển thị đúng trạng thái mới nhất
-      // Đặc biệt quan trọng khi chuyển sang "delivered" với COD (backend tự động set paymentStatus = 'paid')
-      window.location.reload();
+      // Tải lại chi tiết đơn hàng mới nhất và cập nhật UI mượt mà
+      await fetchOrderDetail();
+      setSaving(false);
     } catch (error) {
       console.error('Error updating order:', error);
       alert('Lỗi cập nhật!');

@@ -147,20 +147,9 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      // Tìm order hiện tại để kiểm tra paymentMethod
-      const currentOrder = orders.find((o) => o._id === orderId);
-      const isCOD = currentOrder?.paymentMethod === 'COD';
-
       await axios.put(`/admin/orders/${orderId}/status`, { status: newStatus });
 
-      // Nếu chuyển sang "delivered" với COD, backend sẽ tự động set paymentStatus = 'paid'
-      // Reload trang để đảm bảo hiển thị đúng trạng thái mới nhất
-      if (newStatus === 'delivered' && isCOD) {
-        window.location.reload();
-        return;
-      }
-
-      // Các trường hợp khác: fetch lại data từ server
+      // Fetch lại dữ liệu mới nhất từ server và cập nhật hiển thị mượt mà
       await fetchOrders(filters.search, filters.status, filters.paymentStatus, filters.paymentMethod, pagination.currentPage, pagination.pageSize);
       await fetchStats();
     } catch (error) {
