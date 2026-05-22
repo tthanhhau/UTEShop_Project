@@ -122,6 +122,7 @@ from pyngrok import ngrok, conf
 # NGROK TOKEN - Lay tu https://dashboard.ngrok.com/get-started/your-authtoken
 # ===================================================================
 NGROK_TOKEN = "3DvYyODT65XNkitRzkb3qebnxo5_72G4M825U1FZi5BTLVFgv"
+NGROK_DOMAIN = "lure-reprint-october.ngrok-free.dev"
 
 conf.get_default().auth_token = NGROK_TOKEN
 conf.get_default().region = "ap"  # Server Chau A cho nhanh
@@ -132,7 +133,7 @@ try:
 except:
     pass
 
-public_url = ngrok.connect(8000).public_url
+public_url = ngrok.connect(8000, domain=NGROK_DOMAIN).public_url
 
 print("\n" + "=" * 60)
 print(f"  LINK CHATBOT API: {public_url}")

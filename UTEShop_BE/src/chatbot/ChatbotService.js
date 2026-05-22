@@ -105,11 +105,18 @@ class ChatbotService {
         if (category) query.category = category._id;
       }
 
-      // Nếu có keyword, luôn tìm theo tên sản phẩm, NGOẠI TRỪ khi keyword chính xác là tên danh mục (ví dụ: "phụ kiện")
+      // Tinh chỉnh keyword: Loại bỏ tên category và brand khỏi keyword để tìm kiếm chính xác hơn
       if (keyword) {
-        const isGeneralCategory = categoryFound && keyword === categoryFound.name.toLowerCase();
-        if (!isGeneralCategory) {
-          query.name = { $regex: keyword, $options: "i" };
+        let cleanKeyword = keyword;
+        if (categoryFound) {
+          cleanKeyword = cleanKeyword.replace(new RegExp(categoryFound.name, 'gi'), "").trim();
+        }
+        if (filters.brand) {
+          cleanKeyword = cleanKeyword.replace(new RegExp(filters.brand, 'gi'), "").trim();
+        }
+        
+        if (cleanKeyword.length > 0) {
+          query.name = { $regex: cleanKeyword, $options: "i" };
         }
       }
 
