@@ -282,7 +282,7 @@ with gr.Blocks() as demo:
     )
 
 # ==========================================
-# KHỞI TẠO NGROK STATIC DOMAIN (LINK CỐ ĐỊNH)
+# KHỞI TẠO NGROK STATIC DOMAIN (CHO TRY-ON)
 # ==========================================
 import subprocess
 import sys
@@ -293,34 +293,33 @@ subprocess.run([sys.executable, "-m", "pip", "install", "-q", "pyngrok"])
 # pyrefly: ignore [missing-import]
 from pyngrok import ngrok, conf
 
-# ⚠️ BẠN HÃY THAY TOKEN VÀ DOMAIN CỦA BẠN VÀO ĐÂY:
-NGROK_TOKEN = "3DvYyODT65XNkitRzkb3qebnxo5_72G4M825U1FZi5BTLVFgv"
-NGROK_DOMAIN = "lure-reprint-october.ngrok-free.dev"
+# ⚠️ LƯU Ý QUAN TRỌNG: 
+# Vì tài khoản Ngrok số 1 của bạn đã dùng cho Chatbot.
+# Bạn hãy dùng 1 Gmail khác tạo tài khoản Ngrok thứ 2 để lấy Token và Domain mới dán vào đây nhé!
+NGROK_TOKEN = "3E5Nam2fwPY4jT9k6J2cLCpdfpd_7Xj3APUq6ArcqGQmfc12M"
+NGROK_DOMAIN = "usage-static-outmatch.ngrok-free.dev"
 
 # Cấu hình ngrok
 conf.get_default().auth_token = NGROK_TOKEN
-conf.get_default().region = "ap" # Chọn server Châu Á cho nhanh
+conf.get_default().region = "ap"
 
 try:
-    # Đóng các tunnel cũ (nếu có)
     ngrok.kill()
-    
-    # Mở tunnel mới với domain tĩnh trỏ vào port 7860 (Port mặc định của Gradio)
     public_url = ngrok.connect(7860, domain=NGROK_DOMAIN).public_url
     
     print("\n" + "="*60)
-    print("🚀 LINK CỐ ĐỊNH (COPY DÁN VÀO RENDER .ENV 1 LẦN DUY NHẤT):")
+    print("🚀 LINK CỐ ĐỊNH (COPY DÁN VÀO RENDER .ENV: COLAB_TRYON_URL):")
     print(f"👉 {public_url}")
     print("="*60 + "\n")
 except Exception as e:
     print(f"❌ Lỗi khởi tạo Ngrok: {e}")
-    print("Lưu ý: Nếu lỗi 'domain not found', hãy kiểm tra lại cấu hình trên trang chủ Ngrok.")
+    print("Lưu ý: Nhớ điền đúng Token và Domain tĩnh của tài khoản số 2!")
 
 # Khởi chạy Gradio ở port 7860
 print("=" * 50)
 print("HỆ THỐNG SẴN SÀNG! Đang khởi động Gradio Server...")
 print("=" * 50)
 
-# Chạy server không cần tạo link share=True nữa vì đã có Ngrok
+# Chạy server không dùng share=True nữa vì đã có Ngrok domain tĩnh
 demo.queue(max_size=10)
 demo.launch(server_port=7860, share=False, debug=True)

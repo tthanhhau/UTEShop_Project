@@ -56,7 +56,10 @@ async function callColabAPI(personBuffer, clothBuffer, clothType) {
     const response = await Promise.race([
         fetch(`${COLAB_URL}/api/tryon_b64`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true"
+            },
             body: JSON.stringify(payload),
         }),
         new Promise((_, reject) =>

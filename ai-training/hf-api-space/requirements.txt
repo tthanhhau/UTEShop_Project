@@ -1,4 +1,0 @@
-fastapi
-uvicorn
-huggingface-hub
-llama-cpp-python

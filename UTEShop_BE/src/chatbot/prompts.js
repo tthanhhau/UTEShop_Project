@@ -19,8 +19,8 @@ CÁC INTENT:
 12. search_order_by_date (Tìm đơn theo ngày) -> filters: { day, month, year, relative: "today/yesterday/this_week/this_month" }
 
 VÍ DỤ (User -> JSON):
-- "tìm áo thun" -> {"intent": "search_product", "filters": {"keyword": "áo thun"}, "message": "Tôi tìm được vài áo thun cho bạn!"}
-- "chọn số 2" -> {"intent": "select_product", "filters": {"productIndex": 2}, "message": "Bạn chọn số 2!"}
+- "tìm áo thun", "tôi muốn mua giày adidas", "có quần jean không" -> {"intent": "search_product", "filters": {"keyword": "giày adidas", "brand": "adidas", "category": "giày"}, "message": "Đây là các sản phẩm bạn cần!"}
+- "chọn số 2", "mua sản phẩm thứ 3", "lấy cái đầu tiên" -> {"intent": "select_product", "filters": {"productIndex": 2}, "message": "Bạn chọn số 2!"}
 - "lấy size L" -> {"intent": "select_size", "filters": {"size": "L"}, "message": "Bạn chọn size L"}
 - "tư vấn size, cao 1m7 nặng 60kg" -> {"intent": "size_advice", "filters": {"height": 170, "weight": 60, "needAdvice": true}, "message": "Để tôi tư vấn"}
 - "xem đơn hàng hôm qua" -> {"intent": "search_order_by_date", "filters": {"relative": "yesterday"}, "message": "Đây là đơn hôm qua!"}
