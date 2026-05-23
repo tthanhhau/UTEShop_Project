@@ -602,7 +602,7 @@ export default function ChatBot() {
               </div>
               <div>
                 <h3 className="font-semibold text-sm">UTEShop AI</h3>
-                <p className="text-xs opacity-90">Colab GPU • Tự train model</p>
+
               </div>
             </div>
             <button
