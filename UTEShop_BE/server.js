@@ -40,6 +40,7 @@ import similarProductRoutes from "./src/routes/similarProductRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
 import elasticsearchRoutes from "./src/routes/elasticsearchRoutes.js";
 import imageSearchRoutes from "./src/routes/imageSearchRoutes.js";
+import asrRoutes from "./src/routes/asrRoutes.js";
 
 const app = express();
 
@@ -133,6 +134,7 @@ app.use("/api/similar-products", similarProductRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/elasticsearch", elasticsearchRoutes);
 app.use("/api/image-search", imageSearchRoutes);
+app.use("/api/asr", asrRoutes);
 
 import virtualTryOnRoutes from "./src/routes/virtualTryOnRoutes.js";
 app.use("/api/try-on", virtualTryOnRoutes);

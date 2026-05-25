@@ -60,7 +60,7 @@ const TestimonialSection = () => {
 
   const handleProductClick = (productId) => {
     if (productId) {
-      navigate(`/product/${productId}`);
+      navigate(`/products/${productId}`);
     }
   };
 
