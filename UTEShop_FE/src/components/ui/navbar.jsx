@@ -9,6 +9,7 @@ import {
   Heart,
   ReceiptJapaneseYen,
   Camera,
+  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import { getCartItemCount } from "../../features/cart/cartSlice";
 import { NotificationBell } from "../NotificationBell";
 import api from "@/api/axiosConfig";
 import { searchByImage } from "@/api/imageSearchApi";
+import { transcribeAudio } from "@/api/asrApi";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -41,11 +43,20 @@ const Navbar = () => {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState(-1);
   const [isImageSearchLoading, setIsImageSearchLoading] = React.useState(false);
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [isTranscribing, setIsTranscribing] = React.useState(false);
+  const [asrError, setAsrError] = React.useState("");
   const [previewImage, setPreviewImage] = React.useState(null);
   const [pendingImageFile, setPendingImageFile] = React.useState(null);
   const fileInputRef = useRef(null);
   const searchContainerRef = useRef(null);
   const debounceRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const latestBlobRef = useRef(null);
+  const transcribeInFlightRef = useRef(false);
+  const latestTranscriptRef = useRef("");
 
   // Clear search khi route thay đổi (trừ trang products với search param)
   useEffect(() => {
@@ -62,6 +73,17 @@ const Navbar = () => {
       dispatch(getCartItemCount());
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   // Click outside to close suggestions
   useEffect(() => {
@@ -108,6 +130,178 @@ const Navbar = () => {
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(value);
     }, 300);
+  };
+
+  const getStatusMessage = () => {
+    if (asrError) return { text: asrError, className: "text-red-500" };
+    if (isImageSearchLoading) return { text: "Dang tim kiem...", className: "text-gray-500" };
+    if (isRecording) return { text: "Dang ghi am...", className: "text-gray-500" };
+    if (isTranscribing) return { text: "Dang nhan dang...", className: "text-gray-500" };
+    return null;
+  };
+
+  const normalizeSearchText = (value) => {
+    return (value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  const processTranscription = useCallback(async () => {
+    if (transcribeInFlightRef.current || !latestBlobRef.current) return;
+
+    const blobToTranscribe = latestBlobRef.current;
+    latestBlobRef.current = null;
+
+    transcribeInFlightRef.current = true;
+    setIsTranscribing(true);
+
+    try {
+      const response = await transcribeAudio(blobToTranscribe, { language: "vi" });
+      const text = (response?.text || "").trim();
+      if (text) {
+        latestTranscriptRef.current = text;
+        setSearchTerm(text);
+        fetchSuggestions(text);
+      }
+    } catch (error) {
+      console.error("ASR intermediate error:", error);
+    } finally {
+      transcribeInFlightRef.current = false;
+      setIsTranscribing(false);
+      if (latestBlobRef.current) {
+        processTranscription();
+      }
+    }
+  }, [fetchSuggestions]);
+
+  const enqueueTranscription = useCallback((blob) => {
+    if (!blob || blob.size < 1024) return;
+    latestBlobRef.current = blob;
+    processTranscription();
+  }, [processTranscription]);
+
+  const startRecording = async () => {
+    if (isRecording) return;
+    setAsrError("");
+    recordedChunksRef.current = [];
+    latestBlobRef.current = null;
+    latestTranscriptRef.current = "";
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const preferredType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "";
+
+      const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+          
+          // Create a combined blob of all chunks accumulated so far
+          const combinedBlob = new Blob(recordedChunksRef.current, { type: preferredType || "audio/webm" });
+          enqueueTranscription(combinedBlob);
+        }
+      };
+
+      recorder.onstop = async () => {
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+          mediaStreamRef.current = null;
+        }
+
+        setIsRecording(false);
+        setIsTranscribing(true);
+
+        // Final transcription of the fully accumulated audio
+        const finalBlob = new Blob(recordedChunksRef.current, { type: preferredType || "audio/webm" });
+        if (finalBlob.size < 1000) {
+          setAsrError("Ghi âm quá ngắn");
+          setIsTranscribing(false);
+          return;
+        }
+
+        try {
+          const response = await transcribeAudio(finalBlob, { language: "vi" });
+          const text = (response?.text || "").trim();
+
+          const finalText = text || latestTranscriptRef.current.trim();
+          if (!finalText) {
+            setAsrError("Không thể nhận dạng giọng nói");
+            setIsTranscribing(false);
+            return;
+          }
+
+          setSearchTerm(finalText);
+
+          const handleVoiceSearchResult = async () => {
+            try {
+              const res = await api.get(`/elasticsearch/suggest?q=${encodeURIComponent(finalText)}&limit=1`);
+              const product = res?.data?.data?.[0];
+              if (product) {
+                const normalizedQuery = normalizeSearchText(finalText);
+                const normalizedName = normalizeSearchText(product.name);
+                const isMatch = normalizedName === normalizedQuery || normalizedName.includes(normalizedQuery);
+                if (isMatch) {
+                  setShowSuggestions(false);
+                  navigate(`/products/${product._id}`);
+                  return;
+                }
+              }
+            } catch (error) {
+              console.error("Voice search suggest error:", error);
+            }
+
+            setShowSuggestions(false);
+            navigate(`/products?search=${encodeURIComponent(finalText)}`);
+          };
+
+          await handleVoiceSearchResult();
+        } catch (error) {
+          console.error("Final ASR error:", error);
+          const fallbackText = latestTranscriptRef.current.trim();
+          if (fallbackText) {
+            setShowSuggestions(false);
+            navigate(`/products?search=${encodeURIComponent(fallbackText)}`);
+          } else {
+            setAsrError("Không thể nhận dạng giọng nói");
+          }
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      recorder.start(2000);
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Microphone error:", error);
+      setAsrError("Khong the truy cap micro");
+      setIsRecording(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const handleVoiceToggle = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
 
   const dedupeByProductId = (items) => {
@@ -258,6 +452,8 @@ const Navbar = () => {
   const handleVoucherClick = () => navigate("/vouchers");
   const handleLogout = () => { dispatch(logout()); navigate("/"); };
 
+  const statusMessage = getStatusMessage();
+
 
   // Suggestion dropdown component
   const SuggestionDropdown = () => (
@@ -355,23 +551,28 @@ const Navbar = () => {
               onKeyDown={handleKeyDown}
               onPaste={handleImagePaste}
               onFocus={() => searchTerm && suggestions.length > 0 && setShowSuggestions(true)}
-              className={`pl-10 pr-12 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 ${previewImage ? 'pl-16' : ''}`}
+              className={`pl-10 pr-20 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 ${previewImage ? 'pl-16' : ''}`}
               title="Nhập tên sản phẩm để tìm kiếm hoặc paste ảnh (Ctrl+V) để tìm kiếm bằng hình ảnh"
             />
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSearch} className="hidden" />
+            <Mic
+              className={`absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 cursor-pointer transition-colors ${isRecording ? "text-red-500 animate-pulse" : "text-gray-400 hover:text-blue-600"}`}
+              onClick={handleVoiceToggle}
+              title={isRecording ? "Dung ghi am" : "Tim kiem bang giong noi"}
+            />
             <Camera
               className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 transition-colors ${isImageSearchLoading ? 'animate-pulse' : ''}`}
               onClick={handleCameraClick}
               title="Tìm kiếm bằng hình ảnh (click để chọn file hoặc paste ảnh: Ctrl+V)"
             />
-            {isImageSearchLoading && (
-              <div className="absolute left-3 -bottom-5 text-xs text-gray-500">
-                Dang tim kiem...
+            {isLoadingSuggestions && (
+              <div className="absolute right-16 top-1/2 -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
               </div>
             )}
-            {isLoadingSuggestions && (
-              <div className="absolute right-10 top-1/2 -translate-y-1/2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            {statusMessage && (
+              <div className={`absolute left-3 -bottom-5 text-xs ${statusMessage.className}`}>
+                {statusMessage.text}
               </div>
             )}
           </form>
@@ -458,17 +659,22 @@ const Navbar = () => {
               onKeyDown={handleKeyDown}
               onPaste={handleImagePaste}
               onFocus={() => searchTerm && suggestions.length > 0 && setShowSuggestions(true)}
-              className={`pl-10 pr-12 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 ${previewImage ? 'pl-16' : ''}`}
+              className={`pl-10 pr-20 py-2 w-full bg-gray-100 border-0 rounded-full focus:bg-white focus:ring-2 focus:ring-blue-500 ${previewImage ? 'pl-16' : ''}`}
               title="Nhập tên sản phẩm để tìm kiếm hoặc paste ảnh (Ctrl+V) để tìm kiếm bằng hình ảnh"
+            />
+            <Mic
+              className={`absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 cursor-pointer transition-colors ${isRecording ? "text-red-500 animate-pulse" : "text-gray-400 hover:text-blue-600"}`}
+              onClick={handleVoiceToggle}
+              title={isRecording ? "Dung ghi am" : "Tim kiem bang giong noi"}
             />
             <Camera
               className={`absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600 ${isImageSearchLoading ? 'animate-pulse' : ''}`}
               onClick={handleCameraClick}
               title="Tìm kiếm bằng hình ảnh hoặc paste ảnh (Ctrl+V)"
             />
-            {isImageSearchLoading && (
-              <div className="absolute left-3 -bottom-5 text-xs text-gray-500">
-                Dang tim kiem...
+            {statusMessage && (
+              <div className={`absolute left-3 -bottom-5 text-xs ${statusMessage.className}`}>
+                {statusMessage.text}
               </div>
             )}
           </form>
