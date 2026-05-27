@@ -23,38 +23,28 @@ export const getSimilarProducts = async (req, res) => {
 
         const limitNum = parseInt(limit);
 
-        // Tìm sản phẩm tương tự theo category và brand
-        const similarProducts = await Product.find({
+        // Tìm sản phẩm tương tự cùng category (cùng loại sản phẩm)
+        let similarProducts = await Product.find({
             _id: { $ne: productObjectId }, // Loại trừ sản phẩm hiện tại
-            $or: [
-                { category: currentProduct.category._id },
-                { brand: currentProduct.brand._id }
-            ]
+            category: currentProduct.category._id // Bắt buộc cùng loại sản phẩm
         })
             .populate('category', 'name')
             .populate('brand', 'name logo')
             .sort({ soldCount: -1, viewCount: -1 }) // Ưu tiên sản phẩm bán chạy và xem nhiều
-            .limit(limitNum)
+            .limit(limitNum * 2) // Lấy nhiều hơn một chút để lọc/sắp xếp theo brand nếu có
             .lean();
 
-        // Nếu không đủ sản phẩm theo category/brand, bổ sung từ category
-        if (similarProducts.length < limitNum) {
-            const remainingLimit = limitNum - similarProducts.length;
-            const existingIds = similarProducts.map(p => p._id.toString());
-            existingIds.push(productId);
-
-            const additionalProducts = await Product.find({
-                _id: { $nin: existingIds.map(id => new mongoose.Types.ObjectId(id)) },
-                category: currentProduct.category._id
-            })
-                .populate('category', 'name')
-                .populate('brand', 'name logo')
-                .sort({ soldCount: -1, viewCount: -1 })
-                .limit(remainingLimit)
-                .lean();
-
-            similarProducts.push(...additionalProducts);
+        // Sắp xếp ưu tiên sản phẩm cùng thương hiệu lên đầu tiên
+        if (currentProduct.brand) {
+            similarProducts.sort((a, b) => {
+                const aSameBrand = a.brand?._id?.toString() === currentProduct.brand._id.toString() ? 1 : 0;
+                const bSameBrand = b.brand?._id?.toString() === currentProduct.brand._id.toString() ? 1 : 0;
+                return bSameBrand - aSameBrand; // Đưa sản phẩm cùng brand lên đầu
+            });
         }
+
+        // Lấy đúng số lượng limit mong muốn
+        similarProducts = similarProducts.slice(0, limitNum);
 
         console.log('✅ Found', similarProducts.length, 'similar products');
 
