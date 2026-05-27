@@ -11,6 +11,7 @@ import ProductStats from "../components/ProductStats";
 import SimilarProducts from "../components/SimilarProducts";
 import ReviewSection from "../components/ReviewSection";
 import VirtualTryOnModal from "../components/VirtualTryOnModal";
+import { useAuthModal } from "../context/AuthModalContext";
 
 // Tạm thời mock toast nếu chưa có
 const toast = {
@@ -24,6 +25,7 @@ export default function ProductDetailPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
+  const { openLoginModal } = useAuthModal();
   const { user } = useSelector((state) => state.auth);
   const { addingToCart } = useSelector((state) => state.cart);
 
@@ -121,7 +123,7 @@ export default function ProductDetailPage() {
     // Kiểm tra đăng nhập
     if (!user) {
       alert("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
-      navigate("/login", { state: { from: location } });
+      openLoginModal();
       return;
     }
 
@@ -168,7 +170,7 @@ export default function ProductDetailPage() {
     if (!user) {
       alert("Vui lòng đăng nhập để thanh toán");
 
-      navigate("/login", { state: { from: location } });
+      openLoginModal();
 
       return;
     }

@@ -27,6 +27,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useCartNotifications } from "../../hooks/useCartNotifications";
 import { getCartItemCount } from "../../features/cart/cartSlice";
 import { NotificationBell } from "../NotificationBell";
+import { useAuthModal } from "../../context/AuthModalContext";
 import api from "@/api/axiosConfig";
 import { searchByImage } from "@/api/imageSearchApi";
 import { transcribeAudio } from "@/api/asrApi";
@@ -35,6 +36,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const { openLoginModal } = useAuthModal();
   const user = useSelector((state) => state.auth.user);
   const { badgeCount } = useCartNotifications();
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -616,7 +618,7 @@ const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" className="hover:bg-gray-100" onClick={() => navigate("/login")}>
+            <Button variant="ghost" className="hover:bg-gray-100" onClick={openLoginModal}>
               <User className="h-5 w-5 text-gray-700 mr-1" />
               <span className="text-gray-700 font-medium">Login</span>
             </Button>
