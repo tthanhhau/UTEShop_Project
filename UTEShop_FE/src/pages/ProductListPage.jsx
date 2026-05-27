@@ -295,7 +295,7 @@ export default function ProductListPage() {
                 {/* Filter Section */}
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 mb-6 shadow-sm">
                     {/* Row 1: Dropdowns */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         {/* Category Filter */}
                         <div className="relative">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -334,39 +334,6 @@ export default function ProductListPage() {
                                     </option>
                                 ))}
                             </select>
-                        </div>
-
-                        {/* Price Range */}
-                        <div className="relative">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                <i className="fas fa-dollar-sign mr-2 text-green-600"></i>
-                                Khoảng giá
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    min="0"
-                                    step="1000"
-                                    value={priceMinInput}
-                                    onChange={(e) => setPriceMinInput(e.target.value)}
-                                    onBlur={() => commitPriceChange('minPrice', priceMinInput)}
-                                    placeholder="Giá từ"
-                                    className="w-full px-3 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
-                                />
-                                <span className="text-gray-400">-</span>
-                                <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    min="0"
-                                    step="1000"
-                                    value={priceMaxInput}
-                                    onChange={(e) => setPriceMaxInput(e.target.value)}
-                                    onBlur={() => commitPriceChange('maxPrice', priceMaxInput)}
-                                    placeholder="đến"
-                                    className="w-full px-3 py-3 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm"
-                                />
-                            </div>
                         </div>
 
                         {/* Rating Filter */}
