@@ -7,10 +7,9 @@ import { sendMail } from "./mailer.js";
 const userSocketMap = new Map();
 
 export const initializeSocket = (httpServer) => {
-  // Lấy CORS origin từ environment variable hoặc dùng default cho development
   const corsOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
-    : ["http://localhost:5173"];
+    : ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001"];
 
   console.log('🔌 Socket.IO CORS origins:', corsOrigins);
 
@@ -30,18 +29,40 @@ export const initializeSocket = (httpServer) => {
     }
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
       if (err) {
-        return next(new Error("Authentication error: Invalid token"));
+        // Thử xác thực với secret của Admin nếu token chính thất bại
+        jwt.verify(token, "uteshop-admin-secret-key-2024", (err2, decoded2) => {
+          if (err2) {
+            return next(new Error("Authentication error: Invalid token"));
+          }
+          socket.userId = decoded2.sub || decoded2.id || decoded2._id;
+          next();
+        });
+      } else {
+        socket.userId = decoded.id || decoded._id || decoded.sub; // Gắn userId vào object socket (hỗ trợ cả id/sub)
+        next();
       }
-      socket.userId = decoded.id; // Gắn userId vào object socket
-      next();
     });
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     console.log(`✅ User connected: ${socket.userId}, socketId: ${socket.id}`);
 
     // Lưu lại kết nối của người dùng
     userSocketMap.set(socket.userId, socket.id);
+    
+    // Khách hàng tham gia room của riêng mình
+    socket.join(`user_${socket.userId}`);
+
+    // Kiểm tra xem user có phải admin không để đưa vào room admins
+    try {
+      const user = await User.findById(socket.userId);
+      if (user && user.role === "admin") {
+        socket.join("admins");
+        console.log(`👑 Admin connected: ${socket.userId} joined admins room`);
+      }
+    } catch (err) {
+      console.error("Socket admin check error:", err);
+    }
 
     socket.on("disconnect", () => {
       console.log(`❌ User disconnected: ${socket.userId}`);

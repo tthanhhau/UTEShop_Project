@@ -22,7 +22,7 @@ export const requireAuth = async (req, res, next) => {
     //console.log('🔍 AUTH DEBUG - Decoded user:', decoded);
 
     // Lấy thông tin user từ database để đảm bảo dữ liệu mới nhất
-    const user = await User.findById(decoded._id || decoded.id).select('-password');
+    const user = await User.findById(decoded._id || decoded.id || decoded.sub).select('-password');
 
     if (!user) {
       return res.status(401).json({

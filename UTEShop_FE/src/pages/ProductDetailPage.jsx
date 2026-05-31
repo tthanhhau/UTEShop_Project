@@ -423,6 +423,31 @@ export default function ProductDetailPage() {
               >
                 Thanh toán COD ngay
               </button>
+
+              <button
+                onClick={() => {
+                  if (!user) {
+                    alert("Vui lòng đăng nhập để chat với shop!");
+                    openLoginModal();
+                    return;
+                  }
+                  window.dispatchEvent(
+                    new CustomEvent("open-customer-chat", {
+                      detail: {
+                        product: {
+                          _id: product._id,
+                          name: product.name,
+                          image: product.images?.[0] || product.image,
+                          price: product.price
+                        }
+                      }
+                    })
+                  );
+                }}
+                className="w-full bg-teal-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-teal-700 transition-colors"
+              >
+                Liên hệ shop tư vấn
+              </button>
             </div>
           ) : (
             <div className="text-center py-4">
