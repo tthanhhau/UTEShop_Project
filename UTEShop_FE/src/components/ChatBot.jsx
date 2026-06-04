@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { FaComments, FaTimes, FaPaperPlane, FaRobot, FaShoppingCart, FaCheck, FaBox, FaTruck, FaCheckCircle, FaClock, FaTimesCircle } from "react-icons/fa";
 import axios from "../api/axiosConfig";
 
-// Dùng sessionStorage để mỗi tab mới sẽ bắt đầu chat mới (không load lịch sử cũ)
+// Dùng localStorage để lưu trữ phiên chat bền vững (không bị mất khi tắt máy hoặc đóng trình duyệt)
 const GUEST_TOKEN_KEY = "uteshop_guest_token";
 const SESSION_KEY = "uteshop_chat_session";
 const PENDING_PURCHASE_KEY = "uteshop_pending_purchase";
@@ -40,10 +40,10 @@ export default function ChatBot() {
   }, [messages]);
 
   // Khởi tạo sessionId và guestToken
-  // Dùng sessionStorage để mỗi tab mới bắt đầu chat mới
+  // Dùng localStorage để lưu trữ phiên chat bền vững
   useEffect(() => {
-    const savedSession = sessionStorage.getItem(SESSION_KEY);
-    const savedGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY);
+    const savedSession = localStorage.getItem(SESSION_KEY);
+    const savedGuestToken = localStorage.getItem(GUEST_TOKEN_KEY);
 
     if (savedSession) setSessionId(savedSession);
     if (savedGuestToken && !user) setGuestToken(savedGuestToken);
@@ -54,11 +54,11 @@ export default function ChatBot() {
     const mergeAndLoadHistory = async () => {
       // Chỉ merge khi user vừa đăng nhập (từ null -> có user)
       if (user && !prevUserRef.current) {
-        const savedGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY);
+        const savedGuestToken = localStorage.getItem(GUEST_TOKEN_KEY);
         if (savedGuestToken) {
           try {
             await axios.post("/chatbot/merge", { guestToken: savedGuestToken });
-            sessionStorage.removeItem(GUEST_TOKEN_KEY);
+            localStorage.removeItem(GUEST_TOKEN_KEY);
             setGuestToken(null);
           } catch (error) {
             console.error("Error merging chat:", error);
@@ -121,7 +121,7 @@ export default function ChatBot() {
     if (isOpen && !sessionId) {
       const newSessionId = `session_${Date.now()}`;
       setSessionId(newSessionId);
-      sessionStorage.setItem(SESSION_KEY, newSessionId);
+      localStorage.setItem(SESSION_KEY, newSessionId);
     }
   }, [isOpen, sessionId]);
 
@@ -130,12 +130,12 @@ export default function ChatBot() {
     const processPendingPurchase = async () => {
       if (!user) return;
 
-      const pendingPurchase = sessionStorage.getItem(PENDING_PURCHASE_KEY);
+      const pendingPurchase = localStorage.getItem(PENDING_PURCHASE_KEY);
       if (!pendingPurchase) return;
 
       try {
         const items = JSON.parse(pendingPurchase);
-        sessionStorage.removeItem(PENDING_PURCHASE_KEY);
+        localStorage.removeItem(PENDING_PURCHASE_KEY);
 
         // Kiểm tra xem là array (nhiều sản phẩm) hay object (1 sản phẩm - format cũ)
         if (Array.isArray(items)) {
@@ -207,10 +207,10 @@ export default function ChatBot() {
 
       const { data, guestToken: newGuestToken } = response.data;
 
-      // Lưu guestToken nếu chưa đăng nhập
+      // Lưu guestToken nếu chưa đăng nhập (dùng localStorage để lưu trữ phiên chat bền vững)
       if (newGuestToken && !user) {
         setGuestToken(newGuestToken);
-        sessionStorage.setItem(GUEST_TOKEN_KEY, newGuestToken);
+        localStorage.setItem(GUEST_TOKEN_KEY, newGuestToken);
       }
 
       // Hiển thị response với hiệu ứng typing từng ký tự
@@ -354,7 +354,7 @@ export default function ChatBot() {
           quantity: item.quantity,
           image: item.image,
         }));
-        sessionStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify(allItems));
+        localStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify(allItems));
         console.log("🛒 Saved pending purchase with", allItems.length, "items");
       }
 
@@ -422,7 +422,7 @@ export default function ChatBot() {
     const availableSize = product.sizes?.find((s) => s.stock > 0)?.size || "Free Size";
 
     if (!user) {
-      sessionStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify({
+      localStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify({
         productId: product._id,
         name: product.name,
         price: product.price,

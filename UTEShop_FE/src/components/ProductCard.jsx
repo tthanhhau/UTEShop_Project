@@ -5,10 +5,12 @@ import { ShoppingCart } from 'lucide-react';
 import { addToCart } from '../features/cart/cartSlice';
 import { formatPrice } from '../utils/formatPrice';
 import FavoriteButton from './FavoriteButton';
+import { useAuthModal } from '../context/AuthModalContext';
 
 const ProductCard = ({ product }) => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const { openLoginModal } = useAuthModal();
     const { user } = useSelector((state) => state.auth);
     const { addingToCart } = useSelector((state) => state.cart);
     const [selectedSize, setSelectedSize] = React.useState(null);
@@ -28,7 +30,7 @@ const ProductCard = ({ product }) => {
 
         if (!user) {
             alert("Vui lòng đăng nhập để mua hàng");
-            navigate('/login');
+            openLoginModal();
             return;
         }
 
@@ -58,7 +60,7 @@ const ProductCard = ({ product }) => {
 
         if (!user) {
             alert("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
-            navigate('/login');
+            openLoginModal();
             return;
         }
 

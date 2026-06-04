@@ -37,6 +37,7 @@ const menuStructure: MenuItem[] = [
   { path: '/admin/returns', icon: FaUndo, label: 'Quản lý đổi trả' },
   { path: '/admin/customers', icon: FaUsers, label: 'Quản lý khách hàng' },
   { path: '/admin/comments', icon: FaComments, label: 'Quản lý Đánh giá' },
+  { path: '/admin/chats', icon: FaComments, label: 'Quản lý Chat' },
   { path: '/admin/vouchers', icon: FaTicketAlt, label: 'Quản lý Voucher' },
   { path: '/admin/points', icon: FaStar, label: 'Quản lý Điểm tích lũy' },
 ];

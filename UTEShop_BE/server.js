@@ -65,6 +65,7 @@ app.locals.agenda = agenda;
 const allowedOrigins = [
   'http://localhost:5173',      // Frontend User (Vite dev)
   'http://localhost:3000',      // Frontend Admin (Next.js dev)
+  'http://localhost:3001',      // Frontend Admin (Next.js dev alternative port)
   'http://localhost:3002',      // Backend Admin (NestJS dev)
   process.env.FRONTEND_URL,     // Frontend User production
   process.env.ADMIN_FRONTEND_URL, // Frontend Admin production
@@ -148,7 +149,9 @@ app.use("/api/points", pointsRoutes);
 
 // Chatbot AI routes
 import chatbotRoutes from "./src/chatbot/chatbotRoutes.js";
+import chatRoutes from "./src/routes/chatRoutes.js";
 app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/chats", chatRoutes);
 
 // Return/Refund routes
 import returnRoutes from "./src/routes/returnRoutes.js";

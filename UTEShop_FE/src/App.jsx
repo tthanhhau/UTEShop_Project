@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
 import { SocketProvider } from "./context/SocketContext";
+import { AuthModalProvider } from "./context/AuthModalContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
@@ -40,8 +41,9 @@ function App() {
   return (
     <Provider store={store}>
       <SocketProvider>
-        <Router>
-          <Routes>
+        <AuthModalProvider>
+          <Router>
+            <Routes>
             <Route
               path="/"
               element={<MainLayout />}
@@ -121,6 +123,7 @@ function App() {
           </Routes>
         </Router>
         <ToastContainer position="top-right" autoClose={3000} />
+        </AuthModalProvider>
       </SocketProvider>
     </Provider>
   );

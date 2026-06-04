@@ -11,6 +11,7 @@ import ProductStats from "../components/ProductStats";
 import SimilarProducts from "../components/SimilarProducts";
 import ReviewSection from "../components/ReviewSection";
 import VirtualTryOnModal from "../components/VirtualTryOnModal";
+import { useAuthModal } from "../context/AuthModalContext";
 
 // Tạm thời mock toast nếu chưa có
 const toast = {
@@ -24,6 +25,7 @@ export default function ProductDetailPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
+  const { openLoginModal } = useAuthModal();
   const { user } = useSelector((state) => state.auth);
   const { addingToCart } = useSelector((state) => state.cart);
 
@@ -121,7 +123,7 @@ export default function ProductDetailPage() {
     // Kiểm tra đăng nhập
     if (!user) {
       alert("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
-      navigate("/login", { state: { from: location } });
+      openLoginModal();
       return;
     }
 
@@ -168,7 +170,7 @@ export default function ProductDetailPage() {
     if (!user) {
       alert("Vui lòng đăng nhập để thanh toán");
 
-      navigate("/login", { state: { from: location } });
+      openLoginModal();
 
       return;
     }
@@ -420,6 +422,31 @@ export default function ProductDetailPage() {
                 className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors"
               >
                 Thanh toán COD ngay
+              </button>
+
+              <button
+                onClick={() => {
+                  if (!user) {
+                    alert("Vui lòng đăng nhập để chat với shop!");
+                    openLoginModal();
+                    return;
+                  }
+                  window.dispatchEvent(
+                    new CustomEvent("open-customer-chat", {
+                      detail: {
+                        product: {
+                          _id: product._id,
+                          name: product.name,
+                          image: product.images?.[0] || product.image,
+                          price: product.price
+                        }
+                      }
+                    })
+                  );
+                }}
+                className="w-full bg-teal-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-teal-700 transition-colors"
+              >
+                Liên hệ shop tư vấn
               </button>
             </div>
           ) : (

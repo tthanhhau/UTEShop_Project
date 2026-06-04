@@ -36,8 +36,14 @@ export const verifyToken = (token) => {
 
     return decoded;
   } catch (error) {
-    console.error('❌ JWT Verify Error:', error.message);
-    throw error;
+    try {
+      // Fallback cho Admin JWT secret
+      const adminSecret = "uteshop-admin-secret-key-2024";
+      return jwt.verify(token, adminSecret);
+    } catch (adminError) {
+      console.error('❌ JWT Verify Error:', error.message);
+      throw error;
+    }
   }
 };
 

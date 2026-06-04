@@ -614,11 +614,27 @@ export function OrderTracking() {
                           Theo dõi vận chuyển
                         </Button>
                       )}
-                      {statusNumber !== 6 && statusNumber !== 5 && (
-                        <Button variant="outline" size="sm">
-                          Liên hệ shop
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-teal-500 text-teal-600 hover:bg-teal-50"
+                        onClick={() => {
+                          const firstProduct = order.items?.[0]?.product;
+                          const productPayload = firstProduct ? {
+                            _id: firstProduct._id,
+                            name: firstProduct.name,
+                            image: firstProduct.images?.[0] || firstProduct.image,
+                            price: firstProduct.price
+                          } : null;
+                          window.dispatchEvent(
+                            new CustomEvent("open-customer-chat", {
+                              detail: { product: productPayload }
+                            })
+                          );
+                        }}
+                      >
+                        Liên hệ shop
+                      </Button>
                       {statusNumber === 1 && (
                         <Button
                           variant="destructive"
