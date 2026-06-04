@@ -34,11 +34,55 @@ services:
     networks:
       - uteshop_network
 
+  # ===================== AI CHATBOT =====================
+  
+  # Ollama — Local AI Model Server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: uteshop_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - uteshop_network
+    deploy:
+      resources:
+        reservations:
+          memory: 8G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ChromaDB — Vector Database cho RAG
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: uteshop_chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    networks:
+      - uteshop_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   elasticsearch_data:
+    driver: local
+  ollama_data:
+    driver: local
+  chromadb_data:
     driver: local
 
 networks:
   uteshop_network:
     driver: bridge
-

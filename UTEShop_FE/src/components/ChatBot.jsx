@@ -213,32 +213,55 @@ export default function ChatBot() {
         localStorage.setItem(GUEST_TOKEN_KEY, newGuestToken);
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          text: data.message,
-          sender: "bot",
-          timestamp: new Date(),
-          products: data.products || [],
-          intent: data.intent,
-          action: data.action,
-          cartCount: data.cartCount,
-        },
-      ]);
+      // Hiển thị response với hiệu ứng typing từng ký tự
+      const botMsg = {
+        id: Date.now() + 1,
+        text: "",
+        fullText: data.message,
+        sender: "bot",
+        timestamp: new Date(),
+        products: data.products || [],
+        intent: data.intent,
+        action: data.action,
+        cartCount: data.cartCount,
+        isStreaming: true,
+      };
+      setMessages((prev) => [...prev, botMsg]);
+
+      // Animate typing effect
+      const fullText = data.message;
+      for (let i = 0; i <= fullText.length; i += 3) {
+        await new Promise((r) => setTimeout(r, 15));
+        setMessages((prev) => {
+          const msgs = [...prev];
+          const last = msgs[msgs.length - 1];
+          if (last && last.id === botMsg.id) {
+            last.text = fullText.slice(0, i);
+            last.isStreaming = i < fullText.length;
+          }
+          return msgs;
+        });
+      }
+      // Ensure full text is shown
+      setMessages((prev) => {
+        const msgs = [...prev];
+        const last = msgs[msgs.length - 1];
+        if (last && last.id === botMsg.id) {
+          last.text = fullText;
+          last.isStreaming = false;
+        }
+        return msgs;
+      });
 
       if (data.action?.type === "CHECKOUT") {
         await handleCheckoutAction(data.action.cartItems);
       } else if (data.action?.type === "NAVIGATE") {
         handleNavigateAction(data.action.url);
       } else if (data.action?.type === "SHOW_ORDERS") {
-        // Thêm orders vào message để hiển thị
         setMessages((prev) => {
           const newMessages = [...prev];
           const lastMsg = newMessages[newMessages.length - 1];
-          if (lastMsg) {
-            lastMsg.orders = data.action.orders;
-          }
+          if (lastMsg) lastMsg.orders = data.action.orders;
           return newMessages;
         });
       }
@@ -248,7 +271,9 @@ export default function ChatBot() {
         ...prev,
         {
           id: Date.now() + 1,
-          text: "Xin lỗi, tôi đang gặp sự cố. Vui lòng thử lại sau.",
+          text: error?.response?.status === 500
+            ? "⚠️ AI đang offline. Vui lòng kiểm tra Server Colab đã chạy chưa."
+            : "Xin lỗi, tôi đang gặp sự cố. Vui lòng thử lại sau.",
           sender: "bot",
           timestamp: new Date(),
           products: [],
@@ -476,7 +501,7 @@ export default function ChatBot() {
     return new Intl.NumberFormat("vi-VN").format(price) + "đ";
   };
 
-  const quickReplies = ["Tìm áo thun", "Giày Nike", "Đang giảm giá", "Sản phẩm bán chạy"];
+  const quickReplies = ["Tìm áo thun", "Giày Nike", "Đang giảm giá", "Tư vấn size", "Phối đồ đi chơi", "Chính sách đổi trả"];
 
   const handleQuickReply = async (reply) => {
     const userMessage = {
@@ -577,7 +602,7 @@ export default function ChatBot() {
               </div>
               <div>
                 <h3 className="font-semibold text-sm">UTEShop AI</h3>
-                <p className="text-xs opacity-90">Hỗ trợ đặt hàng nhanh</p>
+
               </div>
             </div>
             <button

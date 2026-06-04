@@ -13,6 +13,7 @@ export default function ProductsManagement() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -273,6 +274,51 @@ export default function ProductsManagement() {
     }
   };
 
+  // Handle AI description generation
+  const handleGenerateDescription = async () => {
+    if (!formData.name) {
+      alert("Vui lòng nhập tên sản phẩm trước!");
+      return;
+    }
+    if (!formData.images || formData.images.length === 0) {
+      alert("Vui lòng tải lên ít nhất 1 hình ảnh trước!");
+      return;
+    }
+    
+    // Tìm tên brand
+    const selectedBrand = brands.find((b: any) => b._id === formData.brand);
+    const brandName = selectedBrand ? selectedBrand.name : "";
+
+    setIsGeneratingDesc(true);
+    try {
+      // Đã tự động cấu hình theo tên tài khoản của bạn (hauttttt) và tên Space dự kiến (blip-api)
+      const API_URL = "https://hauttttt-blip-api.hf.space/api/generate-description";
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          image_url: formData.images[0],
+          name: formData.name,
+          brand: brandName
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setFormData(prev => ({ ...prev, description: data.description }));
+      } else {
+        alert("Lỗi: " + (data.detail || "Không thể tạo mô tả"));
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Lỗi kết nối tới AI Server. Vui lòng kiểm tra đường dẫn Hugging Face Space API.");
+    } finally {
+      setIsGeneratingDesc(false);
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -502,7 +548,17 @@ export default function ProductsManagement() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Mô tả</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium">Mô tả</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateDescription}
+                    disabled={isGeneratingDesc}
+                    className="flex items-center gap-2 text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition-colors disabled:opacity-50"
+                  >
+                    ✨ {isGeneratingDesc ? 'Đang tạo...' : 'Tạo bằng AI'}
+                  </button>
+                </div>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}

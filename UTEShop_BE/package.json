@@ -16,7 +16,6 @@
   "description": "",
   "dependencies": {
     "@elastic/elasticsearch": "^7.17.0",
-    "@google/generative-ai": "^0.24.1",
     "@gradio/client": "^2.2.0",
     "@opensearch-project/opensearch": "^2.5.0",
     "agenda": "^5.0.0",
