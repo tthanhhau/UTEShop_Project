@@ -19,6 +19,8 @@ export const analyticsApi = {
     axios.get('/admin/analytics/revenue', { params }),
   getTopProducts: (params?: { limit?: number }) =>
     axios.get('/admin/analytics/top-products', { params }),
+  getLowStockProducts: (params?: { limit?: number }) =>
+    axios.get('/admin/analytics/low-stock-products', { params }),
   getCompletedOrders: (params?: { page?: number; limit?: number }) =>
     axios.get('/admin/analytics/completed-orders', { params }),
 };
