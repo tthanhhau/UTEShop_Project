@@ -342,6 +342,72 @@ export class AnalyticsService {
 
 
 
+
+
+  async getLowStockProducts(limit: number = 10) {
+    const products = await this.productModel
+      .find({
+        $or: [
+          { stock: { $lt: 10 } },
+          { 'sizes.stock': { $lt: 10 } }
+        ]
+      })
+      .populate('category', 'name')
+      .populate('brand', 'name')
+      .exec();
+
+    const items: any[] = [];
+
+    products.forEach((product: any) => {
+      const discountPercent = product.discountPercentage || 0;
+      const discountedPrice = product.price - (product.price * discountPercent) / 100;
+
+      if (product.sizes && product.sizes.length > 0) {
+        product.sizes.forEach((sizeObj: any) => {
+          if (sizeObj.stock < 10) {
+            items.push({
+              _id: `${product._id}_${sizeObj.size}`,
+              productId: product._id,
+              name: `${product.name} (Size ${sizeObj.size})`,
+              originalPrice: product.price,
+              discountedPrice,
+              price: discountedPrice,
+              images: product.images,
+              stock: sizeObj.stock,
+              discountPercentage: discountPercent,
+              category: product.category?.name || 'Không có danh mục',
+              brand: product.brand?.name || 'Không có thương hiệu',
+            });
+          }
+        });
+      } else {
+        if (product.stock < 10) {
+          items.push({
+            _id: product._id.toString(),
+            productId: product._id,
+            name: product.name,
+            originalPrice: product.price,
+            discountedPrice,
+            price: discountedPrice,
+            images: product.images,
+            stock: product.stock,
+            discountPercentage: discountPercent,
+            category: product.category?.name || 'Không có danh mục',
+            brand: product.brand?.name || 'Không có thương hiệu',
+          });
+        }
+      }
+    });
+
+    items.sort((a, b) => a.stock - b.stock);
+    const limitedItems = items.slice(0, limit);
+
+    return {
+      success: true,
+      data: limitedItems,
+    };
+  }
+
   private getRandomGradient(): string {
     const gradients = [
       'from-purple-400 to-pink-400',

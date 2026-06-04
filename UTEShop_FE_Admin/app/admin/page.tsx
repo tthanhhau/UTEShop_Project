@@ -20,12 +20,16 @@ export default function DashboardPage() {
   });
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showModal, setShowModal] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
+  const [allLowStockProducts, setAllLowStockProducts] = useState<any[]>([]);
+  const [loadingLowStockModal, setLoadingLowStockModal] = useState(false);
 
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
@@ -41,10 +45,11 @@ export default function DashboardPage() {
       setLoading(true);
       setError('');
 
-      const [generalResponse, revenueResponse, topProductsResponse] = await Promise.all([
+      const [generalResponse, revenueResponse, topProductsResponse, lowStockResponse] = await Promise.all([
         analyticsApi.getGeneralStats({ year }),
         analyticsApi.getRevenue({ year, type: 'monthly' }),
         analyticsApi.getTopProducts({ limit: 10 }),
+        analyticsApi.getLowStockProducts({ limit: 20 }),
       ]);
 
       if (generalResponse.data.success) {
@@ -60,6 +65,10 @@ export default function DashboardPage() {
 
       if (topProductsResponse.data.success) {
         setTopProducts(topProductsResponse.data.data || []);
+      }
+
+      if (lowStockResponse.data.success) {
+        setLowStockProducts(lowStockResponse.data.data || []);
       }
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
@@ -93,6 +102,21 @@ export default function DashboardPage() {
       console.error('Error fetching all products:', err);
     } finally {
       setLoadingModal(false);
+    }
+  };
+
+  const handleViewAllLowStockProducts = async () => {
+    setShowLowStockModal(true);
+    setLoadingLowStockModal(true);
+    try {
+      const response = await analyticsApi.getLowStockProducts({ limit: 100 });
+      if (response.data.success) {
+        setAllLowStockProducts(response.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching all low stock products:', err);
+    } finally {
+      setLoadingLowStockModal(false);
     }
   };
 
@@ -193,48 +217,114 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Charts Row */}
+      {/* Revenue Chart Row (Full width) */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-800">Doanh thu theo tháng</h3>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            {generateYears().map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="h-64 flex">
+          <div className="flex flex-col justify-between h-full w-12 mr-4">
+            {[maxValue, Math.round(maxValue * 0.75), Math.round(maxValue * 0.5), Math.round(maxValue * 0.25), 0].map(
+              (value, index) => (
+                <div key={index} className="text-xs text-gray-500 text-right">
+                  {value}
+                </div>
+              )
+            )}
+            <div className="text-xs text-gray-600 font-medium mt-2 text-center">(triệu ₫)</div>
+          </div>
+          <div className="flex-1 flex items-end justify-between space-x-2">
+            {revenueData.map((item: any, index: number) => (
+              <div key={index} className="flex flex-col items-center flex-1">
+                <div
+                  className="bg-gradient-to-t from-purple-600 to-purple-400 rounded-t w-full mb-2 transition-all duration-300 hover:from-purple-700 hover:to-purple-500"
+                  style={{ height: `${(item.value / maxValue) * 200}px` }}
+                  title={formatChartCurrency(item.value)}
+                ></div>
+                <span className="text-xs text-gray-600">{item.month}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Two columns Row (Low Stock Products & Top Products side by side) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
+        {/* Low Stock Products */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-800">Doanh thu theo tháng</h3>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              {generateYears().map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="h-64 flex">
-            <div className="flex flex-col justify-between h-full w-12 mr-4">
-              {[maxValue, Math.round(maxValue * 0.75), Math.round(maxValue * 0.5), Math.round(maxValue * 0.25), 0].map(
-                (value, index) => (
-                  <div key={index} className="text-xs text-gray-500 text-right">
-                    {value}
-                  </div>
-                )
-              )}
-              <div className="text-xs text-gray-600 font-medium mt-2 text-center">(triệu ₫)</div>
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+              Sản phẩm sắp hết hàng (Dưới 10)
+            </h3>
+            <div className="flex items-center gap-3">
+              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                {lowStockProducts.length} sản phẩm
+              </span>
+              <button
+                onClick={handleViewAllLowStockProducts}
+                className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 hover:gap-2 transition-all"
+              >
+                Xem tất cả
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
-            <div className="flex-1 flex items-end justify-between space-x-2">
-              {revenueData.map((item: any, index: number) => (
-                <div key={index} className="flex flex-col items-center flex-1">
-                  <div
-                    className="bg-gradient-to-t from-purple-600 to-purple-400 rounded-t w-full mb-2 transition-all duration-300 hover:from-purple-700 hover:to-purple-500"
-                    style={{ height: `${(item.value / maxValue) * 200}px` }}
-                    title={formatChartCurrency(item.value)}
-                  ></div>
-                  <span className="text-xs text-gray-600">{item.month}</span>
+          </div>
+          
+          {lowStockProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+              <p className="text-sm">Không có sản phẩm nào sắp hết hàng.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+              {lowStockProducts.map((product: any, index: number) => (
+                <div key={product._id || index} className="flex items-center justify-between p-3 bg-red-50/30 hover:bg-red-50/60 rounded-xl transition-colors border border-red-100/50">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {product.images && product.images.length > 0 ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.name}
+                        className="w-12 h-12 rounded-lg object-cover border border-gray-100 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                        <FaTshirt />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-800 truncate text-sm" title={product.name}>
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {product.category?.name || product.category || 'Không có danh mục'} • {product.brand?.name || product.brand || 'Không có thương hiệu'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                      Còn {product.stock} sp
+                    </span>
+                    <span className="text-gray-900 font-semibold text-sm block mt-1">
+                      {formatCurrency(product.price || 0)}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Top Products */}
@@ -251,7 +341,7 @@ export default function DashboardPage() {
               </svg>
             </button>
           </div>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
             {topProducts.map((product: any, index: number) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -286,18 +376,19 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Modal hiển thị tất cả sản phẩm bán chạy */}
-        {showModal && (
+      {/* Modal hiển thị tất cả sản phẩm bán chạy */}
+      {showModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+          onClick={closeModal}
+        >
           <div
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
-            style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
-            onClick={closeModal}
+            className="bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[85vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[85vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <div>
@@ -401,10 +492,122 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal hiển thị tất cả sản phẩm sắp hết hàng */}
+      {showLowStockModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(128, 128, 128, 0.3)' }}
+          onClick={() => setShowLowStockModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[85vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-full bg-red-500 animate-pulse"></span>
+                  Tất cả sản phẩm sắp hết hàng
+                </h2>
+                <p className="text-gray-600 text-sm mt-1">
+                  {allLowStockProducts.length} sản phẩm có số lượng dưới 10
+                </p>
+              </div>
+              <button
+                onClick={() => setShowLowStockModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <FaTimes className="text-xl" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              {loadingLowStockModal ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                  <span className="ml-3 text-gray-600">Đang tải dữ liệu...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {allLowStockProducts.map((product: any, index: number) => (
+                    <div
+                      key={product._id}
+                      className="flex items-center justify-between p-4 bg-red-50/20 rounded-xl hover:bg-red-50/50 hover:shadow-md transition-all border border-red-100/30"
+                    >
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="flex items-center justify-center w-12">
+                          <span className="text-2xl font-bold text-red-600">
+                            #{index + 1}
+                          </span>
+                        </div>
+                        {product.images && product.images.length > 0 ? (
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
+                            className="w-16 h-16 rounded-lg object-cover shadow-sm border border-gray-100"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center shadow-sm">
+                            <FaTshirt className="text-white text-xl" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-800 truncate text-sm" title={product.name}>
+                            {product.name}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-xs bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full font-semibold">
+                              Còn {product.stock} sp
+                            </span>
+                            {product.discountPercentage > 0 && (
+                              <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                                -{product.discountPercentage}%
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {product.category} • {product.brand}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 w-40">
+                        <div className="flex items-center gap-2 justify-end">
+                          {product.discountPercentage > 0 && (
+                            <span className="text-sm text-gray-400 line-through">
+                              {formatCurrency(product.originalPrice || 0)}
+                            </span>
+                          )}
+                          <span className="text-lg font-bold text-purple-600">
+                            {formatCurrency(product.price || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 bg-white">
+              <div className="flex items-center justify-end space-x-3">
+                <button
+                  onClick={() => setShowLowStockModal(false)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
