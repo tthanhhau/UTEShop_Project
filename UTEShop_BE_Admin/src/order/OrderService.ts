@@ -242,7 +242,7 @@ export class OrderService {
       console.log('✅ [ADMIN] Notification data:', JSON.stringify(newNotification.toObject(), null, 2));
 
       // Gửi HTTP request đến UTEShop_BE để trigger WebSocket notification
-      const backendUrl = this.configService.get<string>('BACKEND_URL') || 'http://localhost:5000';
+      const backendUrl = this.configService.get<string>('BACKEND_URL') || process.env.USER_BACKEND_URL || 'http://localhost:5000';
       console.log('📤 [ADMIN] Sending HTTP request to:', `${backendUrl}/api/internal/notifications/send`);
 
       try {

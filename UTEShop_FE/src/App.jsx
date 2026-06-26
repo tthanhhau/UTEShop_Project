@@ -36,6 +36,7 @@ import OrderDetail from "./pages/OrderDetail";
 // Admin components
 import PrivateRoute from "./components/utils/PrivateRoute";
 import VouchersPage from "./pages/VouchersPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 
 function App() {
   return (
@@ -119,6 +120,9 @@ function App() {
                 }
               />
             </Route>
+
+              {/* Public route - Privacy Policy (required by Facebook) */}
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
           </Routes>
         </Router>

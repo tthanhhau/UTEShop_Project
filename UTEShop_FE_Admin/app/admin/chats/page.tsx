@@ -38,7 +38,7 @@ interface Message {
   createdAt: string;
 }
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
 export default function AdminChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);

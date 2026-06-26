@@ -52,6 +52,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://uteshop-project.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        value: https://uteshop-backend-admin.onrender.com/api
 
   # Frontend User (Vite/React)
   - type: web
@@ -66,3 +70,5 @@ services:
     envVars:
       - key: VITE_HTTPS
         value: true
+      - key: VITE_API_URL
+        value: https://uteshop-project.onrender.com
