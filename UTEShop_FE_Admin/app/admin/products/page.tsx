@@ -8,7 +8,7 @@ import { FaEdit, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 export default function ProductsManagement() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
