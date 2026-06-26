@@ -72,3 +72,7 @@ services:
         value: true
       - key: VITE_API_URL
         value: https://uteshop-project.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
