@@ -86,8 +86,8 @@ app.use(
       // Allow requests with no origin (mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
 
-      // Check if origin is in whitelist
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      // Check if origin is in whitelist or is a Render domain
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.onrender.com')) {
         callback(null, true);
       } else {
         console.warn(`⚠️  CORS blocked origin: ${origin}`);

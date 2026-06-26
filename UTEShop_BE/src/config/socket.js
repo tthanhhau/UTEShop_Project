@@ -15,7 +15,27 @@ export const initializeSocket = (httpServer) => {
 
   const io = new Server(httpServer, {
     cors: {
-      origin: corsOrigins,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        
+        // Hỗ trợ thêm FRONTEND_URL & ADMIN_FRONTEND_URL từ env
+        const extraOrigins = [];
+        if (process.env.FRONTEND_URL) {
+          extraOrigins.push(...process.env.FRONTEND_URL.split(',').map(o => o.trim()).filter(Boolean));
+        }
+        if (process.env.ADMIN_FRONTEND_URL) {
+          extraOrigins.push(...process.env.ADMIN_FRONTEND_URL.split(',').map(o => o.trim()).filter(Boolean));
+        }
+
+        const allAllowed = [...corsOrigins, ...extraOrigins];
+
+        if (allAllowed.indexOf(origin) !== -1 || origin.endsWith('.onrender.com')) {
+          callback(null, true);
+        } else {
+          console.warn(`⚠️  Socket.IO CORS blocked origin: ${origin}`);
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ["GET", "POST"],
       credentials: true,
     },
