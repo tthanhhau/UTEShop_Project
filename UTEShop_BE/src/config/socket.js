@@ -52,10 +52,18 @@ export const initializeSocket = (httpServer) => {
         // Thử xác thực với secret của Admin nếu token chính thất bại
         jwt.verify(token, "uteshop-admin-secret-key-2024", (err2, decoded2) => {
           if (err2) {
-            return next(new Error("Authentication error: Invalid token"));
+            // Thử tiếp với secret mặc định của NestJS
+            jwt.verify(token, "your-secret-key", (err3, decoded3) => {
+              if (err3) {
+                return next(new Error("Authentication error: Invalid token"));
+              }
+              socket.userId = decoded3.sub || decoded3.id || decoded3._id;
+              next();
+            });
+          } else {
+            socket.userId = decoded2.sub || decoded2.id || decoded2._id;
+            next();
           }
-          socket.userId = decoded2.sub || decoded2.id || decoded2._id;
-          next();
         });
       } else {
         socket.userId = decoded.id || decoded._id || decoded.sub; // Gắn userId vào object socket (hỗ trợ cả id/sub)

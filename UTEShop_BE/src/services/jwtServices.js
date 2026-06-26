@@ -37,12 +37,17 @@ export const verifyToken = (token) => {
     return decoded;
   } catch (error) {
     try {
-      // Fallback cho Admin JWT secret
+      // Fallback 1 cho Admin JWT secret
       const adminSecret = "uteshop-admin-secret-key-2024";
       return jwt.verify(token, adminSecret);
     } catch (adminError) {
-      console.error('❌ JWT Verify Error:', error.message);
-      throw error;
+      try {
+        // Fallback 2 cho Admin JWT secret (mặc định nếu chưa cấu hình env)
+        return jwt.verify(token, "your-secret-key");
+      } catch (defaultError) {
+        console.error('❌ JWT Verify Error:', error.message);
+        throw error;
+      }
     }
   }
 };
