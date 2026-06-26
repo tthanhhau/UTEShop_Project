@@ -1,11 +1,11 @@
 import User from "../models/user.js";
 import PointTransaction from "../models/PointTransaction.js";
-import Configuration from "../models/Configuration.js";
+import ConfigurationPoint from "../models/ConfigurationPoint.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 // Helper function to get points configuration
 const getPointsConfigFromDB = async () => {
-  const config = await Configuration.findOne({ key: 'points_config' });
+  const config = await ConfigurationPoint.findOne({ key: 'points_config' });
   if (config) {
     return config.value;
   }
@@ -19,10 +19,9 @@ const getPointsConfigFromDB = async () => {
   };
 
   // Save default config to DB
-  await Configuration.create({
+  await ConfigurationPoint.create({
     key: 'points_config',
-    value: defaultConfig,
-    description: 'Points system configuration'
+    value: defaultConfig
   });
 
   return defaultConfig;
@@ -579,11 +578,10 @@ export const updatePointsConfig = asyncHandler(async (req, res) => {
   };
 
   // Save to configuration collection
-  await Configuration.findOneAndUpdate(
+  await ConfigurationPoint.findOneAndUpdate(
     { key: 'points_config' },
     {
-      value: newConfig,
-      description: 'Points system configuration'
+      value: newConfig
     },
     { upsert: true, new: true }
   );

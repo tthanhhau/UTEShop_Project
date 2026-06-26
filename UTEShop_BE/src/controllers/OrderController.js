@@ -7,7 +7,7 @@ import Notification from "../models/Notification.js";
 import User from "../models/user.js"; // Import User model
 import mongoose from "mongoose";
 import PointTransaction from "../models/PointTransaction.js";
-import Configuration from "../models/Configuration.js";
+import ConfigurationPoint from "../models/ConfigurationPoint.js";
 import Voucher from "../models/voucher.js";
 import UserVoucher from "../models/userVoucher.js";
 class OrderController {
@@ -742,7 +742,7 @@ class OrderController {
 
         if (!existingConversion) {
           // Lấy cấu hình điểm (mặc định 1 VND = 1 điểm)
-          const configDoc = await Configuration.findOne({ key: "points_config" });
+          const configDoc = await ConfigurationPoint.findOne({ key: "points_config" });
           const config = configDoc?.value || {
             pointsValue: 1, // 1 VND = 1 điểm
             silverThreshold: 1000,

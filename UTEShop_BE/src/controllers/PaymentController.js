@@ -3,7 +3,7 @@ import momoService from "../services/momoServices.js";
 import Order from "../models/order.js";
 import User from "../models/user.js";
 import PointTransaction from "../models/PointTransaction.js";
-import Configuration from "../models/Configuration.js";
+import ConfigurationPoint from "../models/ConfigurationPoint.js";
 
 class PaymentController {
     // Tạo payment request cho MoMo
@@ -170,7 +170,7 @@ class PaymentController {
 
                 if (!existingConversion) {
                     // Lấy cấu hình quy đổi điểm
-                    const configDoc = await Configuration.findOne({ key: 'points_config' });
+                    const configDoc = await ConfigurationPoint.findOne({ key: 'points_config' });
                     const config = configDoc?.value || {
                         pointsValue: 1, // 1 VND = 1 point (1000 VND = 1000 points)
                         silverThreshold: 1000,
@@ -320,7 +320,7 @@ class PaymentController {
 
                 if (!existingConversion) {
                     // Lấy cấu hình quy đổi điểm
-                    const configDoc = await Configuration.findOne({ key: 'points_config' });
+                    const configDoc = await ConfigurationPoint.findOne({ key: 'points_config' });
                     const config = configDoc?.value || {
                         pointsValue: 1, // 1 VND = 1 điểm (1000 VND = 1000 điểm)
                         silverThreshold: 1000,

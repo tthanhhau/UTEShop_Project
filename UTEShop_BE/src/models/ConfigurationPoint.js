@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const configurationSchema = new mongoose.Schema(
+const configurationPointSchema = new mongoose.Schema(
   {
     key: {
       type: String,
@@ -12,10 +12,6 @@ const configurationSchema = new mongoose.Schema(
     value: {
       type: mongoose.Schema.Types.Mixed,
       required: true
-    },
-    
-    description: {
-      type: String
     }
   },
   {
@@ -23,7 +19,6 @@ const configurationSchema = new mongoose.Schema(
   }
 );
 
-const Configuration = mongoose.model("Configuration", configurationSchema);
+const ConfigurationPoint = mongoose.model("ConfigurationPoint", configurationPointSchema);
 
-export default Configuration;
-
+export default ConfigurationPoint;
