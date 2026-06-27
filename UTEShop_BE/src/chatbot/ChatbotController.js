@@ -1,7 +1,7 @@
 import ChatbotService from "./ChatbotService.js";
 import ChatHistory from "../models/ChatHistory.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import KaggleService from "./KaggleService.js";
+import ColabAIService from "./ColabAIService.js";
 
 // POST /api/chatbot/message
 export const sendMessage = asyncHandler(async (req, res) => {
@@ -128,7 +128,7 @@ export const streamMessage = asyncHandler(async (req, res) => {
       { role: "user", content: message.trim() }
     ];
 
-    for await (const chunk of KaggleService.chatStream(messages)) {
+    for await (const chunk of ColabAIService.chatStream(messages)) {
       res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
     }
     res.write(`data: [DONE]\n\n`);
@@ -142,7 +142,7 @@ export const streamMessage = asyncHandler(async (req, res) => {
 
 // GET /api/chatbot/health - Kiểm tra AI
 export const healthCheck = asyncHandler(async (req, res) => {
-  const aiStatus = await KaggleService.healthCheck();
+  const aiStatus = await ColabAIService.healthCheck();
 
   return res.json({
     success: true,

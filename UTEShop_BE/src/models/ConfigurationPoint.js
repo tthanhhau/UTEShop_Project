@@ -8,14 +8,10 @@ const configurationPointSchema = new mongoose.Schema(
       unique: true,
       index: true
     },
-
+    
     value: {
       type: mongoose.Schema.Types.Mixed,
       required: true
-    },
-
-    description: {
-      type: String
     }
   },
   {
