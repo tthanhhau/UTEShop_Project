@@ -1,19 +1,27 @@
 /**
- * ColabAIService.js — Kết nối và gọi ColabAI API cho UTEShop AI Chatbot.
+ * KaggleService.js — Kết nối và gọi Kaggle GPU API cho UTEShop AI Chatbot.
+ * Vẫn giữ tương thích Colab API cũ bằng biến COLAB_AI_BASE_URL.
  * Thay thế hoàn toàn Google Gemini API.
  */
 
-const COLAB_AI_BASE_URL = process.env.COLAB_AI_BASE_URL || "http://localhost:11434";
-const COLAB_AI_MODEL = process.env.COLAB_AI_MODEL || "uteshop-ai";
+const KAGGLE_AI_BASE_URL = process.env.KAGGLE_AI_BASE_URL;
 
-class ColabAIService {
+// COLAB CODE CU - GIU LAI DE DUNG KHI CHAY CHATBOT TREN GOOGLE COLAB.
+// Neu muon quay lai Colab, chi can set COLAB_AI_BASE_URL trong .env/Render.
+const COLAB_AI_BASE_URL = process.env.COLAB_AI_BASE_URL;
+
+// Uu tien Kaggle, fallback ve Colab, cuoi cung fallback local Ollama-compatible API.
+const AI_BASE_URL = KAGGLE_AI_BASE_URL || COLAB_AI_BASE_URL || "http://localhost:11434";
+const AI_MODEL = process.env.KAGGLE_AI_MODEL || process.env.COLAB_AI_MODEL || "uteshop-ai";
+
+class KaggleService {
   constructor() {
-    this.baseUrl = COLAB_AI_BASE_URL;
-    this.model = COLAB_AI_MODEL;
+    this.baseUrl = AI_BASE_URL;
+    this.model = AI_MODEL;
   }
 
   /**
-   * Gọi ColabAI chat API (non-streaming).
+   * Gọi Kaggle/Colab AI chat API (non-streaming).
    * @param {Array} messages - [{role: "system"|"user"|"assistant", content: "..."}]
    * @param {Object} options - {temperature, top_p, num_ctx}
    * @returns {string} Response text
@@ -38,12 +46,12 @@ class ColabAIService {
           "ngrok-skip-browser-warning": "true"
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120000), // 120s (Colab GPU khoi dong lan dau co the cham)
+        signal: AbortSignal.timeout(120000), // 120s (Kaggle/Colab GPU khoi dong lan dau co the cham)
       });
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`ColabAI API error ${response.status}: ${errText}`);
+        throw new Error(`AI API error ${response.status}: ${errText}`);
       }
 
       const data = await response.json();
@@ -59,7 +67,7 @@ class ColabAIService {
   }
 
   /**
-   * Gọi ColabAI streaming (cho SSE).
+   * Gọi Kaggle/Colab AI streaming (cho SSE).
    * Trả về AsyncGenerator của từng chunk text.
    */
   async *chatStream(messages, options = {}) {
@@ -84,7 +92,7 @@ class ColabAIService {
     });
 
     if (!response.ok) {
-      throw new Error(`ColabAI stream error: ${response.status}`);
+      throw new Error(`AI stream error: ${response.status}`);
     }
 
     const reader = response.body.getReader();
@@ -96,7 +104,7 @@ class ColabAIService {
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        // ColabAI trả về NDJSON (mỗi dòng là 1 JSON object)
+        // Kaggle/Colab AI trả về NDJSON (mỗi dòng là 1 JSON object)
         const lines = chunk.split("\n").filter((l) => l.trim());
         for (const line of lines) {
           try {
@@ -116,7 +124,7 @@ class ColabAIService {
   }
 
   /**
-   * Phân tích intent từ tin nhắn user bằng ColabAI.
+   * Phân tích intent từ tin nhắn user bằng Kaggle/Colab AI.
    * @param {string} message - Tin nhắn user
    * @param {string} contextPrompt - System prompt + context
    * @returns {Object} {intent, filters, message}
@@ -177,7 +185,7 @@ class ColabAIService {
   }
 
   /**
-   * Health check ColabAI.
+   * Health check Kaggle/Colab AI.
    */
   async healthCheck() {
     try {
@@ -204,4 +212,4 @@ class ColabAIService {
   }
 }
 
-export default new ColabAIService();
+export default new KaggleService();

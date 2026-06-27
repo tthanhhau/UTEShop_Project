@@ -3,7 +3,7 @@ import Product from "../models/product.js";
 import Category from "../models/category.js";
 import Brand from "../models/brand.js";
 import Order from "../models/order.js";
-import ColabAIService from "./ColabAIService.js";
+import KaggleService from "./KaggleService.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
 
 class ChatbotService {
@@ -48,7 +48,7 @@ class ChatbotService {
       contextPrompt += `\n\nUser: ${message}\n\nTrả về JSON:`;
 
       // Gọi Ollama thay vì Gemini
-      return await ColabAIService.analyzeIntent(message, contextPrompt);
+      return await KaggleService.analyzeIntent(message, contextPrompt);
     } catch (error) {
       console.error("Ollama API error:", error);
       return {
