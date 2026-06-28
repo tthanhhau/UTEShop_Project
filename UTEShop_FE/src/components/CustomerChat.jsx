@@ -4,10 +4,9 @@ import { FaComments, FaTimes, FaPaperPlane, FaStore, FaShoppingCart } from "reac
 import api from "../api/axiosConfig";
 import { useSocket } from "../context/SocketContext";
 
-export default function CustomerChat() {
+export default function CustomerChat({ isOpen, onOpen, onClose, otherChatOpen }) {
   const { user } = useSelector((state) => state.auth);
   const socket = useSocket();
-  const [isOpen, setIsOpen] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -28,7 +27,7 @@ export default function CustomerChat() {
   // Load conversation and messages when chat is opened
   useEffect(() => {
     if (!user) {
-      setIsOpen(false);
+      if (isOpen) onClose();
       setConversation(null);
       setMessages([]);
       return;
@@ -68,7 +67,7 @@ export default function CustomerChat() {
         alert("Vui lòng đăng nhập để liên hệ với shop!");
         return;
       }
-      setIsOpen(true);
+      onOpen();
       if (e.detail?.product) {
         // Đính kèm sản phẩm vào tin nhắn đang chuẩn bị gửi
         setAttachedProduct(e.detail.product);
@@ -158,8 +157,8 @@ export default function CustomerChat() {
       {/* Floating Chat Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-24 z-50 bg-gradient-to-r from-teal-500 to-emerald-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center"
+          onClick={onOpen}
+          className={`fixed bottom-6 ${otherChatOpen ? 'right-6' : 'right-24'} z-50 bg-gradient-to-r from-teal-500 to-emerald-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center`}
           title="Chat với Shop"
         >
           <FaStore className="text-2xl" />
@@ -189,7 +188,7 @@ export default function CustomerChat() {
               </div>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
               className="hover:bg-white/20 p-2 rounded-full transition"
             >
               <FaTimes />
