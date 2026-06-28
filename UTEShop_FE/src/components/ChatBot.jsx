@@ -17,10 +17,9 @@ const defaultMessage = {
   products: [],
 };
 
-export default function ChatBot() {
+export default function ChatBot({ isOpen, onOpen, onClose }) {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([defaultMessage]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -285,7 +284,7 @@ export default function ChatBot() {
   };
 
   const handleOrderClick = (orderId, status) => {
-    setIsOpen(false);
+    onClose();
     // Nếu đơn hàng đã giao, chuyển đến trang lịch sử mua hàng với highlight
     if (status === "delivered") {
       navigate(`/purchase-history?highlight=${orderId}`);
@@ -336,7 +335,7 @@ export default function ChatBot() {
     }
 
     setTimeout(() => {
-      setIsOpen(false);
+      onClose();
       navigate(url);
     }, 1000);
   };
@@ -395,7 +394,7 @@ export default function ChatBot() {
       console.log("🛒 ChatBot - Number of items:", formattedItems.length);
 
       setTimeout(() => {
-        setIsOpen(false);
+        onClose();
         // Luôn truyền dưới dạng cartItems để CheckoutPage xử lý nhất quán
         navigate("/checkout", {
           state: { cartItems: formattedItems, fromCart: true },
@@ -461,7 +460,7 @@ export default function ChatBot() {
 
     try {
       setTimeout(() => {
-        setIsOpen(false);
+        onClose();
         navigate("/checkout", {
           state: {
             product: {
@@ -578,7 +577,7 @@ export default function ChatBot() {
       {/* Chat Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={onOpen}
           className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
         >
           <FaComments className="text-2xl" />
@@ -590,7 +589,7 @@ export default function ChatBot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-80 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-6 right-24 z-50 w-80 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -606,7 +605,7 @@ export default function ChatBot() {
               </div>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
               className="hover:bg-white/20 p-2 rounded-full transition"
             >
               <FaTimes />
