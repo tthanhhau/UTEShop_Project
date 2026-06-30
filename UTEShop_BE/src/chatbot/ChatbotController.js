@@ -1,7 +1,23 @@
 import ChatbotService from "./ChatbotService.js";
 import ChatHistory from "../models/ChatHistory.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import KaggleService from "./KaggleService.js";
+import { AI_PROVIDER } from "./Configuration.js";
+
+// COLAB CODE CŨ - GIỮ LẠI ĐỂ DÙNG KHI CẦN:
+// Trước đây controller gọi trực tiếp ColabAIService cho stream và health check.
+// Nếu muốn chạy lại Google Colab, đổi CHATBOT_AI_PROVIDER=colab trong .env.
 import ColabAIService from "./ColabAIService.js";
+
+const getActiveAIService = () => {
+  // KAGGLE ACTIVE - mặc định dùng Kaggle GPU API.
+  // COLAB CODE CŨ - GIỮ LẠI:
+  //   return ColabAIService;
+  // Hiện tại dùng config để chọn:
+  //   CHATBOT_AI_PROVIDER=kaggle -> KaggleService
+  //   CHATBOT_AI_PROVIDER=colab  -> ColabAIService
+  return AI_PROVIDER === "colab" ? ColabAIService : KaggleService;
+};
 
 // POST /api/chatbot/message
 export const sendMessage = asyncHandler(async (req, res) => {
@@ -128,7 +144,15 @@ export const streamMessage = asyncHandler(async (req, res) => {
       { role: "user", content: message.trim() }
     ];
 
-    for await (const chunk of ColabAIService.chatStream(messages)) {
+    const activeAIService = getActiveAIService();
+    console.log(`🤖 Stream AI provider: ${AI_PROVIDER === "colab" ? "Google Colab" : "Kaggle"}`);
+
+    // COLAB CODE CŨ - GIỮ LẠI ĐỂ DÙNG KHI CẦN:
+    // for await (const chunk of ColabAIService.chatStream(messages)) {
+    //   res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+    // }
+
+    for await (const chunk of activeAIService.chatStream(messages)) {
       res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
     }
     res.write(`data: [DONE]\n\n`);
@@ -142,11 +166,19 @@ export const streamMessage = asyncHandler(async (req, res) => {
 
 // GET /api/chatbot/health - Kiểm tra AI
 export const healthCheck = asyncHandler(async (req, res) => {
-  const aiStatus = await ColabAIService.healthCheck();
+  const activeAIService = getActiveAIService();
+
+  // COLAB CODE CŨ - GIỮ LẠI ĐỂ DÙNG KHI CẦN:
+  // const aiStatus = await ColabAIService.healthCheck();
+
+  const aiStatus = await activeAIService.healthCheck();
 
   return res.json({
     success: true,
+    provider: AI_PROVIDER === "colab" ? "colab" : "kaggle",
+    // Giữ key ollama để frontend/code cũ không bị vỡ.
     ollama: aiStatus,
+    ai: aiStatus,
     status: aiStatus.ok ? "ready" : "offline"
   });
 });
