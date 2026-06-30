@@ -3,7 +3,12 @@ import Product from "../models/product.js";
 import Category from "../models/category.js";
 import Brand from "../models/brand.js";
 import Order from "../models/order.js";
+import KaggleService from "./KaggleService.js";
+// COLAB CODE CŨ - GIỮ LẠI ĐỂ DÙNG KHI CẦN:
+// Nếu muốn chạy lại Google Colab, đổi CHATBOT_AI_PROVIDER=colab trong .env.
+// import ColabAIService from "./ColabAIService.js";
 import ColabAIService from "./ColabAIService.js";
+import { AI_PROVIDER } from "./Configuration.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
 
 class ChatbotService {
@@ -47,10 +52,15 @@ class ChatbotService {
 
       contextPrompt += `\n\nUser: ${message}\n\nTrả về JSON:`;
 
-      // Gọi Ollama thay vì Gemini
-      return await ColabAIService.analyzeIntent(message, contextPrompt);
+      // KAGGLE ACTIVE - mặc định gọi Kaggle GPU API.
+      // COLAB CODE CŨ - GIỮ LẠI:
+      //   Trước đây chatbot gọi ColabAIService.analyzeIntent(message, contextPrompt).
+      //   Không xóa ColabAIService; nếu cần quay lại Colab thì set CHATBOT_AI_PROVIDER=colab.
+      const activeAIService = AI_PROVIDER === "colab" ? ColabAIService : KaggleService;
+      console.log(`🤖 Active AI provider: ${AI_PROVIDER === "colab" ? "Google Colab" : "Kaggle"}`);
+      return await activeAIService.analyzeIntent(message, contextPrompt);
     } catch (error) {
-      console.error("Ollama API error:", error);
+      console.error("AI provider API error:", error);
       return {
         intent: "error",
         filters: {},
