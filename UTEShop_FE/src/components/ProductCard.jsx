@@ -98,13 +98,6 @@ const ProductCard = ({ product }) => {
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
                 />
 
-                {/* Discount Badge */}
-                {product.discountPercentage > 0 && (
-                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        -{product.discountPercentage}%
-                    </div>
-                )}
-
                 {/* Brand Badge */}
                 {product.brand && (
                     <div className="absolute top-2 right-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
