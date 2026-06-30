@@ -272,11 +272,6 @@ export default function ProductListPage() {
                                     <p className="text-blue-700 text-sm font-medium">
                                         Sản phẩm tìm thấy từ hình ảnh của bạn
                                     </p>
-                                    {products[0]?.similarity && (
-                                        <p className="text-blue-600 text-xs mt-1">
-                                            Độ tương đồng: {(products[0].similarity * 100).toFixed(1)}%
-                                        </p>
-                                    )}
                                 </div>
                             </div>
                             {products[0]?.stock > 0 ? (
