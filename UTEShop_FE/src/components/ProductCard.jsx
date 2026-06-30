@@ -111,13 +111,6 @@ const ProductCard = ({ product }) => {
                         {product.brand.name}
                     </div>
                 )}
-
-                {/* Similarity badge when present (from image search) */}
-                {product.similarity !== undefined && (
-                    <div className="absolute top-2 left-2 bg-white/80 text-gray-800 text-xs px-2 py-1 rounded-full font-semibold">
-                        {(product.similarity * 100).toFixed(1)}%
-                    </div>
-                )}
             </div>
 
             {/* Content */}
