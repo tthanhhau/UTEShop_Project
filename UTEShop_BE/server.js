@@ -170,6 +170,13 @@ app.use((req, res) => {
 
 // Error handler cuối cùng
 app.use((err, req, res, next) => {
+  // Đảm bảo luôn trả về header CORS kể cả khi có lỗi 500 để tránh bị trình duyệt chặn hiển thị lỗi thật
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.onrender.com'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   // Nếu là lỗi CORS ở trên, trả 403 thay vì 500
   const isCors = err?.message === "Not allowed by CORS";
   const status = isCors ? 403 : err.status || 500;

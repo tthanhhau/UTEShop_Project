@@ -51,15 +51,27 @@ async function fetchCurrentProvinceName(provinceCode) {
     return province.name;
 }
 
-export async function getProvincesFromPublicAPI() {
-    try {
-        const response = await axios.get(`${CURRENT_API_URL}/p/`);
+// Cache danh sách tỉnh thành Việt Nam
+let cachedProvinces = null;
 
-        return response.data.map((province) => ({
+export async function getProvincesFromPublicAPI() {
+    // 1. Trả về cache nếu có để tránh gọi API nhiều lần
+    if (cachedProvinces && cachedProvinces.length > 0) {
+        return cachedProvinces;
+    }
+
+    try {
+        console.log("🌐 Fetching provinces list from public API...");
+        const response = await axios.get(`${CURRENT_API_URL}/p/`, { timeout: 10000 });
+
+        cachedProvinces = response.data.map((province) => ({
             ProvinceID: province.code,
             ProvinceName: province.name,
             Code: province.code.toString(),
         }));
+        
+        console.log(`✅ Loaded ${cachedProvinces.length} provinces from API.`);
+        return cachedProvinces;
     } catch (error) {
         console.error('Error fetching provinces from public API:', error);
         throw error;
