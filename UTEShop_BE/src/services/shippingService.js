@@ -902,7 +902,7 @@ class ShippingService {
             return await getProvincesFromPublicAPI();
         } catch (error) {
             console.error('Error fetching provinces:', error.message);
-            throw new Error('Không thể tải danh sách tỉnh/thành phố');
+            throw error; // Ném lỗi gốc để debug
         }
     }
 
@@ -916,7 +916,7 @@ class ShippingService {
             return await getDistrictsFromPublicAPI(provinceId);
         } catch (error) {
             console.error('Error fetching districts:', error.message);
-            throw new Error('Không thể tải danh sách quận/huyện');
+            throw error; // Ném lỗi gốc để debug
         }
     }
 
@@ -930,7 +930,7 @@ class ShippingService {
             return await getWardsFromPublicAPI(districtId);
         } catch (error) {
             console.error('Error fetching wards:', error.message);
-            throw new Error('Không thể tải danh sách phường/xã');
+            throw error; // Ném lỗi gốc để debug
         }
     }
 

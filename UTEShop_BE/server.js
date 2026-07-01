@@ -180,9 +180,25 @@ app.use((err, req, res, next) => {
   // Nếu là lỗi CORS ở trên, trả 403 thay vì 500
   const isCors = err?.message === "Not allowed by CORS";
   const status = isCors ? 403 : err.status || 500;
-  const msg = isCors ? "CORS blocked" : err.message || "Internal Server Error";
+  
+  // Trả về thông tin lỗi chi tiết để debug
+  const errorDetails = {
+    message: err.message || "Internal Server Error",
+    stack: err.stack,
+    axiosError: err.isAxiosError ? {
+      code: err.code,
+      message: err.message,
+      url: err.config?.url,
+      method: err.config?.method,
+      response: err.response ? {
+        status: err.response.status,
+        data: err.response.data
+      } : null
+    } : null
+  };
+
   if (status >= 500) console.error(err); // log lỗi server
-  res.status(status).json({ message: msg });
+  res.status(status).json(errorDetails);
 });
 
 /* ------------------------------- Bootstrap ------------------------------ */
