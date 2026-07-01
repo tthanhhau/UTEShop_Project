@@ -7,7 +7,11 @@ const LEGACY_API_URL = `${VIETNAM_API_BASE_URL}/v1`;
 const PROVINCE_LEVEL_DISTRICT_PREFIX = 'province:';
 const PROVINCE_LEVEL_DISTRICT_NAME = 'Toàn tỉnh/thành phố';
 
+const API_TIMEOUT_MS = 10000; // 10s timeout cho external API calls
+const CACHE_TTL_MS = 30 * 60 * 1000; // Cache 30 phút
+
 const provinceWardsCache = new Map();
+const provinceFullDataCache = new Map(); // Cache cho getProvinceFullData
 
 function buildProvinceLevelDistrictId(provinceCode) {
     return `${PROVINCE_LEVEL_DISTRICT_PREFIX}${provinceCode}`;
@@ -168,6 +172,88 @@ export async function getAddressInfo(provinceCode, districtCode, wardCode) {
         };
     } catch (error) {
         console.error('Error fetching address info from public API:', error);
+        throw error;
+    }
+}
+
+/**
+ * Lấy toàn bộ districts + wards của 1 tỉnh trong 1 lần gọi API duy nhất.
+ * Có in-memory cache để tránh gọi lại external API.
+ * Dùng cho endpoint /shipping/province-address để FE chỉ cần 1 request.
+ */
+export async function getProvinceFullData(provinceCode) {
+    try {
+        // Kiểm tra cache
+        const cacheKey = String(provinceCode);
+        const cached = provinceFullDataCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+            console.log(`📋 Cache hit for province ${provinceCode}`);
+            return cached.data;
+        }
+
+        console.log(`🌐 Fetching full data for province ${provinceCode} from API...`);
+
+        // Gọi API 1 lần duy nhất với depth=2
+        const provinceData = await axios.get(
+            `${CURRENT_API_URL}/p/${provinceCode}?depth=2`,
+            { timeout: API_TIMEOUT_MS }
+        ).then(res => res.data);
+
+        let districts = [];
+        let wards = [];
+
+        if (Array.isArray(provinceData.districts) && provinceData.districts.length > 0) {
+            // Tỉnh CÓ cấp quận/huyện: extract districts + wards từ mỗi district
+            districts = provinceData.districts.map((district) => ({
+                DistrictID: district.code.toString(),
+                DistrictName: district.name,
+                ProvinceID: provinceCode.toString(),
+                Code: district.code.toString(),
+            }));
+
+            wards = provinceData.districts.flatMap((district) => {
+                const districtWards = Array.isArray(district.wards) ? district.wards : [];
+                return districtWards.map((ward) => ({
+                    WardCode: ward.code.toString(),
+                    WardName: ward.name,
+                    DistrictID: district.code.toString(),
+                    DistrictName: district.name,
+                }));
+            });
+        } else {
+            // Tỉnh KHÔNG CÓ cấp quận/huyện (đã sáp nhập): wards trực tiếp
+            const provinceLevelDistrictId = buildProvinceLevelDistrictId(provinceCode);
+            const rawWards = Array.isArray(provinceData.wards) ? provinceData.wards : [];
+
+            districts = [
+                {
+                    DistrictID: provinceLevelDistrictId,
+                    DistrictName: PROVINCE_LEVEL_DISTRICT_NAME,
+                    ProvinceID: provinceCode.toString(),
+                    Code: provinceLevelDistrictId,
+                    IsProvinceLevel: true,
+                },
+            ];
+
+            wards = rawWards.map((ward) => ({
+                WardCode: ward.code.toString(),
+                WardName: ward.name,
+                DistrictID: provinceLevelDistrictId,
+            }));
+        }
+
+        const result = { districts, wards };
+
+        // Lưu cache
+        provinceFullDataCache.set(cacheKey, {
+            data: result,
+            timestamp: Date.now(),
+        });
+
+        console.log(`✅ Province ${provinceCode}: ${districts.length} districts, ${wards.length} wards`);
+        return result;
+    } catch (error) {
+        console.error('Error fetching province full data from public API:', error.message);
         throw error;
     }
 }

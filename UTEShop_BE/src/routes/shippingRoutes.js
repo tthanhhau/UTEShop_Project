@@ -8,6 +8,7 @@ const router = express.Router();
 router.get("/provinces", shippingController.getProvinces);
 router.get("/districts", shippingController.getDistricts);
 router.get("/wards", shippingController.getWards);
+router.get("/province-address", shippingController.getProvinceAddress);
 
 // Protected routes - Yêu cầu đăng nhập
 router.post("/calculate-fee", requireAuth, shippingController.calculateFee);

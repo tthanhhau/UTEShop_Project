@@ -276,6 +276,28 @@ class ShippingController {
             data: wards,
         });
     });
+
+    /**
+     * Lấy toàn bộ districts + wards của 1 tỉnh trong 1 request
+     * Thay thế cho việc FE gọi getDistricts + N lần getWards
+     */
+    getProvinceAddress = asyncHandler(async (req, res) => {
+        const { provinceId } = req.query;
+
+        if (!provinceId) {
+            return res.status(400).json({
+                success: false,
+                message: "Province ID is required",
+            });
+        }
+
+        const data = await shippingService.getProvinceAddressData(provinceId);
+
+        res.status(200).json({
+            success: true,
+            data,
+        });
+    });
 }
 
 export default new ShippingController();

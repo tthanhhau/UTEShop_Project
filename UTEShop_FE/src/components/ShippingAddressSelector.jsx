@@ -53,35 +53,36 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
     const loadDistrictsAndWards = async (province) => {
         try {
             setLoading(true);
-            const response = await shippingApi.getDistricts(province.ProvinceID, 'GHTK');
-            const nextDistricts = response.data.data || [];
+            // Gọi 1 request duy nhất lấy cả districts + wards
+            // thay vì gọi getDistricts + N lần getWards
+            const response = await shippingApi.getProvinceAddress(province.ProvinceID);
+            const { districts: nextDistricts = [], wards: allWards = [] } = response.data.data || {};
 
             setDistricts(nextDistricts);
             setError('');
 
-            if (!nextDistricts.length) {
+            if (!nextDistricts.length && !allWards.length) {
                 setError('Không tìm thấy địa giới giao hàng cho tỉnh/thành phố này');
                 return;
             }
 
-            const wardResponses = await Promise.all(
-                nextDistricts.map(async (district) => {
-                    const wardResponse = await shippingApi.getWards(district.DistrictID, 'GHTK');
-                    const districtWards = wardResponse.data.data || [];
+            // Gắn DistrictName vào mỗi ward nếu chưa có
+            const wardsWithDistrictInfo = allWards.map((ward) => {
+                if (ward.DistrictName) return ward;
+                const parentDistrict = nextDistricts.find(
+                    (d) => String(d.DistrictID) === String(ward.DistrictID)
+                );
+                return {
+                    ...ward,
+                    DistrictName: parentDistrict?.DistrictName || '',
+                };
+            });
 
-                    return districtWards.map((ward) => ({
-                        ...ward,
-                        DistrictID: ward.DistrictID || district.DistrictID,
-                        DistrictName: district.DistrictName,
-                    }));
-                })
-            );
-
-            const flattenedWards = wardResponses.flat().sort((left, right) =>
+            const sortedWards = wardsWithDistrictInfo.sort((left, right) =>
                 String(left.WardName).localeCompare(String(right.WardName), 'vi')
             );
 
-            setWards(flattenedWards);
+            setWards(sortedWards);
 
             const defaultDistrict = nextDistricts[0] || null;
             setSelectedDistrict(defaultDistrict);
@@ -95,7 +96,7 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
             }
         } catch (err) {
             setError('Không thể tải danh sách phường/xã theo tỉnh/thành phố');
-            console.error('Error loading districts/wards:', err);
+            console.error('Error loading province address data:', err);
         } finally {
             setLoading(false);
         }
