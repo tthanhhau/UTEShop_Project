@@ -31,6 +31,15 @@ const shippingApi = {
     },
 
     /**
+     * Lấy toàn bộ districts + wards của 1 tỉnh trong 1 request
+     * Thay thế cho việc gọi getDistricts + N lần getWards
+     * @param {string|number} provinceId - ID tỉnh/thành phố
+     */
+    getProvinceAddress: (provinceId) => {
+        return axiosInstance.get(`/shipping/province-address?provinceId=${provinceId}`);
+    },
+
+    /**
      * Tính phí vận chuyển
      * @param {Object} data - Thông tin tính phí
      * @param {string} data.toDistrictId - ID quận/huyện đích

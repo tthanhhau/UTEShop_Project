@@ -3,7 +3,8 @@ import {
     getProvincesFromPublicAPI,
     getDistrictsFromPublicAPI,
     getWardsFromPublicAPI,
-    getAddressInfo
+    getAddressInfo,
+    getProvinceFullData
 } from '../data/vietnamProvinces.js';
 
 /**
@@ -930,6 +931,19 @@ class ShippingService {
         } catch (error) {
             console.error('Error fetching wards:', error.message);
             throw new Error('Không thể tải danh sách phường/xã');
+        }
+    }
+
+    /**
+     * Lấy toàn bộ districts + wards của 1 tỉnh trong 1 lần gọi.
+     * FE chỉ cần gọi endpoint này 1 lần thay vì N lần getWards.
+     */
+    async getProvinceAddressData(provinceId) {
+        try {
+            return await getProvinceFullData(provinceId);
+        } catch (error) {
+            console.error('Error fetching province address data:', error.message);
+            throw new Error('Không thể tải dữ liệu địa chỉ tỉnh/thành phố');
         }
     }
 }
