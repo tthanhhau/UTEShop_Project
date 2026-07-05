@@ -10,6 +10,13 @@ import KaggleService from "./KaggleService.js";
 import ColabAIService from "./ColabAIService.js";
 import { AI_PROVIDER } from "./Configuration.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
+import {
+  OUT_OF_SCOPE_ANSWER,
+  PRODUCT_INFO_REQUIRED_ANSWER,
+  isAmbiguousProductInfoQuestion,
+  isOutOfScopeQuestion,
+  matchPolicyKnowledge
+} from "./policyKnowledge.js";
 
 class ChatbotService {
   constructor() {
@@ -443,6 +450,25 @@ class ChatbotService {
   detectSimpleIntent(message, state) {
     const msg = message.toLowerCase().trim();
 
+    if (isOutOfScopeQuestion(message)) {
+      return {
+        intent: "out_of_scope",
+        filters: { source: "policyKnowledge" },
+        message: OUT_OF_SCOPE_ANSWER
+      };
+    }
+
+    if (isAmbiguousProductInfoQuestion(message)) {
+      return {
+        intent: "product_info_required",
+        filters: { source: "policyKnowledge" },
+        message: PRODUCT_INFO_REQUIRED_ANSWER
+      };
+    }
+
+    const policyMatch = matchPolicyKnowledge(message);
+    if (policyMatch) return policyMatch;
+
     const selectMatch = msg.match(/(?:mua|lấy|chọn)?\s*(?:số|sản phẩm)?\s*(\d+)/i);
     if (selectMatch && state.lastProducts.length > 0) {
       const idx = parseInt(selectMatch[1]);
@@ -589,6 +615,16 @@ class ChatbotService {
 
       case "thanks":
         responseMessage = "Không có gì đâu ạ! 😊\n\nRất vui được hỗ trợ bạn. Nếu cần gì thêm, cứ hỏi tôi nhé! 💙";
+        break;
+
+      case "policy_shipping":
+      case "policy_return":
+      case "policy_payment":
+      case "policy_order_tracking":
+      case "policy_account":
+      case "out_of_scope":
+      case "product_info_required":
+        responseMessage = analysis.message;
         break;
 
       case "cancel":
