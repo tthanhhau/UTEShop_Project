@@ -1,5 +1,11 @@
 import axios from 'axios';
 import GhnMapping from '../models/GhnMapping.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Service tích hợp API giao hàng từ bên thứ 3
@@ -907,18 +913,15 @@ class ShippingService {
     }
 
     /**
-     * Lấy danh sách tỉnh/thành phố từ v2
+     * Lấy danh sách tỉnh/thành phố từ v2 (Đọc local JSON để tránh bị chặn hoặc timeout trên Render)
      */
     async getProvinces() {
         try {
-            const response = await axios.get('https://provinces.open-api.vn/api/v2/p/');
-            return response.data.map(p => ({
-                ProvinceID: p.code,
-                ProvinceName: p.name,
-                Code: p.code.toString(),
-            }));
+            const filePath = path.resolve(__dirname, '../data/provinces_v2.json');
+            const data = fs.readFileSync(filePath, 'utf-8');
+            return JSON.parse(data);
         } catch (error) {
-            console.error('Error fetching provinces from API v2:', error.message);
+            console.error('Error reading provinces local file:', error.message);
             throw error;
         }
     }
@@ -931,18 +934,17 @@ class ShippingService {
     }
 
     /**
-     * Lấy danh sách phường/xã từ v2
+     * Lấy danh sách phường/xã từ v2 (Đọc local JSON để tránh bị chặn hoặc timeout trên Render)
      */
     async getWards(provinceId) {
         try {
-            const response = await axios.get(`https://provinces.open-api.vn/api/v2/w/?province=${provinceId}`);
-            return response.data.map(w => ({
-                WardCode: w.code.toString(),
-                WardName: w.name,
-                DistrictID: provinceId.toString(), // Mock DistrictID as provinceId
-            }));
+            const filePath = path.resolve(__dirname, '../data/wards_v2.json');
+            const data = fs.readFileSync(filePath, 'utf-8');
+            const allWards = JSON.parse(data);
+            // Lọc ra các phường xã thuộc tỉnh/thành phố này (trong v2, DistrictID đóng vai trò là province_code)
+            return allWards.filter(w => String(w.DistrictID) === String(provinceId));
         } catch (error) {
-            console.error('Error fetching wards from API v2:', error.message);
+            console.error('Error reading wards local file:', error.message);
             throw error;
         }
     }
@@ -958,7 +960,7 @@ class ShippingService {
                 wards
             };
         } catch (error) {
-            console.error('Error fetching province address data from API v2:', error.message);
+            console.error('Error fetching province address data:', error.message);
             throw new Error('Không thể tải dữ liệu địa chỉ tỉnh/thành phố');
         }
     }
