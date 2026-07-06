@@ -44,6 +44,13 @@ export class ProductController {
     return this.ProductService.create(createProductDto);
   }
 
+  @Post('generate-description')
+  async generateDescription(
+    @Body() body: { image_url: string; name: string; brand?: string },
+  ) {
+    return this.ProductService.generateDescription(body);
+  }
+
   @Put(':id')
   async updateProduct(
     @Param('id') id: string,

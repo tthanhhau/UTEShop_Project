@@ -291,29 +291,25 @@ export default function ProductsManagement() {
 
     setIsGeneratingDesc(true);
     try {
-      // Đã tự động cấu hình theo tên tài khoản của bạn (hauttttt) và tên Space dự kiến (blip-api)
-      const API_URL = "https://hauttttt-blip-api.hf.space/api/generate-description";
-
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          image_url: formData.images[0],
-          name: formData.name,
-          brand: brandName
-        })
+      const response = await axios.post('/admin/Products/generate-description', {
+        image_url: formData.images[0],
+        name: formData.name,
+        brand: brandName
       });
-      const data = await response.json();
-      if (data.success) {
-        setFormData(prev => ({ ...prev, description: data.description }));
+
+      const data = response.data || {};
+      const generatedDescription = data.generated_description || data.description;
+      if (generatedDescription) {
+        setFormData(prev => ({ ...prev, description: generatedDescription }));
       } else {
-        alert("Lỗi: " + (data.detail || "Không thể tạo mô tả"));
+        alert("AI Server đã phản hồi nhưng không có generated_description.");
       }
-    } catch (error) {
-      console.error(error);
-      alert("Lỗi kết nối tới AI Server. Vui lòng kiểm tra đường dẫn Hugging Face Space API.");
+    } catch (error: any) {
+      console.error("AI description request failed:", error);
+      alert(
+        "Lỗi tạo mô tả AI: " +
+        (error.response?.data?.message || error.message || "Không thể kết nối tới BE Admin.")
+      );
     } finally {
       setIsGeneratingDesc(false);
     }
