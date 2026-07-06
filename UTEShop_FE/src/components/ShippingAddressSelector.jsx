@@ -3,11 +3,9 @@ import shippingApi from '@/api/shippingApi';
 
 function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
     const [provinces, setProvinces] = useState([]);
-    const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
 
     const [selectedProvince, setSelectedProvince] = useState(null);
-    const [selectedDistrict, setSelectedDistrict] = useState(null);
     const [selectedWard, setSelectedWard] = useState(null);
 
     const [shippingFee, setShippingFee] = useState(0);
@@ -23,18 +21,16 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
             return;
         }
 
-        setDistricts([]);
         setWards([]);
-        setSelectedDistrict(null);
         setSelectedWard(null);
-        loadDistrictsAndWards(selectedProvince);
+        loadWards(selectedProvince);
     }, [selectedProvince]);
 
     useEffect(() => {
-        if (selectedDistrict && selectedWard) {
+        if (selectedWard) {
             calculateShippingFee();
         }
-    }, [selectedDistrict, selectedWard]);
+    }, [selectedWard]);
 
     const loadProvinces = async () => {
         try {
@@ -50,47 +46,29 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
         }
     };
 
-    const loadDistrictsAndWards = async (province) => {
+    const loadWards = async (province) => {
         try {
             setLoading(true);
-            // Gọi 1 request duy nhất lấy cả districts + wards
-            // thay vì gọi getDistricts + N lần getWards
             const response = await shippingApi.getProvinceAddress(province.ProvinceID);
-            const { districts: nextDistricts = [], wards: allWards = [] } = response.data.data || {};
+            const { wards: allWards = [] } = response.data.data || {};
 
-            setDistricts(nextDistricts);
             setError('');
 
-            if (!nextDistricts.length && !allWards.length) {
+            if (!allWards.length) {
                 setError('Không tìm thấy địa giới giao hàng cho tỉnh/thành phố này');
                 return;
             }
 
-            // Gắn DistrictName vào mỗi ward nếu chưa có
-            const wardsWithDistrictInfo = allWards.map((ward) => {
-                if (ward.DistrictName) return ward;
-                const parentDistrict = nextDistricts.find(
-                    (d) => String(d.DistrictID) === String(ward.DistrictID)
-                );
-                return {
-                    ...ward,
-                    DistrictName: parentDistrict?.DistrictName || '',
-                };
-            });
-
-            const sortedWards = wardsWithDistrictInfo.sort((left, right) =>
+            const sortedWards = allWards.sort((left, right) =>
                 String(left.WardName).localeCompare(String(right.WardName), 'vi')
             );
 
             setWards(sortedWards);
 
-            const defaultDistrict = nextDistricts[0] || null;
-            setSelectedDistrict(defaultDistrict);
-
             if (onAddressChange) {
                 onAddressChange({
                     province,
-                    district: defaultDistrict,
+                    district: null,
                     ward: null,
                 });
             }
@@ -106,14 +84,14 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
         try {
             setLoading(true);
             const response = await shippingApi.calculateFee({
-                toDistrictId: selectedDistrict.DistrictID,
+                toDistrictId: null,
                 toWardCode: selectedWard.WardCode,
                 province: selectedProvince.ProvinceName,
-                district: selectedDistrict.IsProvinceLevel ? '' : selectedDistrict.DistrictName,
+                district: '',
                 ward: selectedWard.WardName,
                 weight: 1000,
                 insuranceValue: 0,
-                provider: 'GHTK',
+                provider: 'GHN', // Default to GHN as requested
             });
 
             const fee = response.data.fee || 0;
@@ -148,16 +126,14 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
 
     const handleWardChange = (e) => {
         const wardValue = e.target.value;
-        const ward = wards.find((item) => `${item.DistrictID}__${item.WardCode}` === wardValue);
-        const district = districts.find((item) => String(item.DistrictID) === String(ward?.DistrictID)) || null;
+        const ward = wards.find((item) => item.WardCode === wardValue);
 
-        setSelectedDistrict(district);
         setSelectedWard(ward);
 
         if (onAddressChange) {
             onAddressChange({
                 province: selectedProvince,
-                district,
+                district: null,
                 ward,
             });
         }
@@ -198,14 +174,14 @@ function ShippingAddressSelector({ onAddressChange, onFeeCalculated }) {
                         Phường/Xã <span className="text-red-500">*</span>
                     </label>
                     <select
-                        value={selectedWard ? `${selectedWard.DistrictID}__${selectedWard.WardCode}` : ''}
+                        value={selectedWard?.WardCode || ''}
                         onChange={handleWardChange}
                         disabled={!selectedProvince || loading}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                     >
                         <option value="">Chọn Phường/Xã</option>
                         {wards.map((ward) => (
-                            <option key={`${ward.DistrictID}-${ward.WardCode}`} value={`${ward.DistrictID}__${ward.WardCode}`}>
+                            <option key={ward.WardCode} value={ward.WardCode}>
                                 {ward.WardName}
                             </option>
                         ))}

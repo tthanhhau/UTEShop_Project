@@ -40,7 +40,7 @@ import similarProductRoutes from "./src/routes/similarProductRoutes.js";
 import reviewRoutes from "./src/routes/reviewRoutes.js";
 import elasticsearchRoutes from "./src/routes/elasticsearchRoutes.js";
 import imageSearchRoutes from "./src/routes/imageSearchRoutes.js";
-import asrRoutes from "./src/routes/asrRoutes.js";
+import { seedGhnMapping } from "./src/data/seedGhnMapping.js";
 
 const app = express();
 
@@ -135,7 +135,6 @@ app.use("/api/similar-products", similarProductRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/elasticsearch", elasticsearchRoutes);
 app.use("/api/image-search", imageSearchRoutes);
-app.use("/api/asr", asrRoutes);
 
 import virtualTryOnRoutes from "./src/routes/virtualTryOnRoutes.js";
 app.use("/api/try-on", virtualTryOnRoutes);
@@ -208,6 +207,11 @@ const PORT = Number(process.env.PORT) || 5000;
 const serverStart = async () => {
   try {
     await connectDB(); // chỉ start server sau khi DB OK
+
+    // Seed GHN Address Mapping
+    seedGhnMapping().catch((err) => {
+        console.error("❌ Failed to seed GHN Address Mapping:", err.message);
+    });
 
     // Start agenda với error handling
     try {

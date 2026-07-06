@@ -1,11 +1,5 @@
 import axios from 'axios';
-import {
-    getProvincesFromPublicAPI,
-    getDistrictsFromPublicAPI,
-    getWardsFromPublicAPI,
-    getAddressInfo,
-    getProvinceFullData
-} from '../data/vietnamProvinces.js';
+import GhnMapping from '../models/GhnMapping.js';
 
 /**
  * Service tích hợp API giao hàng từ bên thứ 3
@@ -38,12 +32,12 @@ class ShippingService {
     }
 
     hasRequiredShippingAddressIds({ toDistrictId, toWardCode } = {}) {
-        return Boolean(toDistrictId && toWardCode);
+        return Boolean(toWardCode);
     }
 
     assertRequiredShippingAddressIds(payload = {}, context = 'shipping request') {
         if (!this.hasRequiredShippingAddressIds(payload)) {
-            throw new Error(`Missing required address IDs (${context}): toDistrictId and toWardCode`);
+            throw new Error(`Missing required address ID (${context}): toWardCode`);
         }
     }
 
@@ -157,13 +151,30 @@ class ShippingService {
     async calculateGHNFee(params) {
         const { toDistrictId, toWardCode, weight, length, width, height, insuranceValue } = params;
 
+        let mappedDistrictId = toDistrictId;
+        let mappedWardCode = toWardCode;
+
+        try {
+            // Find mapping in MongoDB
+            const mapping = await GhnMapping.findOne({ type: 'ward', gsoCode: toWardCode });
+            if (mapping) {
+                mappedDistrictId = mapping.ghnDistrictId;
+                mappedWardCode = mapping.ghnWardCode;
+                console.log(`🌐 GHN Fee Mapping success: GSO Ward ${toWardCode} -> GHN District ${mappedDistrictId}, Ward ${mappedWardCode}`);
+            } else {
+                console.warn(`⚠️ GHN Fee Mapping missing for GSO Ward ${toWardCode}. Using raw inputs.`);
+            }
+        } catch (err) {
+            console.error("❌ Error looking up GHN mapping in calculateGHNFee:", err);
+        }
+
         const response = await axios.post(
             `${this.ghnConfig.apiUrl}/v2/shipping-order/fee`,
             {
                 service_type_id: 2, // 2: E-commerce Delivery
-                from_district_id: parseInt(process.env.GHN_FROM_DISTRICT_ID),
-                to_district_id: parseInt(toDistrictId),
-                to_ward_code: toWardCode,
+                from_district_id: parseInt(process.env.GHN_FROM_DISTRICT_ID) || 1442,
+                to_district_id: parseInt(mappedDistrictId),
+                to_ward_code: mappedWardCode,
                 weight: weight || 1000, // gram
                 length: length || 20, // cm
                 width: width || 20,
@@ -172,8 +183,8 @@ class ShippingService {
             },
             {
                 headers: {
-                    'Token': this.ghnConfig.token,
-                    'ShopId': this.ghnConfig.shopId,
+                    'Token': process.env.GHN_TOKEN || this.ghnConfig.token,
+                    'ShopId': parseInt(process.env.GHN_SHOP_ID || this.ghnConfig.shopId),
                     'Content-Type': 'application/json',
                 },
             }
@@ -203,6 +214,23 @@ class ShippingService {
             note,
         } = orderData;
 
+        let mappedDistrictId = toDistrictId;
+        let mappedWardCode = toWardCode;
+
+        try {
+            // Find mapping in MongoDB
+            const mapping = await GhnMapping.findOne({ type: 'ward', gsoCode: toWardCode });
+            if (mapping) {
+                mappedDistrictId = mapping.ghnDistrictId;
+                mappedWardCode = mapping.ghnWardCode;
+                console.log(`🌐 GHN Order Mapping success: GSO Ward ${toWardCode} -> GHN District ${mappedDistrictId}, Ward ${mappedWardCode}`);
+            } else {
+                console.warn(`⚠️ GHN Order Mapping missing for GSO Ward ${toWardCode}. Using raw inputs.`);
+            }
+        } catch (err) {
+            console.error("❌ Error looking up GHN mapping in createGHNOrder:", err);
+        }
+
         const response = await axios.post(
             `${this.ghnConfig.apiUrl}/v2/shipping-order/create`,
             {
@@ -212,8 +240,8 @@ class ShippingService {
                 to_name: customerName,
                 to_phone: customerPhone,
                 to_address: shippingAddress,
-                to_ward_code: toWardCode,
-                to_district_id: parseInt(toDistrictId),
+                to_ward_code: mappedWardCode,
+                to_district_id: parseInt(mappedDistrictId),
                 cod_amount: codAmount || 0,
                 weight: this.calculateTotalWeight(items),
                 length: 20,
@@ -229,8 +257,8 @@ class ShippingService {
             },
             {
                 headers: {
-                    'Token': this.ghnConfig.token,
-                    'ShopId': this.ghnConfig.shopId,
+                    'Token': process.env.GHN_TOKEN || this.ghnConfig.token,
+                    'ShopId': parseInt(process.env.GHN_SHOP_ID || this.ghnConfig.shopId),
                     'Content-Type': 'application/json',
                 },
             }
@@ -349,9 +377,6 @@ class ShippingService {
             };
         }
 
-        // Với một số địa bàn mới, dữ liệu suy diễn quận/huyện từ API công khai
-        // có thể không tương thích với bảng địa chỉ nội bộ của GHTK.
-        // Nếu FE đã có tỉnh + phường/xã nhưng thiếu quận/huyện, giữ nguyên dữ liệu gốc.
         if (keepMissingDistrict && provinceName && wardName && !districtName) {
             return {
                 provinceName,
@@ -360,35 +385,37 @@ class ShippingService {
             };
         }
 
-        if (!this.hasRequiredShippingAddressIds({ toDistrictId, toWardCode })) {
-            return {
-                provinceName,
-                districtName,
-                wardName,
-            };
+        // If we have toWardCode (GSO v2 code), look up the mapping from MongoDB
+        if (toWardCode) {
+            try {
+                const mapping = await GhnMapping.findOne({ type: 'ward', gsoCode: toWardCode });
+                if (mapping) {
+                    const parts = mapping.ghnName.split(',').map(s => s.trim());
+                    const mappedWard = parts[0] || mapping.gsoName;
+                    const mappedDistrict = parts[1] || '';
+
+                    let mappedProvince = provinceName;
+                    const provMapping = await GhnMapping.findOne({ type: 'province', gsoCode: toWardCode.substring(0, 2) });
+                    if (provMapping) {
+                        mappedProvince = provMapping.ghnName;
+                    }
+
+                    return {
+                        provinceName: provinceName || mappedProvince,
+                        districtName: districtName || mappedDistrict,
+                        wardName: wardName || mappedWard,
+                    };
+                }
+            } catch (err) {
+                console.error("❌ resolveAddressNames mapping lookup failed:", err);
+            }
         }
 
-        try {
-            const addressInfo = await getAddressInfo(null, toDistrictId, toWardCode);
-
-            return {
-                provinceName: provinceName || addressInfo.provinceName,
-                districtName: districtName || addressInfo.districtName,
-                wardName: wardName || addressInfo.wardName,
-            };
-        } catch (error) {
-            console.warn('⚠️ resolveAddressNames fallback used because address lookup failed:', {
-                toDistrictId,
-                toWardCode,
-                reason: error.message,
-            });
-
-            return {
-                provinceName,
-                districtName,
-                wardName,
-            };
-        }
+        return {
+            provinceName,
+            districtName,
+            wardName,
+        };
     }
 
     async calculateGHTKFee(params) {
@@ -496,20 +523,7 @@ class ShippingService {
      * Helper: Lấy thông tin ward để convert sang GHTK format
      * Dùng API công khai của Việt Nam
      */
-    async getWardInfo(districtId, wardCode) {
-        try {
-            console.log('🔍 Getting ward info for:', { districtId, wardCode });
 
-            // Dùng API công khai để lấy thông tin địa chỉ
-            const addressInfo = await getAddressInfo(null, districtId, wardCode);
-
-            console.log('✅ Ward info retrieved:', addressInfo);
-            return addressInfo;
-        } catch (error) {
-            console.error('❌ Error getting ward info:', error.message);
-            throw error;
-        }
-    }
 
     async createGHTKOrder(orderData) {
         const {
@@ -893,56 +907,58 @@ class ShippingService {
     }
 
     /**
-     * Lấy danh sách tỉnh/thành phố
-     * Dùng API công khai của Việt Nam (không cần token)
+     * Lấy danh sách tỉnh/thành phố từ v2
      */
     async getProvinces() {
         try {
-            // Dùng API công khai thay vì GHN
-            return await getProvincesFromPublicAPI();
+            const response = await axios.get('https://provinces.open-api.vn/api/v2/p/');
+            return response.data.map(p => ({
+                ProvinceID: p.code,
+                ProvinceName: p.name,
+                Code: p.code.toString(),
+            }));
         } catch (error) {
-            console.error('Error fetching provinces:', error.message);
-            throw error; // Ném lỗi gốc để debug
+            console.error('Error fetching provinces from API v2:', error.message);
+            throw error;
         }
     }
 
     /**
-     * Lấy danh sách quận/huyện
-     * Dùng API công khai của Việt Nam (không cần token)
+     * Lấy danh sách quận/huyện (Trống trong v2)
      */
     async getDistricts(provinceId) {
-        try {
-            // Dùng API công khai thay vì GHN
-            return await getDistrictsFromPublicAPI(provinceId);
-        } catch (error) {
-            console.error('Error fetching districts:', error.message);
-            throw error; // Ném lỗi gốc để debug
-        }
+        return [];
     }
 
     /**
-     * Lấy danh sách phường/xã
-     * Dùng API công khai của Việt Nam (không cần token)
+     * Lấy danh sách phường/xã từ v2
      */
-    async getWards(districtId) {
+    async getWards(provinceId) {
         try {
-            // Dùng API công khai thay vì GHN
-            return await getWardsFromPublicAPI(districtId);
+            const response = await axios.get(`https://provinces.open-api.vn/api/v2/w/?province=${provinceId}`);
+            return response.data.map(w => ({
+                WardCode: w.code.toString(),
+                WardName: w.name,
+                DistrictID: provinceId.toString(), // Mock DistrictID as provinceId
+            }));
         } catch (error) {
-            console.error('Error fetching wards:', error.message);
-            throw error; // Ném lỗi gốc để debug
+            console.error('Error fetching wards from API v2:', error.message);
+            throw error;
         }
     }
 
     /**
-     * Lấy toàn bộ districts + wards của 1 tỉnh trong 1 lần gọi.
-     * FE chỉ cần gọi endpoint này 1 lần thay vì N lần getWards.
+     * Lấy toàn bộ wards của 1 tỉnh trong 1 lần gọi (v2 version).
      */
     async getProvinceAddressData(provinceId) {
         try {
-            return await getProvinceFullData(provinceId);
+            const wards = await this.getWards(provinceId);
+            return {
+                districts: [],
+                wards
+            };
         } catch (error) {
-            console.error('Error fetching province address data:', error.message);
+            console.error('Error fetching province address data from API v2:', error.message);
             throw new Error('Không thể tải dữ liệu địa chỉ tỉnh/thành phố');
         }
     }
