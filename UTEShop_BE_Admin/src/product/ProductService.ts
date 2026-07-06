@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from '../schemas/ProductSchema';
@@ -96,6 +96,67 @@ export class ProductService {
 
     const product = new this.productModel(productData);
     return product.save();
+  }
+
+  async generateDescription(body: { image_url: string; name: string; brand?: string }) {
+    if (!body?.name) {
+      throw new BadRequestException('Vui lòng nhập tên sản phẩm.');
+    }
+
+    if (!body?.image_url) {
+      throw new BadRequestException('Vui lòng cung cấp hình ảnh sản phẩm.');
+    }
+
+    const aiDescriptionApiUrl = process.env.AI_DESCRIPTION_API_URL;
+    if (!aiDescriptionApiUrl) {
+      throw new InternalServerErrorException('Thiếu cấu hình AI_DESCRIPTION_API_URL trong BE Admin.');
+    }
+
+    const timeout = Number(process.env.AI_DESCRIPTION_TIMEOUT_MS || 120000);
+
+    try {
+      const response = await this.httpService.axiosRef.post(
+        aiDescriptionApiUrl,
+        {
+          image_url: body.image_url,
+          name: body.name,
+          brand: body.brand || '',
+        },
+        {
+          timeout,
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+          },
+        },
+      );
+
+      const generatedDescription = response.data?.generated_description || response.data?.description;
+      if (!generatedDescription) {
+        throw new InternalServerErrorException('AI Server đã phản hồi nhưng không có generated_description.');
+      }
+
+      return {
+        success: true,
+        generated_description: generatedDescription,
+        data: response.data,
+      };
+    } catch (error: any) {
+      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      const status = error.response?.status;
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Không thể kết nối tới AI Server.';
+
+      throw new InternalServerErrorException(
+        `Lỗi AI Server${status ? ` HTTP ${status}` : ''}: ${message}`,
+      );
+    }
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
