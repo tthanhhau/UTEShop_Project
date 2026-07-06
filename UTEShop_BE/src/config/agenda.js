@@ -107,10 +107,10 @@ export const initializeAgenda = (io, sendNotificationToUser) => {
                     return;
                 }
 
-                // Tạo đơn giao hàng với GHTK
+                // Tạo đơn giao hàng với GHN
                 const shippingResult = await shippingService.createShippingOrder(
                     shippingData,
-                    process.env.SHIPPING_PROVIDER || 'GHTK'
+                    process.env.SHIPPING_PROVIDER || 'GHN'
                 );
 
                 if (shippingResult.success) {
