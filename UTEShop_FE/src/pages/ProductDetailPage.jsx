@@ -346,8 +346,9 @@ export default function ProductDetailPage() {
                     {product.sizes.map((sizeObj, index) => {
                       // Handle both string sizes and object sizes
                       const sizeValue = typeof sizeObj === 'object' ? sizeObj.size : sizeObj;
+                      const sizeStock = typeof sizeObj === 'object' ? sizeObj.stock : null;
                       const variant = product.variants?.find(v => v.size === sizeValue);
-                      const isOutOfStock = variant && variant.stock === 0;
+                      const isOutOfStock = (variant && variant.stock === 0) || (sizeStock === 0);
 
                       return (
                         <button
@@ -362,8 +363,8 @@ export default function ProductDetailPage() {
                             }`}
                         >
                           {sizeValue}
-                          {variant && variant.stock > 0 && variant.stock <= 5 && (
-                            <span className="text-xs text-red-500 ml-1">({variant.stock})</span>
+                          {((variant && variant.stock > 0 && variant.stock <= 5) || (sizeStock > 0 && sizeStock <= 5)) && (
+                            <span className="text-xs text-red-500 ml-1">({variant ? variant.stock : sizeStock})</span>
                           )}
                         </button>
                       );
