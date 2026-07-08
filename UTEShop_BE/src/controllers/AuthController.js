@@ -305,6 +305,15 @@ export const login = asyncHandler(async (req, res) => {
     });
   }
 
+  // Chặn tài khoản admin đăng nhập tại luồng login của user thông thường
+  if (user.role === 'admin') {
+    console.log('❌ LOGIN - Admin role restricted on user login:', email);
+    return res.status(403).json({
+      message: 'Tài khoản quản trị (Admin) không được phép đăng nhập tại đây.',
+      code: 'ADMIN_RESTRICTED'
+    });
+  }
+
   // Tạo payload cho JWT với đầy đủ thông tin
   const payload = {
     _id: user._id, // Sử dụng _id thay vì id để nhất quán với MongoDB
