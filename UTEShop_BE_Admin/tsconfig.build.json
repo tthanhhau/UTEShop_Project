@@ -3,12 +3,12 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "ignoreDeprecations": "5.0",
     "strictPropertyInitialization": false,
     "useUnknownInCatchVariables": false,
     "types": [
       "node",
-      "express"
+      "express",
+      "multer"
     ]
   },
   "include": [

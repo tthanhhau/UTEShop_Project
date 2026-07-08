@@ -12,7 +12,6 @@
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { Multer } from 'multer';
 import { BrandService } from './BrandService';
 import { CreateBrandDto } from './dto/CreateBrandDto';
 import { UpdateBrandDto } from './dto/UpdateBrandDto';
@@ -68,7 +67,7 @@ export class BrandController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   @UseGuards(JwtAuthGuard)
-  async uploadImage(@UploadedFile() file: Multer.File) {
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
     try {
       const result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
