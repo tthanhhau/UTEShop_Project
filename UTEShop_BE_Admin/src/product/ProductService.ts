@@ -147,14 +147,28 @@ export class ProductService {
       }
 
       const status = error.response?.status;
-      const message =
+      const rawMessage =
         error.response?.data?.detail ||
         error.response?.data?.message ||
         error.message ||
         'Không thể kết nối tới AI Server.';
 
+      const normalizedMessage = String(rawMessage).toLowerCase();
+      const isImageRecognitionError =
+        status === 400 ||
+        normalizedMessage.includes('ảnh') ||
+        normalizedMessage.includes('image') ||
+        normalizedMessage.includes('fashion') ||
+        normalizedMessage.includes('thời trang') ||
+        normalizedMessage.includes('quần áo') ||
+        normalizedMessage.includes('không tải được ảnh');
+
+      if (isImageRecognitionError) {
+        throw new BadRequestException('Ảnh không phù hợp. Vui lòng tải lên ảnh sản phẩm thời trang như quần áo, giày dép, túi xách hoặc phụ kiện.');
+      }
+
       throw new InternalServerErrorException(
-        `Lỗi AI Server${status ? ` HTTP ${status}` : ''}: ${message}`,
+        `Lỗi AI Server${status ? ` HTTP ${status}` : ''}: ${rawMessage}`,
       );
     }
   }
