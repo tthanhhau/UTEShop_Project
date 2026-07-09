@@ -28,7 +28,7 @@ const menuStructure: MenuItem[] = [
     label: 'Quản lý Sản phẩm',
     hasSubmenu: true,
     submenu: [
-      { path: '/admin/categories', label: 'Danh mục cấp 1' },
+      { path: '/admin/categories', label: 'Danh mục' },
       { path: '/admin/brands', label: 'Thương hiệu' },
       { path: '/admin/products', label: 'Sản phẩm' },
     ],

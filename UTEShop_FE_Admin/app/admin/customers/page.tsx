@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axios';
@@ -117,7 +117,6 @@ export default function CustomersManagement() {
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-600">Khách hàng</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalCustomers}</p>
-              <p className="text-sm text-green-600 mt-1">+100.0%</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-full">
               <FaUsers className="text-purple-600 text-2xl" />
@@ -130,7 +129,6 @@ export default function CustomersManagement() {
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-600">Khách hàng hoạt động</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeCustomers}</p>
-              <p className="text-sm text-green-600 mt-1">Active</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <FaUserCheck className="text-green-600 text-2xl" />
@@ -143,7 +141,6 @@ export default function CustomersManagement() {
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-600">Tổng đơn hàng</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{customers.reduce((sum: number, c: any) => sum + (c.totalOrders || 0), 0)}</p>
-              <p className="text-sm text-blue-600 mt-1">Orders</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <FaShoppingBag className="text-blue-600 text-2xl" />
@@ -161,7 +158,6 @@ export default function CustomersManagement() {
                   return sum + points;
                 }, 0)}
               </p>
-              <p className="text-sm text-orange-600 mt-1">Points</p>
             </div>
             <div className="bg-orange-100 p-3 rounded-full">
               <FaStar className="text-orange-600 text-2xl" />
