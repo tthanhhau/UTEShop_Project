@@ -12,12 +12,6 @@ export default function DashboardPage() {
     totalCustomers: 0,
     totalProducts: 0,
   });
-  const [growth, setGrowth] = useState({
-    revenue: '+0%',
-    orders: '+0%',
-    customers: '+0%',
-    products: '+0%',
-  });
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
@@ -54,9 +48,6 @@ export default function DashboardPage() {
 
       if (generalResponse.data.success) {
         setStats(generalResponse.data.data);
-        if (generalResponse.data.data.growth) {
-          setGrowth(generalResponse.data.data.growth);
-        }
       }
 
       if (revenueResponse.data.success) {
@@ -169,7 +160,6 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Tổng doanh thu</p>
               <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
-              <p className="text-sm text-green-600 mt-1">{growth.revenue}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <FaCoins className="text-green-600 text-xl" />
@@ -182,7 +172,6 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Đơn hàng</p>
               <p className="text-3xl font-bold text-gray-900">{stats.totalOrders.toLocaleString()}</p>
-              <p className="text-sm text-green-600 mt-1">{growth.orders}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-full">
               <FaShoppingCart className="text-blue-600 text-xl" />
@@ -195,7 +184,6 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Khách hàng</p>
               <p className="text-3xl font-bold text-gray-900">{stats.totalCustomers.toLocaleString()}</p>
-              <p className="text-sm text-green-600 mt-1">{growth.customers}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-full">
               <FaUsers className="text-purple-600 text-xl" />
@@ -208,7 +196,6 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Sản phẩm</p>
               <p className="text-3xl font-bold text-gray-900">{stats.totalProducts.toLocaleString()}</p>
-              <p className="text-sm text-green-600 mt-1">{growth.products}</p>
             </div>
             <div className="bg-orange-100 p-3 rounded-full">
               <FaTshirt className="text-orange-600 text-xl" />
