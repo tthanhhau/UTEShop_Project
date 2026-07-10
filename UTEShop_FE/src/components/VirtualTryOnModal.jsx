@@ -138,9 +138,19 @@ export default function VirtualTryOnModal({ isOpen, onClose, product }) {
 
             // Thông báo lỗi thân thiện
             if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
-                setError("Không thể kết nối đến server. Hãy kiểm tra backend đang chạy (port 5000).");
+                setError("Không thể kết nối đến server. Hãy kiểm tra kết nối mạng và thử lại.");
+            } else if (
+                err.message.includes("Ảnh không hợp lệ") ||
+                err.message.includes("không phát hiện người") ||
+                err.message.includes("Không phát hiện") ||
+                err.message.includes("khuôn mặt") ||
+                err.message.includes("người thật") ||
+                err.message.toLowerCase().includes("invalid") ||
+                err.message.toLowerCase().includes("not a person")
+            ) {
+                setError("Ảnh không hợp lệ! Vui lòng tải lên ảnh NGƯỜI THẬT (chụp toàn thân hoặc nửa người). Ảnh búp bê, robot, xe hoặc vật thể khác không được chấp nhận.");
             } else if (err.message.includes("Colab") || err.message.includes("COLAB")) {
-                setError("Google Colab chưa được cấu hình. Admin cần chạy Colab và điền COLAB_TRYON_URL.");
+                setError("Dịch vụ AI đang tạm thời không khả dụng. Vui lòng thử lại sau ít phút.");
             } else {
                 setError(err.message || "Đã xảy ra lỗi, vui lòng thử lại.");
             }
