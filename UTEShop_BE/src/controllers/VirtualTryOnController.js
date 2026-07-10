@@ -165,6 +165,13 @@ export const tryOnProxy = async (req, res) => {
                 return res.json({ success: true, result_url: url, source: "Google Colab (CatVTON)" });
             } catch (err) {
                 console.error(`[Colab AI] >>> ❌ Lỗi:`, err.message);
+                
+                // Nếu là lỗi validate ảnh không phải người thật (có prefix ERROR: hoặc chứa thông tin validate), 
+                // ta trả thẳng lỗi về frontend luôn chứ không nhảy sang HF Spaces.
+                if (err.message.includes("ERROR:") || err.message.includes("Ảnh không hợp lệ") || err.message.includes("Không phát hiện") || err.message.includes("người thật")) {
+                    throw err; 
+                }
+                
                 console.log(`[Colab AI] >>> Chuyển sang HF Spaces...`);
             }
         } else {
