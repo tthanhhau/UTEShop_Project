@@ -9,6 +9,8 @@ const GUEST_TOKEN_KEY = "uteshop_guest_token";
 const SESSION_KEY = "uteshop_chat_session";
 const PENDING_PURCHASE_KEY = "uteshop_pending_purchase";
 
+let isFirstLoad = true;
+
 const defaultMessage = {
   id: 1,
   text: "Xin chào! 👋 Tôi là trợ lý AI của UTEShop. Tôi có thể giúp bạn:\n• Tìm kiếm sản phẩm\n• Đặt hàng nhanh chóng\n• Tư vấn chọn size\n\nBạn cần gì nào? 😊",
@@ -27,6 +29,7 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
   const [guestToken, setGuestToken] = useState(null);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
   const messagesEndRef = useRef(null);
   const prevUserRef = useRef(null);
 
@@ -41,12 +44,21 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
   // Khởi tạo sessionId và guestToken
   // Dùng localStorage để lưu trữ phiên chat bền vững
   useEffect(() => {
+    if (isFirstLoad) {
+      isFirstLoad = false;
+      if (!user) {
+        // Clear chat session and guest token on first load (reload) if not logged in
+        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(GUEST_TOKEN_KEY);
+      }
+    }
+
     const savedSession = localStorage.getItem(SESSION_KEY);
     const savedGuestToken = localStorage.getItem(GUEST_TOKEN_KEY);
 
     if (savedSession) setSessionId(savedSession);
     if (savedGuestToken && !user) setGuestToken(savedGuestToken);
-  }, []);
+  }, [user]);
 
   // Merge guest chat khi đăng nhập
   useEffect(() => {
@@ -55,12 +67,16 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
       if (user && !prevUserRef.current) {
         const savedGuestToken = localStorage.getItem(GUEST_TOKEN_KEY);
         if (savedGuestToken) {
+          setIsMerging(true);
           try {
             await axios.post("/chatbot/merge", { guestToken: savedGuestToken });
             localStorage.removeItem(GUEST_TOKEN_KEY);
             setGuestToken(null);
           } catch (error) {
             console.error("Error merging chat:", error);
+          } finally {
+            setIsMerging(false);
+            setHistoryLoaded(false); // Buộc load lại lịch sử sau khi merge xong
           }
         }
       }
@@ -73,7 +89,7 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
   // Load lịch sử chat khi mở chatbox
   useEffect(() => {
     const loadHistory = async () => {
-      if (!isOpen || historyLoaded) return;
+      if (!isOpen || historyLoaded || isMerging) return;
 
       try {
         const params = {};
@@ -99,6 +115,8 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
             intent: msg.intent
           }));
           setMessages([defaultMessage, ...formattedHistory]);
+        } else {
+          setMessages([defaultMessage]);
         }
         setHistoryLoaded(true);
       } catch (error) {
@@ -108,10 +126,13 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
     };
 
     loadHistory();
-  }, [isOpen, user, guestToken, historyLoaded]);
+  }, [isOpen, user, guestToken, historyLoaded, isMerging]);
 
-  // Reset historyLoaded khi user thay đổi
+  // Reset historyLoaded và messages khi user thay đổi (đăng nhập/đăng xuất)
   useEffect(() => {
+    setMessages([defaultMessage]);
+    setSessionId(null);
+    setGuestToken(null);
     setHistoryLoaded(false);
   }, [user]);
 
@@ -271,7 +292,7 @@ export default function ChatBot({ isOpen, onOpen, onClose }) {
         {
           id: Date.now() + 1,
           text: error?.response?.status === 500
-            ? "⚠️ AI đang offline. Vui lòng kiểm tra Server Colab đã chạy chưa."
+            ? "⚠️ AI đang offline. Vui lòng kiểm tra Server Kaggle đã chạy chưa."
             : "Xin lỗi, tôi đang gặp sự cố. Vui lòng thử lại sau.",
           sender: "bot",
           timestamp: new Date(),
