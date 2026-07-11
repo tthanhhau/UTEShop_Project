@@ -176,6 +176,50 @@ class ChatbotService {
     };
   }
 
+  // Trích xuất bộ lọc tìm kiếm từ câu hỏi của user
+  extractSearchFilters(text) {
+    const brands = ["nike", "adidas", "zara", "h&m", "hm", "louis vuitton", "lv"];
+    const categories = ["giày", "dép", "sandal", "áo", "quần", "mũ", "nón", "túi", "balo", "thắt lưng", "ví", "kính", "vòng cổ", "nơ", "cà vạt"];
+    
+    let brandFound = null;
+    let categoryFound = null;
+    
+    const lowerText = text.toLowerCase();
+    
+    // Find brand
+    for (const brand of brands) {
+      if (lowerText.includes(brand)) {
+        brandFound = brand === "hm" ? "h&m" : (brand === "lv" ? "louis vuitton" : brand);
+        break;
+      }
+    }
+    
+    // Find category
+    for (const cat of categories) {
+      if (lowerText.includes(cat)) {
+        categoryFound = cat;
+        break;
+      }
+    }
+    
+    // Nếu tìm thấy thương hiệu hoặc loại sản phẩm, hoặc từ khóa tìm kiếm rõ ràng
+    const isSearchAction = /tìm|mua|xem|kiếm|săn|có|bán|show|list/i.test(lowerText) || brandFound || categoryFound;
+    
+    if (isSearchAction) {
+      // Làm sạch từ khóa
+      let keyword = text.replace(/tìm|mua|xem|kiếm|săn|có|bán|show|list|tôi|muốn|giúp|cho|hỏi|cửa hàng|shop/gi, "").trim();
+      keyword = keyword.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").replace(/\s{2,}/g, " ").trim();
+      
+      return {
+        brand: brandFound,
+        category: categoryFound,
+        keyword: keyword || text
+      };
+    }
+    
+    return null;
+  }
+
   // Tư vấn size dựa trên chiều cao, cân nặng
   getSizeAdvice(filters) {
     const { height, weight, footLength, productType } = filters;
@@ -277,7 +321,7 @@ class ChatbotService {
       if (footLength) {
         const advice = getShoeSize(footLength);
         if (advice) {
-          return `👟 **TƯ VẤN SIZE GIÀY**\n\n📏 Chiều dài chân: ${footLength}cm\n\n✅ **Size phù hợp: EU ${advice.size} (US ${advice.us})**\n\n💡 **Mẹo chọn giày:**\n• Nên đo chân vào buổi chiều (chân hơi phù)\n• Chừa 0.5-1cm cho thoải mái\n• Giày thể thao nên lấy lớn hơn 0.5 size\n\nBạn muốn tìm giày size ${advice.size} không? 😊`;
+          return `👟 **TƯ VẤN SIZE GIÀY**\n\n📏 Chiều dài chân: ${footLength}cm\n\n✅ **Size phù hợp: EU ${advice.size} (US ${advice.us})**\n\n💡 **Mẹo chọn giày:**\n• Nên đo chân vào buổi chiều (chân hơi phù)\n• Chừa 0.5-1cm cho thoải mái\n• Giày thể thao nên lấy lớn hơn 0.5 size\n\nBạn có muốn lấy size ${advice.size} không? 😊`;
         }
       }
       return `👟 **TƯ VẤN SIZE GIÀY**\n\nĐể tư vấn chính xác, bạn cho tôi biết **chiều dài bàn chân** (cm) nhé!\n\n📏 **Cách đo:**\n1. Đặt chân lên giấy trắng\n2. Vẽ viền quanh bàn chân\n3. Đo từ gót đến ngón dài nhất\n\n**Bảng size tham khảo:**\n• 25cm → Size 40\n• 26cm → Size 41\n• 27cm → Size 43\n• 28cm → Size 44`;
@@ -447,6 +491,52 @@ class ChatbotService {
     return "hôm nay";
   }
 
+  extractMeasurements(msg) {
+    let height = null;
+    let weight = null;
+    let footLength = null;
+
+    // 1. Tìm foot length (ví dụ: "chân dài 23 cm", "dài chân 23cm", "chân 23cm", "23 cm", "23cm")
+    const footMatch = msg.match(/(?:chiều dài bàn chân|dài chân|chân dài|bàn chân|chân|dài|size|cỡ)?\s*(\d+(?:\.\d+)?)\s*(?:cm|centimeter)?/i) || 
+                      msg.match(/^(\d+(?:\.\d+)?)\s*cm$/i);
+    if (footMatch) {
+      const val = parseFloat(footMatch[1]);
+      if (val >= 10 && val <= 35) {
+        footLength = val;
+      }
+    }
+
+    // 2. Tìm chiều cao & cân nặng kết hợp (ví dụ: "172 nặng 60", "172 60", "172cm 60kg")
+    const combinedMatch = msg.match(/(\d{3})\s*(?:cm)?\s+(?:nặng\s+)?(\d{2,3})\s*(?:kg|kí|ký)?/i);
+    if (combinedMatch) {
+      height = parseInt(combinedMatch[1]);
+      weight = parseInt(combinedMatch[2]);
+    } else {
+      // Tìm chiều cao đơn lẻ
+      const hM = msg.match(/(?:cao|chiều cao)\s*(\d+)\s*cm/i) || 
+                 msg.match(/(?:cao|chiều cao)\s*(\d+)/i) || 
+                 msg.match(/(\d)\s*m\s*(\d+)/i);
+      if (hM) {
+        if (hM[2]) {
+          height = parseInt(hM[1]) * 100 + parseInt(hM[2]);
+        } else {
+          const val = parseInt(hM[1]);
+          if (val > 100 && val < 220) height = val;
+        }
+      }
+
+      // Tìm cân nặng đơn lẻ
+      const wM = msg.match(/(?:nặng|cân nặng)\s*(\d+(?:\.\d+)?)\s*(?:kg|kí|ký)/i) || 
+                 msg.match(/(?:nặng|cân nặng)\s*(\d+(?:\.\d+)?)/i);
+      if (wM) {
+        const val = parseFloat(wM[1]);
+        if (val > 30 && val < 150) weight = val;
+      }
+    }
+
+    return { height, weight, footLength };
+  }
+
   detectSimpleIntent(message, state) {
     const msg = message.toLowerCase().trim();
 
@@ -466,8 +556,12 @@ class ChatbotService {
       };
     }
 
-    const policyMatch = matchPolicyKnowledge(message);
-    if (policyMatch) return policyMatch;
+    // Kiểm tra thông số đo đạc hoặc yêu cầu tư vấn size
+    const measurements = this.extractMeasurements(msg);
+    const isSizeAdviceRequest = /^(tư\s*vấn\s*)?size|chọn\s*size|lấy\s*size|mặc\s*size|đi\s*size|cỡ\s*nào|mặc\s*vừa/i.test(msg);
+    if (measurements.footLength || (measurements.height && measurements.weight) || isSizeAdviceRequest) {
+      return { intent: "size_advice", filters: measurements, message: "" };
+    }
 
     const selectMatch = msg.match(/(?:mua|lấy|chọn)?\s*(?:số|sản phẩm)?\s*(\d+)/i);
     if (selectMatch && state.lastProducts.length > 0) {
@@ -484,18 +578,41 @@ class ChatbotService {
         return { intent: "size_advice", filters: { needAdvice: true }, message: "" };
       }
 
+      // Nếu có size được tư vấn trước đó và người dùng đồng ý (gõ "có", "ừ", "ok", "lấy", "đồng ý")
+      if (state.advisedSize && /^(có|ừ|uh|ok|lấy|đồng ý|xác nhận|lấy size này)$/i.test(msg)) {
+        const size = state.advisedSize;
+        state.advisedSize = null; // Reset sau khi dùng
+        return { intent: "select_size", filters: { size }, message: "" };
+      }
+
       // Chỉ chọn size khi người dùng nói RÕ RÀNG size cụ thể
       const sizeMatch = msg.match(/^(?:lấy |chọn |mua )?(?:size )?(xs|s|m|l|xl|xxl|\d{2})$/i);
       if (sizeMatch) return { intent: "select_size", filters: { size: sizeMatch[1].toUpperCase() }, message: "" };
     }
 
-    if (state.cart.length > 0 && /^(không|ko|xong|thanh toán|checkout)$/i.test(msg)) {
+    // Nếu người dùng gõ từ khóa thanh toán/checkout cụ thể, luôn chuyển vào luồng checkout
+    if (/^(thanh toán|checkout)$/i.test(msg)) {
+      return { intent: "checkout", filters: {}, message: "" };
+    }
+
+    // Các từ khóa ngắn khác chỉ chuyển vào checkout khi giỏ hàng có đồ
+    if (state.cart.length > 0 && /^(không|ko|xong)$/i.test(msg)) {
       return { intent: "checkout", filters: {}, message: "" };
     }
 
     if (state.step === "confirm_order" && /^(đồng ý|ok|có|xác nhận)$/i.test(msg)) {
       return { intent: "confirm_yes", filters: {}, message: "" };
     }
+
+    // Kiểm tra xem người dùng có yêu cầu xem thêm sản phẩm không (phân trang)
+    const isMoreRequest = /^(còn\s*(cái|mẫu|món|sản phẩm)?\s*(nào)?\s*(nữa|khác)?\s*(không|ko)?|còn\s+nữa\s*(không|ko)?|xem\s*thêm|cho\s*xem\s*thêm|tiếp|more|show\s*more)$/i.test(msg);
+    if (isMoreRequest) {
+      return { intent: "more_products", filters: {}, message: "" };
+    }
+
+    // Kiểm tra chính sách cửa hàng (Chỉ áp dụng khi không trùng các hành động trên)
+    const policyMatch = matchPolicyKnowledge(message);
+    if (policyMatch) return policyMatch;
 
     return null;
   }
@@ -523,6 +640,16 @@ class ChatbotService {
       case "search_product":
       case "style_advice":
         state.shownProductIds = [];
+
+        // Trích xuất bộ lọc từ raw message và gộp với filters của AI để tránh thiếu thông tin (như thiếu category)
+        const rawExtracted = this.extractSearchFilters(message);
+        if (rawExtracted) {
+          if (!analysis.filters) analysis.filters = {};
+          if (!analysis.filters.brand && rawExtracted.brand) analysis.filters.brand = rawExtracted.brand;
+          if (!analysis.filters.category && rawExtracted.category) analysis.filters.category = rawExtracted.category;
+          if (!analysis.filters.keyword && rawExtracted.keyword) analysis.filters.keyword = rawExtracted.keyword;
+        }
+
         products = await this.searchProducts(analysis.filters);
         if (products.length > 0) {
           state.lastProducts = products;
@@ -638,24 +765,47 @@ class ChatbotService {
           const productName = state.selectedProduct.name.toLowerCase();
           const availableSizes = state.selectedProduct.sizes?.filter(s => s.stock > 0).map(s => s.size) || [];
 
-          // Xác định loại sản phẩm từ tên
+          // Xác định loại sản phẩm từ tên hoặc danh mục
+          let categoryName = "";
+          if (state.selectedProduct.category) {
+            if (typeof state.selectedProduct.category === "object" && state.selectedProduct.category.name) {
+              categoryName = state.selectedProduct.category.name.toLowerCase();
+            } else {
+              const cat = await Category.findById(state.selectedProduct.category).lean();
+              if (cat) {
+                categoryName = cat.name.toLowerCase();
+              }
+            }
+          }
+          console.log("🔍 debug size_advice selectedProduct:", {
+            name: state.selectedProduct.name,
+            category: state.selectedProduct.category,
+            categoryName: categoryName
+          });
           let productType = "áo";
-          if (productName.includes("quần") || productName.includes("jean") || productName.includes("short")) {
+          if (categoryName.includes("quần") || productName.includes("quần") || productName.includes("jean") || productName.includes("short")) {
             productType = "quần";
-          } else if (productName.includes("giày") || productName.includes("sneaker") || productName.includes("dép")) {
+          } else if (categoryName.includes("giày") || categoryName.includes("dép") || categoryName.includes("sandal") || productName.includes("giày") || productName.includes("sneaker") || productName.includes("dép")) {
             productType = "giày";
           }
 
-          // Nếu có thông tin chiều cao, cân nặng thì tư vấn luôn
-          if (analysis.filters.height && analysis.filters.weight) {
+          // Nếu có thông tin chiều dài chân (hoặc chiều cao, cân nặng đối với quần áo) thì tư vấn luôn
+          if (analysis.filters.footLength || (analysis.filters.height && analysis.filters.weight)) {
             responseMessage = this.getSizeAdvice({ ...analysis.filters, productType });
             responseMessage += `\n\n📦 **${state.selectedProduct.name}** có các size: ${availableSizes.join(", ")}`;
+
+            // Trích xuất size được tư vấn và lưu vào session state để hỗ trợ bấm/nhập "có/ok"
+            const match = responseMessage.match(/Size phù hợp:\s*(?:EU\s+)?([a-zA-Z0-9]+)/i);
+            if (match) {
+              state.advisedSize = match[1].toUpperCase();
+              console.log(`📏 Saved advisedSize: ${state.advisedSize}`);
+            }
           } else {
             // Hỏi thông tin để tư vấn
             responseMessage = `📏 **TƯ VẤN SIZE CHO ${state.selectedProduct.name.toUpperCase()}**\n\n`;
             responseMessage += `Để tư vấn size phù hợp nhất, bạn cho tôi biết:\n`;
             if (productType === "giày") {
-              responseMessage += `• **Chiều dài bàn chân** (cm)\n\nVí dụ: "chân dài 26cm"`;
+              responseMessage += `• **Chiều dài bàn chân** (cm)\n\nVí dụ: "chiều dài bàn chân 25 cm" hoặc trả lời "25 cm"`;
             } else {
               responseMessage += `• **Chiều cao** (cm)\n• **Cân nặng** (kg)\n\nVí dụ: "cao 170 nặng 65kg"`;
             }
@@ -729,7 +879,28 @@ class ChatbotService {
       default:
         // Dùng message từ AI cho các intent khác, hoặc message mặc định
         responseMessage = analysis.message || "😊 Tôi có thể giúp bạn tìm kiếm và đặt hàng sản phẩm.\n\nBạn muốn tìm gì hôm nay? Ví dụ: áo thun, quần jean, giày sneaker...";
+        
+        // Nếu AI trả về text thông thường (intent general) nhưng người dùng đang tìm kiếm sản phẩm,
+        // ta thực hiện trích xuất và tìm kiếm sản phẩm để hiển thị danh sách dưới dạng card.
+        if (analysis.intent === "general" || !analysis.intent) {
+          const extractedFilters = this.extractSearchFilters(message);
+          if (extractedFilters) {
+            console.log("🔍 Fallback product extraction found filters:", extractedFilters);
+            products = await this.searchProducts(extractedFilters);
+            if (products.length > 0) {
+              state.lastProducts = products;
+              state.lastKeyword = extractedFilters.keyword;
+              state.lastFilters = extractedFilters;
+              state.shownProductIds = products.map(p => p._id);
+            }
+          }
+        }
         break;
+    }
+
+    // Đảm bảo không bao giờ trả về tin nhắn trống để tránh lỗi Validate của Database
+    if (!responseMessage || responseMessage.trim() === "") {
+      responseMessage = "Tôi chưa hiểu ý bạn lắm. Bạn có cần tôi hỗ trợ tìm kiếm sản phẩm nào khác không? 😊";
     }
 
     return {
