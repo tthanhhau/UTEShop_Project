@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from '../schemas/OrderSchema';
 import { User, UserDocument } from '../schemas/UserSchema';
+import { Product, ProductDocument } from '../schemas/ProductSchema';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class OrderService {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     private configService: ConfigService,
   ) { }
 
@@ -139,6 +141,27 @@ export class OrderService {
 
     if (!order) {
       throw new Error('Order not found');
+    }
+
+    // Khôi phục stock nếu trạng thái đổi sang 'cancelled' và trước đó chưa phải 'cancelled'
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      console.log('🔄 ORDER CANCELLED BY ADMIN - Restoring product stocks');
+      for (const item of order.items) {
+        const product = await this.productModel.findById(item.product).exec();
+        if (product) {
+          product.stock += item.quantity;
+          product.soldCount = Math.max(0, product.soldCount - item.quantity);
+          if (item.size && product.sizes && product.sizes.length > 0) {
+            const sizeItem = product.sizes.find(s => s.size === item.size);
+            if (sizeItem) {
+              sizeItem.stock += item.quantity;
+              product.markModified('sizes');
+            }
+          }
+          await product.save();
+          console.log(`✅ [ADMIN] Restored stock for product ${product.name}: stock=${product.stock}`);
+        }
+      }
     }
 
     console.log('🔍 UPDATE STATUS - Order ID:', id);

@@ -94,34 +94,36 @@ class OrderController {
 
       // 🔒 THAY ĐỔI: Dùng for...of thay vì Promise.all để xử lý tuần tự
       for (const item of items) {
-        // 🔒 ATOMIC UPDATE: findOneAndUpdate với điều kiện stock
-        const product = await Product.findOneAndUpdate(
-          {
-            _id: item.product,
-            stock: { $gte: item.quantity }, // Chỉ update nếu đủ hàng
-          },
-          {
-            $inc: {
-              stock: -item.quantity,
-              soldCount: item.quantity,
-            },
-          },
-          {
-            new: true,
-            session, // 🔑 QUAN TRỌNG: Phải có session
-            runValidators: true,
-          }
-        );
+        const product = await Product.findById(item.product).session(session);
 
-        // Nếu product = null => hết hàng hoặc không tìm thấy
         if (!product) {
-          // Lấy thông tin product để hiển thị tên
-          const productInfo = await Product.findById(item.product).session(
-            session
-          );
-          const productName = productInfo ? productInfo.name : item.product;
-          throw new Error(`Insufficient stock for product ${productName}`);
+          throw new Error(`Product ${item.product} not found`);
         }
+
+        // Kiểm tra stock chung
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for product ${product.name}`);
+        }
+
+        // Kiểm tra và cập nhật stock theo size nếu có
+        if (product.sizes && product.sizes.length > 0) {
+          if (!item.size) {
+            throw new Error(`Size là bắt buộc cho sản phẩm ${product.name}`);
+          }
+          const sizeItem = product.sizes.find(s => s.size === item.size);
+          if (!sizeItem) {
+            throw new Error(`Size ${item.size} không tồn tại cho sản phẩm ${product.name}`);
+          }
+          if (sizeItem.stock < item.quantity) {
+            throw new Error(`Insufficient stock for product ${product.name}`); // Giữ nguyên thông báo lỗi để FE bắt nếu cần, hoặc ném lỗi cụ thể
+          }
+          sizeItem.stock -= item.quantity;
+          product.markModified("sizes");
+        }
+
+        product.stock -= item.quantity;
+        product.soldCount += item.quantity;
+        await product.save({ session });
 
         console.log(
           `✅ Updated product ${product.name}: stock=${product.stock}`
@@ -718,6 +720,13 @@ class OrderController {
         if (product) {
           product.stock += item.quantity;
           product.soldCount -= item.quantity;
+          if (item.size && product.sizes && product.sizes.length > 0) {
+            const sizeItem = product.sizes.find(s => s.size === item.size);
+            if (sizeItem) {
+              sizeItem.stock += item.quantity;
+              product.markModified("sizes");
+            }
+          }
           await product.save();
         }
       })
