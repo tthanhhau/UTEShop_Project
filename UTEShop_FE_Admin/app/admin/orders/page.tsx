@@ -240,7 +240,6 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
             <div>
               <p className="text-sm font-medium text-gray-600">Đang xử lý</p>
               <p className="text-3xl font-bold text-cyan-600">{stats.processingOrders}</p>
-              <p className="text-xs text-gray-500 mt-1">Đã xác nhận</p>
             </div>
             <div className="bg-cyan-100 p-3 rounded-full">
               <i className="fas fa-truck text-cyan-600 text-xl"></i>
@@ -253,7 +252,6 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
             <div>
               <p className="text-sm font-medium text-gray-600">Đơn giao thành công</p>
               <p className="text-3xl font-bold text-green-600">{stats.deliveredOrders}</p>
-              <p className="text-xs text-gray-500 mt-1">Đã hoàn thành</p>
             </div>
             <div className="bg-green-100 p-3 rounded-full">
               <i className="fas fa-check-circle text-green-600 text-xl"></i>
@@ -266,7 +264,6 @@ function OrderManagementContent({ highlightOrderId }: { highlightOrderId: string
             <div>
               <p className="text-sm font-medium text-gray-600">Đơn đã hủy</p>
               <p className="text-3xl font-bold text-red-600">{stats.cancelledOrders}</p>
-              <p className="text-xs text-gray-500 mt-1">Đã bị hủy bỏ</p>
             </div>
             <div className="bg-red-100 p-3 rounded-full">
               <i className="fas fa-times-circle text-red-600 text-xl"></i>
